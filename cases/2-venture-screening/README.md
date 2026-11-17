@@ -1,13 +1,13 @@
-# Case 1: Venture screening
+# Case 2: Venture screening
 
 **The question.** Which early-stage New Zealand startups should a hypothetical generalist
 seed/Series A fund prioritise for its next due-diligence slots?
 
-**Open:** [the screening report](https://spar473.github.io/venture-frame/cases/1-venture-screening/screening-report.html)
+**Open:** [the screening report](https://spar473.github.io/venture-frame/cases/2-venture-screening/screening-report.html)
 ([file](screening-report.html)) · [the full study](../../examples/nz_venture_screening/README.md) ·
 in the app, **Venture screening** on the start page.
 
-[![The top of the screening report](report-preview.png)](https://spar473.github.io/venture-frame/cases/1-venture-screening/screening-report.html)
+[![The top of the screening report](report-preview.png)](https://spar473.github.io/venture-frame/cases/2-venture-screening/screening-report.html)
 
 > Eight real companies, public information read on 4 November 2026, rated by the study author
 > against written rubrics. Not investment advice, not a valuation and not a prediction of success.

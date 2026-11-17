@@ -39,7 +39,7 @@ from the command line.
 
 ## On the real companies
 
-The runner has been tried on case 1: local models (Qwen 2.5 1.5B and Laya) classified the cited
+The runner has been tried on case 2: local models (Qwen 2.5 1.5B and Laya) classified the cited
 source text for all 112 rubric cells. Those outputs stay outside this repository, and **nothing has
 been compared with any rating**. Before any model is scored, a second person must rate the same
 cells blind, and the agreement between the two people decides whether a reference exists at all.

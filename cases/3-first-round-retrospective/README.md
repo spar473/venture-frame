@@ -1,13 +1,13 @@
-# Case 2: First-round retrospective
+# Case 3: First-round retrospective
 
 **The question.** How would five New Zealand companies have screened as they stood around their
 first funding rounds, using only what was public then, and how does that compare with what
 happened next?
 
-**Open:** [the screening report](https://spar473.github.io/venture-frame/cases/2-first-round-retrospective/screening-report.html)
+**Open:** [the screening report](https://spar473.github.io/venture-frame/cases/3-first-round-retrospective/screening-report.html)
 ([file](screening-report.html)) · [the full study](../../examples/nz_first_round_retrospective/README.md).
 
-[![The top of the screening report](report-preview.png)](https://spar473.github.io/venture-frame/cases/2-first-round-retrospective/screening-report.html)
+[![The top of the screening report](report-preview.png)](https://spar473.github.io/venture-frame/cases/3-first-round-retrospective/screening-report.html)
 
 > A look-back showcase, **not a validation study**: five hand-picked companies cannot show whether
 > a method predicts anything. Not investment advice. The companies were not contacted and are not
@@ -15,7 +15,7 @@ happened next?
 
 ## How it was built
 
-- **Same rubrics, same two partner weightings** as case 1, copied word for word.
+- **Same rubrics, same two partner weightings** as case 2, copied word for word.
 - **Point-in-time sources.** Each company is anchored on its first round. Sources count only if
   published or captured from 12 months before the anchor to 180 days after it, plus earlier
   captures of the company's own website.

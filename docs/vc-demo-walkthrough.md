@@ -1,14 +1,13 @@
-# Venture screening: a six-minute demo
+# Venture screening: a six-minute guided tour
 
-A click path through the [venture screening study](../examples/nz_venture_screening/README.md) for
-a coffee conversation with an investor: what to click, what to say, and where the honest limits
-are. Numbers are the study's as built and re-checked on 7 November 2026 in the default Analyst view;
+A guided click path through [case 2, venture screening](../cases/2-venture-screening/README.md):
+what to click, what each screen shows, and where its limits are. Numbers are the study's as built and re-checked on 7 November 2026 in the default Analyst view;
 if the study is rebuilt they may move.
 
 **Before you start.** Run `mcda serve` (or `python -m mcda_studio serve`), open the start page at
-1440 × 900 or larger, and close other projects. Have one line ready: *"This is a screening queue
-for a hypothetical seed/Series A fund, built from public information on eight real New Zealand
-companies. It is not investment advice and it does not predict success."*
+1440 × 900 or larger, and close other projects. The study is a screening queue for a hypothetical seed/Series A fund,
+built from public information on eight real New Zealand companies. It is not investment advice and
+it does not predict success.
 
 **Two views.** **Open worked example** opens the study in **Analyst view**: results, sensitivity, comparison,
 evidence, questions and the decision record, with nothing to edit by accident. **Builder view**
@@ -18,7 +17,7 @@ cannot save a profile.
 
 ## The click path
 
-| Time | Click | Say |
+| Time | Click | What it shows |
 | --- | --- | --- |
 | 0:00 | Start page → **Venture screening** card → **Open worked example — Venture screening** | Eight real NZ startups across six sectors, as of 4 November 2026. Every rating is a judgement against a written rubric, and every fact behind it is a sourced claim. Companies were not contacted. |
 | 0:30 | **Results** (it opens on the screening summary) | One row per company: rank, class, whether it meets the mandate, what drives its value, how close it is to changing place, and how many questions are open. The value is this partner's preference, on a 0–1 scale, not a probability. Optional: **Download screening report** saves one self-contained HTML file (it prints to A4) that carries the whole reading, with the study's own description and statements at the top, for a partner who has not installed anything. |
@@ -49,24 +48,21 @@ public evidence could support around the first rounds of Vertus Energy, Croptide
 Argo Navis Aerospace and Helico, and sets the method's ranking beside what happened next. It
 demonstrates how the method behaves on old cases, not predictive accuracy.
 
-| Click | Say |
+| Click | What it shows |
 | --- | --- |
 | Start page → **Examples…** → **Add to my projects** on *Looking back: five NZ first rounds (public information)* → **Analyst view** | Five past companies, each with its own first-round anchor. Sources range from 12 months before that anchor through 180 days after it, plus earlier own-site captures. Later-in-window progress is not an announcement-day fact. Helico's first round was labelled seed; Argo's exact first-round date is unconfirmed. |
 | **Results**, then switch between **Technical/IP-led** and **Commercial/traction-led** | Both profiles give the same order: Vertus Energy, Croptide, Argo Navis Aerospace, RosterLab, Helico. All five are in the lowest class: the classes were set for a seed/Series A fund's current pipeline, and these are first-round snapshots. Croptide and Argo Navis are almost tied. The venture study's criteria, profiles, classes and mandate are unchanged. |
-| **Evidence** → open `examples/nz_first_round_retrospective/evidence.json` | One unreviewed claim for each of the 95 cells, with a dated source and the rubric step. 39 claims say they follow the owner's rule: where the sources were silent, the lowest "nothing public" label, as in the venture study. Argo Navis has seven of them, so its thin record pulls it down. The market estimates were available around each company's own date; some segments are broad. |
+| **Evidence** → open `examples/nz_first_round_retrospective/evidence.json` | One unreviewed claim for each of the 95 cells, with a dated source and the rubric step. 39 claims follow the study's gap rule: where the sources were silent, the lowest "nothing public" label, as in the venture study. Argo Navis has seven of them, so its thin record pulls it down. The market estimates were available around each company's own date; some segments are broad. |
 | **Reference cases** → open `examples/nz_first_round_retrospective/reference-cases.json` → select **Vertus Energy** → tick **Leave out this alternative's own case** | First Vertus matches its own case exactly, a consistency check. With its own case left out it is compared with the other four on all 14 labelled criteria. Numeric market criteria are not part of this similarity. |
 | **Show what happened next** | Outcomes are off by default and appear only on request. They are dated public facts, kept out of every input, and say nothing about the people involved. In the README's results table: the top two raised larger rounds, the 3rd and 5th were liquidated and the 4th raised. That is five cases, not evidence either way. |
 
-**Honesty line:** the ratings were drafted by Claude Code, checked and extended by Codex, and
-completed by Claude Code under the owner's gap rule, all with the outcomes known; author review is
-pending. The gap rule penalises thin public records. Source-date checks cannot remove hindsight bias.
-Public sources under-report companies that closed. Five selected companies cannot show whether
-the method predicts anything. The next research step is a blind re-rating packet; it has not been
-produced. Review the run report (historical record, not included) for every gap,
-source qualification and owner decision. The previous two-current-company draft was deleted at
-the owner's request.
+**Limits.** The ratings were drafted and checked by AI coding assistants under the study's gap
+rule, with the outcomes known; author review is pending. The gap rule penalises thin public
+records, source-date checks cannot remove hindsight bias, and public sources under-report
+companies that closed. Five selected companies cannot show whether the method predicts anything.
+A blind re-rating is the next research step and has not been done.
 
-## Honest limits to state
+## Limits
 
 - **Screening, not prediction.** The model ranks companies for diligence under stated preferences.
   It says nothing about returns or the chance of success, and it has not been validated against

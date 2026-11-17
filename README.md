@@ -1,84 +1,114 @@
 # Venture Frame
 
-**A local workbench for screening early-stage companies and deciding which ones deserve the next
-due-diligence slots, with the reasons, the evidence and the open questions in view.**
+[![CI](https://github.com/spar473/venture-frame/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/spar473/venture-frame/actions/workflows/ci.yml)
+[![Licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
+![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)
 
-A fund sees far more companies than it can diligence. The choice of which to look at next is
-usually a conversation: partners weigh things differently, some facts are disputed or out of date,
-and nobody can say how close the call was. Venture Frame makes that judgement explicit and
-arguable:
+**Decision support for early-stage venture screening.** Venture Frame helps an investment team
+decide which companies deserve the next due-diligence slots. It shows each partner's reasoning,
+the evidence behind every rating, and how close each call is.
 
-- a **mandate check** (stage, geography, sector) that no score can offset;
-- **two partners' weightings side by side**, each with its own ranking, never averaged;
-- classes such as **Prioritise for diligence / Monitor / Not now**;
-- **how close each company is to changing place**: the exact weight change that would move it;
-- every rating backed by a **sourced claim**, with disputed and outdated claims left open;
-- a one-file **screening report** a partner can read without installing anything.
+> Venture Frame screens and prioritises. It does not recommend investments, predict success or
+> produce probabilities.
 
-It screens and prioritises. **It does not recommend investments or predict success**, and no
-score is a probability.
+[Case studies](#case-studies) · [Product tour](#product-tour) · [Getting started](#getting-started) ·
+[Methodology](#methodology) · [Scope and limitations](#scope-and-limitations)
 
 ![Screening summary of the venture study: rank, class and margin, mandate status, largest contributions, closest change and open questions for each company](docs/images/screening-summary.png)
 
-## Four case studies
+## Overview
 
-Each case has a one-page brief and the screening report the engine produced for it. The reports
-are single HTML files with no scripts; GitHub shows HTML as source, so open them from the links
-below or download and open them in a browser.
+A fund sees far more companies than it can diligence, and the choice of which to look at next is
+usually made in conversation. Partners weigh criteria differently, some facts are disputed or out
+of date, and it is rarely clear how close the decision was. Venture Frame turns that conversation
+into an explicit, inspectable model:
 
-| Case | The question | Brief | Report |
-| --- | --- | --- | --- |
-| **1. Venture screening** | Which of eight real NZ startups, across six sectors, should a hypothetical seed/Series A fund diligence next? | [Brief](cases/1-venture-screening/README.md) | [Report](https://spar473.github.io/venture-frame/cases/1-venture-screening/screening-report.html) |
-| **2. First-round retrospective** | How would five NZ companies have screened at their first rounds, set beside what actually happened? | [Brief](cases/2-first-round-retrospective/README.md) | [Report](https://spar473.github.io/venture-frame/cases/2-first-round-retrospective/screening-report.html) |
-| **3. The original deep-tech study** | Which of four NZ deep-tech startups should a seed fund diligence first? The study this project grew from | [Brief](cases/3-original-deep-tech-study/README.md) | [Report](https://spar473.github.io/venture-frame/cases/3-original-deep-tech-study/screening-report.html) |
-| **4. Model suggestions, reviewed by a person** | How can a classifier suggest ratings without ever deciding them? | [Brief](cases/4-model-proposals-reviewed/README.md) | (walkthrough in the brief) |
+| Capability | What it gives the team |
+| --- | --- |
+| **Mandate screening** | Stage, geography and sector requirements, shown beside the ranking. No score can offset a failure. |
+| **Partner profiles** | Each partner's weighting produces its own ranking, side by side. Nothing is averaged. |
+| **Prioritisation classes** | *Prioritise for diligence / Monitor / Not now*, with each company's margin to the next class. |
+| **Decision sensitivity** | The exact weight change that would reorder two companies or move one across a class boundary. |
+| **Sourced evidence** | Every rating is linked to a dated, cited claim. Disputed and outdated claims stay visible. |
+| **Method cross-checks** | Sampled uncertainty analysis and a non-compensatory method, each reported separately. |
+| **Shareable reports** | A single self-contained HTML file per screen, readable without installing anything. |
+
+## Case studies
+
+Four worked cases, from the study that started the project to the newest work. Each has a
+one-page brief and the screening report generated by the engine.
+
+### 1. The original deep-tech study
+
+<img src="cases/1-original-deep-tech-study/report-preview.png" alt="Top of the deep-tech study screening report" width="300" align="right">
+
+Four New Zealand deep-tech startups ranked for a hypothetical seed fund. This is the author's
+September 2026 study, first carried out in DECERNS. Venture Frame was built to reproduce it from
+scratch, and its numbers now serve as the engine's main regression test.
+
+[Brief](cases/1-original-deep-tech-study/README.md) ·
+[Screening report](https://spar473.github.io/venture-frame/cases/1-original-deep-tech-study/screening-report.html)
+
+<br clear="right">
+
+### 2. Venture screening
+
+<img src="cases/2-venture-screening/report-preview.png" alt="Top of the venture screening report" width="300" align="right">
+
+Eight real NZ startups across six sectors, rated from public information as of 4 November 2026
+for a hypothetical seed/Series A fund. It has a mandate check, two partner weightings, three
+classes and 154 sourced claims, and it is the case the [product tour](#product-tour) walks through.
+
+[Brief](cases/2-venture-screening/README.md) ·
+[Screening report](https://spar473.github.io/venture-frame/cases/2-venture-screening/screening-report.html) ·
+[Six-minute walkthrough](docs/vc-demo-walkthrough.md)
+
+<br clear="right">
+
+### 3. First-round retrospective
+
+<img src="cases/3-first-round-retrospective/report-preview.png" alt="Top of the first-round retrospective report" width="300" align="right">
+
+Five NZ companies rated as they stood around their first funding rounds, using only sources from
+that window, then set beside what happened next. It is a look-back showcase with draft ratings,
+not a validation study.
+
+[Brief](cases/3-first-round-retrospective/README.md) ·
+[Screening report](https://spar473.github.io/venture-frame/cases/3-first-round-retrospective/screening-report.html)
+
+<br clear="right">
+
+### 4. Model suggestions, reviewed by a person
+
+How a classifier can propose ratings from source text without ever deciding them. Every
+suggestion is accepted, corrected or rejected by an analyst, and confidence never becomes a
+weight. The worked example uses invented data.
+
+[Brief](cases/4-model-proposals-reviewed/README.md)
 
 The companies in cases 1–3 are real and named from public information only. They were not
 contacted and are not affiliated; nothing here is investment advice or a statement about any
 company beyond what its cited source says.
 
-## A quick look
+## Product tour
+
+The screening workflow, in the order an analyst uses it, on case 2:
 
 | | |
 | --- | --- |
+| ![Start page with the starter projects](docs/images/start-page.png) | ![Requirements check: Hnry fails the stage mandate and keeps its place beside the ranking](docs/images/requirements.png) |
+| **1 · Open a case.** Start from a worked example or a blank project. Then read the screening summary (shown at the top of this page). | **2 · Check the mandate.** A company outside the fund's mandate is flagged beside its rank, never hidden. |
 | ![Company detail: requirements, every scored contribution, the closest change and the sourced rubric ratings for one company](docs/images/company-drawer.png) | ![Partner comparison: two weight profiles side by side, each with its own ranking and classes and no combined ranking](docs/images/partner-comparison.png) |
-| **Company detail.** Every scored contribution, the closest change and the rubric level and source behind each rating. | **Compare partners.** Two weightings side by side, each its own reading; nothing is averaged. |
-| ![Requirements check: Hnry fails the stage mandate and keeps its place beside the ranking](docs/images/requirements.png) | ![Sensitivity: exact crossover weights as the weight on Traction changes](docs/images/sensitivity.png) |
-| **Mandate.** A failure sits beside the ranking; no score offsets it. | **Sensitivity.** The exact weight at which the ranking or class changes, and who swaps. |
+| **3 · Inspect a company.** Every scored contribution, the closest change, and the rubric level and source behind each rating. | **4 · Compare partners.** Two weightings side by side, and the places each company moves between them. |
+| ![Sensitivity: exact crossover weights as the weight on Traction changes](docs/images/sensitivity.png) | ![What-if weights: temporary raw swing ratings re-rank only the screening summary and ranking chart](docs/images/what-if.png) |
+| **5 · Test sensitivity.** The exact weight at which the ranking or a class changes, and who swaps. | **6 · Try a what-if.** A temporary, unsaved reweighting. Reset returns to the saved reading. |
+| ![Compare: every method's own reading of the same model, side by side](docs/images/compare.png) | |
+| **7 · Cross-check methods.** Each method's reading side by side, with its own reasons. There is no blended score. | |
 
-The [six-minute walkthrough](docs/vc-demo-walkthrough.md) is a click path through case 1.
+## Getting started
 
-## What is honest to say about it
-
-- **A working prototype by one author.** Every number comes from a tested Python engine, but no
-  outside user has tried it yet.
-- **Public information only, as of stated dates.** A quiet company scores lower than a loud one
-  with the same substance; the briefs say where that matters.
-- **Not validated against outcomes.** Case 2 sets five first rounds beside what happened next, but
-  five hand-picked cases cannot show predictive value.
-- **No model accuracy is claimed.** Model suggestions are only proposals a person accepts or
-  rejects. A second person has not yet rated the case 1 companies blind, so there is no human
-  reference to score a model against.
-
-## How it works, briefly
-
-You state the criteria (for example team, problem, market, traction), what each level of each
-criterion is worth, and how much each partner cares about each criterion, using swing weights.
-The engine then gives:
-
-- a ranking under each partner's weights (additive multi-attribute value theory, MAVT);
-- classes from fixed value boundaries;
-- the exact weight change that would reorder companies or move one across a class boundary;
-- a sampled check under stated uncertainty (SMAA-2);
-- a non-compensatory cross-check in which strong criteria cannot simply offset weak ones
-  (PROMETHEE II).
-
-Each method's reading is shown side by side with its own reasons; there is no blended score.
-Everything runs on your own machine, and the application never calls a model.
-
-## Run it yourself
-
-Python 3.12 and Node 20.19+, on macOS or Linux (on Windows, use WSL2):
+**Prerequisites:** Python 3.12 and Node.js 20.19 or later, on macOS or Linux. On Windows, use WSL2:
+the project library's file lock is POSIX-only.
 
 ```sh
 git clone https://github.com/spar473/venture-frame.git
@@ -91,43 +121,117 @@ npm --prefix frontend run build
 .venv/bin/mcda serve --open
 ```
 
-The app opens at <http://127.0.0.1:8765>. On the start page, open **Venture screening** for
-case 1. The server binds to your machine only and has no authentication; do not expose it on a
-network. The [user guide](docs/user-guide.md) covers every screen.
+The application opens at <http://127.0.0.1:8765>. Select **Venture screening** on the start page
+to open case 2. The server listens on the local machine only and has no authentication. The
+[user guide](docs/user-guide.md) covers every screen.
 
-## For engineers
+The same engine is available from the command line (with `.venv/bin` on your `PATH`):
 
-The engine is called MCDA Studio (package `mcda_studio`, command `mcda`). Python is the only
-source of numbers; the React interface only displays them. Venture content lives entirely in
-the example data: the engine itself is domain-neutral, which is why `examples/` also holds a
-few non-venture projects that its tests use.
+```sh
+mcda evaluate examples/nz_venture_screening/project.json             # ranking and contributions
+mcda sensitivity examples/nz_venture_screening/project.json --all    # exact crossovers
+mcda compare-methods examples/nz_venture_screening/project.json      # every method side by side
+mcda report screening examples/nz_venture_screening/project.json \
+  --evidence examples/nz_venture_screening/evidence.json -o report.html
+```
 
-| Topic | Where |
+## Methodology
+
+A screen is defined by its criteria (for example team, problem, market and traction), a value
+scale for each criterion with a written rubric, and each partner's swing weights. The engine then
+applies several established multi-criteria decision analysis methods. Each method is reported on
+its own terms; no consensus score is formed.
+
+| Method | Question it answers |
 | --- | --- |
-| Using the app | [User guide](docs/user-guide.md) |
+| Multi-attribute value theory (MAVT) with swing weighting | How do the companies rank under each partner's stated preferences? |
+| Value-based sorting | Which class does each company fall in, and how far is it from the boundary? |
+| One-way sensitivity | At exactly what weight does the ranking or a class change? |
+| SMAA-2 | How often does each company take each rank when ratings and weights vary within stated ranges? |
+| PROMETHEE II | Does the order hold when strong criteria cannot simply compensate for weak ones? |
+| AHP | What do pairwise judgements imply, as an alternative way of eliciting priorities? |
+
+Values lie in [0, 1] and express preference under stated weights. They are not probabilities,
+forecasts or expected returns. The [mathematical specification](docs/mathematics/specification.md)
+gives every formula, and [method limitations](docs/mathematics/method-limitations.md) explains
+when each method misleads.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    P["Project file<br/>criteria, ratings, weights"] --> E["Python engine<br/>MAVT, sorting, SMAA-2,<br/>PROMETHEE II, AHP"]
+    D["Evidence dossier<br/>sourced claims"] --> E
+    E --> A["Local API<br/>FastAPI"] --> U["Web interface<br/>React, display only"]
+    E --> C["Command line"]
+    E --> R["HTML screening report"]
+    M["Model runner<br/>outside the application"] -. proposals .-> H["Analyst review"] --> P
+```
+
+- **One source of numbers.** All calculation happens in the Python engine. The interface only
+  displays results.
+- **Judgements are stored, results are derived.** Viewing a profile or method never changes the
+  saved project.
+- **Offline by design.** The application never calls a model or an external service. Model output
+  enters only as proposals that a person reviews, and the model never sees the analyst's ratings.
+- **Domain-neutral engine.** Venture content lives entirely in the example data. This is why
+  `examples/` also contains non-venture projects used by the test suite.
+
+## Verification
+
+On 17 November 2026 the full local test run on this repository passed:
+
+- 2,364 Python tests, 573 frontend unit tests and 134 browser tests;
+- Ruff, strict mypy and the production build;
+- byte-identical checks on 969 historical numerical and export outputs, matching the manifest
+  recorded on macOS and Linux on 16 November 2026;
+- byte-identical wheels from two build routes, and an installed smoke test.
+
+Each method is checked against an independent oracle written without the engine, including
+published PROMETHEE II and AHP examples reproduced in exact fractions. See
+[testing](docs/development/testing.md) for the commands.
+
+## Scope and limitations
+
+- **Prototype status.** Built and tested by one author. No external user study has been run yet.
+- **Public information only.** Ratings rest on what was publicly visible at the stated dates, so
+  a company with little public presence scores lower than an equally strong one with more
+  coverage.
+- **No outcome validation.** Case 3 sets five first rounds beside what happened next, but five
+  selected cases cannot establish predictive value.
+- **No model accuracy claims.** Model suggestions are proposals only. A second, blind human rating
+  of case 2 is required before any model can be scored, and it has not yet been made.
+
+Further limits are listed in [known limitations](docs/development/known-limitations.md).
+
+## Documentation
+
+| Topic | Location |
+| --- | --- |
+| Using the application | [User guide](docs/user-guide.md) |
+| Case studies | [cases/](cases/README.md) |
 | Mathematics | [Specification](docs/mathematics/specification.md) · [Method limitations](docs/mathematics/method-limitations.md) |
 | Architecture and file format | [Overview](docs/architecture/overview.md) · [Project schema](docs/architecture/project-schema.md) |
 | HTTP API | [API contract](docs/api/contract.md) · [OpenAPI](docs/api/openapi.json) |
-| Rules behind each feature | [Design notes](docs/design/) |
-| Tests and limits | [Testing](docs/development/testing.md) · [Known limitations](docs/development/known-limitations.md) |
+| Feature specifications | [Design notes](docs/design/) |
+| Testing | [Testing](docs/development/testing.md) |
 
-On 17 November 2026 the full local gate on this tree passed 2,364 Python, 573 frontend and
-134 browser tests, Ruff, strict mypy and the production build, and kept all 969 historical
-numerical and export outputs byte-identical.
+The engine is packaged as `mcda_studio` with the command `mcda`.
 
-## Background
+## Origin
 
 Venture Frame grew out of the author's study *Prioritising New Zealand Deep-Tech Startups for
-Venture Capital Due Diligence* (September 2026), carried out in DECERNS (case 3). The report is
+Venture Capital Due Diligence* (September 2026), carried out in DECERNS (case 1). The report is
 not distributed here; [its citation and a summary](docs/reference/original-study/) are. The
-project is **not affiliated with, endorsed by or derived from DECERNS** and contains no DECERNS
-code, assets or file formats. [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md) credits data sources,
+project is not affiliated with, endorsed by or derived from DECERNS, and contains no DECERNS code,
+assets or file formats. [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md) credits data sources,
 open-source dependencies and AI assistance.
 
-Feedback is welcome, especially on what a screen like this gets wrong in practice and what you
-would cut.
+## Feedback
+
+Feedback from investors and analysts is especially welcome: what a screen like this gets wrong in
+practice, what is missing, and what you would remove. Please open an issue.
 
 ## Licence
 
-Code and documentation are released under the [MIT licence](LICENSE). Third-party names and
-software keep their own terms.
+Released under the [MIT licence](LICENSE). Third-party names and software keep their own terms.
