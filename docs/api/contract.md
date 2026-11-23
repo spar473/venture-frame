@@ -520,7 +520,8 @@ browser. It is not a server endpoint.
 
 ## Known limits
 
-- **Cooperating processes are coordinated on scoped macOS/Linux local libraries.** The server
+- **Cooperating processes are coordinated on local libraries on macOS, Linux and native
+  Windows.** The server
   holds lifetime OS ownership; managed-directory CLI writes and store mutations use the same lock.
   Within that server, RLock and If-Match still protect project edits. External/uncooperative programs
   can bypass advisory locking; see operating limits (development record, not included).
@@ -541,7 +542,8 @@ numerical result contract changes for this addition.
 
 ### C1 library ownership and recovery
 
-The server owns a POSIX advisory library lock for its lifetime. A second cooperating writer/server
+The server owns an advisory library lock for its lifetime (`flock` on POSIX, a `msvcrt` byte-range
+lock on native Windows). A second cooperating writer/server
 is refused with PID/port diagnostics. Project-level If-Match conflicts remain enforced within the
 owning server. External programs can bypass advisory locks; see
 coordination and manual recovery (development record, not included).

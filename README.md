@@ -107,8 +107,9 @@ The screening workflow, in the order an analyst uses it, on case 2:
 
 ## Getting started
 
-**Prerequisites:** Python 3.12 and Node.js 20.19 or later, on macOS or Linux. On Windows, use WSL2:
-the project library's file lock is POSIX-only.
+**Prerequisites:** Python 3.12 and Node.js 20.19 or later, on macOS, Linux or Windows.
+
+macOS and Linux:
 
 ```sh
 git clone https://github.com/spar473/venture-frame.git
@@ -121,11 +122,30 @@ npm --prefix frontend run build
 .venv/bin/mcda serve --open
 ```
 
+Windows (PowerShell):
+
+```powershell
+git clone https://github.com/spar473/venture-frame.git
+cd venture-frame
+py -3.12 -m venv .venv
+.venv\Scripts\python -m pip install --require-hashes -r requirements/build-py312.txt -r requirements/dev-py312.txt
+.venv\Scripts\python -m pip install --no-deps --no-build-isolation -e '.[dev]'
+npm --prefix frontend ci
+npm --prefix frontend run build
+.venv\Scripts\mcda serve --open
+```
+
+> **Windows, for now:** the hash-pinned dependency locks were generated on macOS and do not yet
+> list `colorama`, a dependency that pip installs only on Windows, so the `--require-hashes` step
+> stops there until the locks are regenerated. See
+> [known limitations](docs/development/known-limitations.md).
+
 The application opens at <http://127.0.0.1:8765>. Select **Venture screening** on the start page
 to open case 2. The server listens on the local machine only and has no authentication. The
 [user guide](docs/user-guide.md) covers every screen.
 
-The same engine is available from the command line (with `.venv/bin` on your `PATH`):
+The same engine is available from the command line (with `.venv/bin`, or `.venv\Scripts` on
+Windows, on your `PATH`):
 
 ```sh
 mcda evaluate examples/nz_venture_screening/project.json             # ranking and contributions
