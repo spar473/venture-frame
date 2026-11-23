@@ -111,7 +111,7 @@ BACKEND = [
 BACKEND += [
     Mutation(
         "C1 library ownership is never acquired",
-        "src/mcda_studio/storage/library_lock.py",
+        "src/mcda_studio/storage/fs_platform.py",  # moved from library_lock.py
         "fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)",
         "pass",
     ),
@@ -123,14 +123,14 @@ BACKEND += [
     ),
     Mutation(
         "C1 restore overwrites an active project",
-        "src/mcda_studio/storage/project_store.py",
+        "src/mcda_studio/storage/fs_platform.py",  # moved from project_store.py
         """os.link(
-                        staged.name,
-                        destination.name,
-                        src_dir_fd=root_fd,
-                        dst_dir_fd=root_fd,
-                        follow_symlinks=False,
-                    )""",
+            staged.name,
+            destination.name,
+            src_dir_fd=root_fd,
+            dst_dir_fd=root_fd,
+            follow_symlinks=False,
+        )""",
         "os.replace(staged.name, destination.name, src_dir_fd=root_fd, dst_dir_fd=root_fd)",
     ),
     Mutation(
@@ -647,7 +647,7 @@ BACKUP_BACKEND = [
     ),
     Mutation(
         "Backup restore truncates an existing file instead of refusing it",
-        "src/mcda_studio/storage/library_backup.py",
+        "src/mcda_studio/storage/fs_platform.py",  # moved from library_backup.py
         "os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW",
         "os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW",
     ),
@@ -4121,11 +4121,11 @@ def main() -> int:
                 print(f"INVALID  {m.name}: the text to mutate occurs {original.count(m.old)} times")
                 survivors += 1
                 continue
-            target.write_text(original.replace(m.old, m.new), encoding="utf-8")
+            target.write_text(original.replace(m.old, m.new), encoding="utf-8", newline="\n")
             try:
                 passed = runner(work)
             finally:
-                target.write_text(original, encoding="utf-8")
+                target.write_text(original, encoding="utf-8", newline="\n")
             print(f"{'SURVIVED' if passed else 'killed  '}  {m.name}", flush=True)
             survivors += passed
         # the unmutated copy must pass, or "killed" proves nothing

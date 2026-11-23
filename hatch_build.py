@@ -82,7 +82,7 @@ class ReleaseAssetsHook(BuildHookInterface):
             }
         self._staging = tempfile.TemporaryDirectory(prefix="mcda-build-")
         manifest = Path(self._staging.name) / "build-info.json"
-        manifest.write_text(json.dumps(identity, indent=2, sort_keys=True) + "\n")
+        manifest.write_text(json.dumps(identity, indent=2, sort_keys=True) + "\n", newline="\n")
         included = build_data.setdefault("force_include", {})
         if self.target_name == "wheel":
             included[str(frontend)] = "mcda_studio/_frontend"

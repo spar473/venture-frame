@@ -1,4 +1,6 @@
-"""POSIX advisory library ownership. The persistent file is a marker, never the lock itself."""
+"""Advisory library ownership on POSIX and native Windows. The persistent file is a marker, never
+the lock itself; ``fs_platform`` holds the platform-specific lock and open.
+"""
 
 import json
 import os
@@ -8,6 +10,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from mcda_studio.domain.errors import McdaError
+from mcda_studio.storage import fs_platform
 
 LOCK_FILE = ".mcda-studio.lock"
 
@@ -28,20 +31,16 @@ class LibraryOwnership:
         self.pid = os.getpid()
 
     def __enter__(self) -> "LibraryOwnership":
-        if os.name != "posix":
-            raise LibraryLockError("Library ownership is supported on macOS/Linux only.")
-        import fcntl
-
         self.root.mkdir(parents=True, exist_ok=True)
         path = self.root / LOCK_FILE
         try:
-            fd = os.open(path, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
+            fd = fs_platform.open_lock_file(path)
             if not stat.S_ISREG(os.fstat(fd).st_mode):
                 os.close(fd)
                 raise LibraryLockError(f"Library lock is not a regular file: {path}")
             self.fd = fd
             try:
-                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                fs_platform.acquire_exclusive(fd)
             except BlockingIOError:
                 diagnostic = os.read(fd, 2048).decode("utf-8", errors="replace").strip()
                 self.close()
@@ -61,7 +60,8 @@ class LibraryOwnership:
 
     def close(self) -> None:
         if self.fd is not None:
-            # Closing releases flock, including after ordinary process termination.
+            # Closing releases the lock, including after ordinary process termination.
+            fs_platform.release(self.fd)
             os.close(self.fd)
             self.fd = None
 

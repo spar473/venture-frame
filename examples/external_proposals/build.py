@@ -203,7 +203,7 @@ def build(name):
         f"{name}-compilation.json": to_json_text(bundle),
     }
     for filename, text in outputs.items():
-        (ROOT / filename).write_text(text, encoding="utf-8")
+        (ROOT / filename).write_text(text, encoding="utf-8", newline="\n")
 
 
 if __name__ == "__main__":

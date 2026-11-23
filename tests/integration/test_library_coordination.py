@@ -1,4 +1,4 @@
-"""Real POSIX processes and stopped-library recovery; never use a user's library."""
+"""Real server processes and stopped-library recovery; never use a user's library."""
 
 import json
 import shutil
@@ -27,6 +27,19 @@ def request(url, body=None):
         timeout=5,
     ) as response:
         return json.load(response)
+
+
+def server_pid(process):
+    """The server's own process id. On Windows a virtual environment's python.exe is a launcher
+    that runs the real interpreter as its only child, so there the server is that child."""
+    if sys.platform != "win32" or sys.executable == getattr(sys, "_base_executable", None):
+        return process.pid
+    query = f"(Get-CimInstance Win32_Process -Filter 'ParentProcessId={process.pid}').ProcessId"
+    found = subprocess.run(
+        ["powershell", "-NoProfile", "-Command", query], capture_output=True, text=True, timeout=60
+    ).stdout.split()
+    assert len(found) == 1, found
+    return int(found[0])
 
 
 def free_port():
@@ -110,7 +123,7 @@ def test_independent_servers_and_cli_writers_respect_lifetime_owner(tmp_path):
         )
         assert second.returncode == 1
         diagnostic = " ".join((second.stdout + second.stderr).split())
-        assert str(owner.pid) in diagnostic and str(port) in diagnostic
+        assert str(server_pid(owner)) in diagnostic and str(port) in diagnostic
         assert "do not delete" in diagnostic
         doc = request(url + "/api/projects", {"title": "Owner writes work"})
         source = root / f"{doc['project']['id']}.json"
@@ -160,7 +173,19 @@ def test_normal_shutdown_and_kill_release_os_ownership(tmp_path, abrupt):
         assert request(url + "/api/health")["status"] == "ok"
 
 
-@pytest.mark.parametrize("after_publication", [False, True])
+@pytest.mark.parametrize(
+    "after_publication",
+    [
+        False,
+        pytest.param(
+            True,
+            marks=pytest.mark.skipif(
+                sys.platform == "win32",
+                reason="Windows has no directory fsync; counterpart in test_fs_platform",
+            ),
+        ),
+    ],
+)
 def test_interrupted_restore_retains_recoverable_data_and_releases_owner(
     tmp_path, after_publication
 ):
@@ -238,7 +263,7 @@ def test_library_backup_tool_respects_a_running_server_and_round_trips_through_o
         refused = mcda("library", "backup", "--store", str(root), "--to", str(archive))
         said = " ".join(refused.stderr.split())  # Rich wraps long paths
         assert refused.returncode == 1 and "owned by another process" in said
-        assert str(process.pid) in said and str(port) in said
+        assert str(server_pid(process)) in said and str(port) in said
         assert not archive.exists()
     made = mcda("library", "backup", "--store", str(root), "--to", str(archive))
     assert made.returncode == 0, made.stderr

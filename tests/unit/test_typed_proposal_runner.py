@@ -13,6 +13,7 @@ import io
 import json
 import math
 import os
+import re
 import subprocess
 import sys
 import threading
@@ -70,7 +71,7 @@ class Site:
 
         class Handler(BaseHTTPRequestHandler):
             def do_GET(self):  # noqa: N802
-                site.hits.append((self.path, self.headers.get("User-Agent"), time.monotonic()))
+                site.hits.append((self.path, self.headers.get("User-Agent"), time.perf_counter()))
                 if self.path == "/robots.txt":
                     if site.robots is None:
                         self.send_response(404)
@@ -2162,8 +2163,14 @@ def test_the_second_reading_is_the_decisive_chunks_order_averaged_vector(tmp_pat
 
 
 def confident_in_some_chunks(state, order):
-    """Confident (0.9 on the alphabetically first option) in about a third of the chunks."""
-    if int(hashlib.sha256(state.encode()).hexdigest(), 16) % 3:
+    """Confident (0.9 on the alphabetically first option) in about a third of the chunks.
+
+    The chunk text names each source's URL, which carries the test server's random port. The
+    choice hashes the text with that port removed, so it is the same on every run; hashing the
+    port made the test fail for some ports (about 3% of runs).
+    """
+    stable = re.sub(r"127\.0\.0\.1:\d+", "127.0.0.1", state)
+    if int(hashlib.sha256(stable.encode()).hexdigest(), 16) % 3:
         return [1 / len(order)] * len(order)
     first = min(order)
     return [0.9 if o == first else 0.1 / (len(order) - 1) for o in order]

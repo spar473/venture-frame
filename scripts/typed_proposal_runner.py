@@ -159,6 +159,19 @@ def pretty(value: Any) -> str:
     return json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
 
 
+def replace_file(source: Path, target: Path) -> None:
+    """Atomic rename. On Windows a program such as an antivirus scanner can hold a file that was
+    just written for a moment, and the rename is refused; retry briefly there, then give up."""
+    for attempt in range(40):
+        try:
+            source.replace(target)
+            return
+        except PermissionError:
+            if sys.platform != "win32" or attempt == 39:
+                raise
+            time.sleep(0.05)
+
+
 def now() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -378,14 +391,22 @@ class Fetcher:
         self._robots: dict[str, urllib.robotparser.RobotFileParser | bool] = {}
 
     def _wait(self) -> None:
-        pause = self.interval - (time.monotonic() - self._last)
+        # The interval runs from the end of the previous request, so the server never sees two
+        # requests closer together than the interval, however long one took to arrive.
+        # perf_counter: monotonic everywhere, and fine-grained on Windows (monotonic ticks 15.6 ms).
+        pause = self.interval - (time.perf_counter() - self._last)
         if pause > 0:
             time.sleep(pause)
-        self._last = time.monotonic()
 
     def get(self, url: str) -> tuple[int | None, str, bytes, str, str]:
         """(status, final url, body, content type, error). A status is None on a transport error."""
         self._wait()
+        try:
+            return self._fetch(url)
+        finally:
+            self._last = time.perf_counter()
+
+    def _fetch(self, url: str) -> tuple[int | None, str, bytes, str, str]:
         request = urllib.request.Request(
             url, headers={"User-Agent": CLIENT, "Accept": "text/html,text/plain;q=0.9,*/*;q=0.1"}
         )
@@ -504,8 +525,8 @@ def command_snapshot(args: argparse.Namespace) -> int:
             "snapshots": [kept[u] for u in sorted(kept)],
         }
         tmp = out / "snapshots.json.tmp"
-        tmp.write_text(pretty(document), encoding="utf-8")
-        tmp.replace(index_path)
+        tmp.write_text(pretty(document), encoding="utf-8", newline="\n")
+        replace_file(tmp, index_path)
     print(f"{saved} pages saved, {skipped} not saved, {len(kept)} recorded in {index_path}")
     return 0
 
@@ -1721,7 +1742,7 @@ def command_fetch_model(args: argparse.Namespace) -> int:
     }
     if is_laya:
         record.update(route="own repository", files=LAYA_FILES)
-    (target / "mcda-model-revision.json").write_text(pretty(record), encoding="utf-8")
+    (target / "mcda-model-revision.json").write_text(pretty(record), encoding="utf-8", newline="\n")
     print(f"model {args.repo} at revision {revision} in {target}")
     return 0
 

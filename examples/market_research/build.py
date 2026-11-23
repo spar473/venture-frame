@@ -241,7 +241,8 @@ def write_json(path, value):
 
     path.parent.mkdir(parents=True, exist_ok=True)
     data = value.model_dump(mode="json") if hasattr(value, "model_dump") else value
-    path.write_text(json.dumps(data, indent=2, sort_keys=True, ensure_ascii=False) + "\n")
+    text = json.dumps(data, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
+    path.write_text(text, newline="\n")
 
 
 def build(destination=None, demo_destination=None):

@@ -37,6 +37,8 @@ from mcda_studio.domain.errors import (
     StaleRevisionError,
 )
 from mcda_studio.domain.project import Project
+from mcda_studio.storage import fs_platform
+from mcda_studio.storage.fs_platform import DirHandle
 from mcda_studio.storage.json_repository import JsonProjectRepository, to_json_text
 from mcda_studio.storage.library_lock import LibraryOwnership
 
@@ -209,17 +211,17 @@ class ProjectStore:
                 raise ProjectNotFoundError(f"no project with id {project_id!r}")
             trash = self.root / TRASH_DIR
             trash.mkdir(parents=True, exist_ok=True)
-            if trash.is_symlink():
+            if fs_platform.is_link(trash):
                 raise InvalidTrashEntryError("Trash directory must not be a symlink.")
             stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
             target = trash / f"{project_id}.{stamp}.json"
             path.replace(target)
             return target
 
-    def _trash_directory(self) -> int:
+    def _trash_directory(self) -> DirHandle:
         path = self.root / TRASH_DIR
         try:
-            return os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+            return fs_platform.open_directory_nofollow(path)
         except FileNotFoundError:
             raise ProjectNotFoundError("No deleted entries in this library.") from None
         except OSError as exc:
@@ -237,10 +239,10 @@ class ProjectStore:
             raise InvalidTrashEntryError("Invalid deletion timestamp in entry name.") from None
         return match["id"], deleted
 
-    def _load_trash(self, directory: int, entry: str) -> Project:
+    def _load_trash(self, directory: DirHandle, entry: str) -> Project:
         expected_id, _ = self._trash_identity(entry)
         try:
-            fd = os.open(entry, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory)
+            fd = fs_platform.open_read_nofollow(entry, directory)
             with os.fdopen(fd, "r", encoding="utf-8") as stream:
                 if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
                     raise InvalidTrashEntryError("Deleted entry is not a regular file.")
@@ -253,6 +255,8 @@ class ProjectStore:
             raise ProjectNotFoundError(
                 "Deleted entry no longer exists; refresh Recently deleted."
             ) from None
+        except fs_platform.NotRegularFileError:  # Windows: refused before opening
+            raise InvalidTrashEntryError("Deleted entry is not a regular file.") from None
         except (OSError, UnicodeError, ValueError, ProjectLoadError, ModelStructureError) as exc:
             raise UnreadableTrashEntryError(
                 f"Cannot read deleted entry; recovery data retained: {exc}"
@@ -266,7 +270,7 @@ class ProjectStore:
                 return []
             try:
                 entries = []
-                for entry in sorted(os.listdir(directory), reverse=True):
+                for entry in sorted(fs_platform.listdir(directory), reverse=True):
                     project_id, deleted, title = None, None, None
                     try:
                         project_id, deleted = self._trash_identity(entry)
@@ -282,7 +286,7 @@ class ProjectStore:
                         )
                 return entries
             finally:
-                os.close(directory)
+                fs_platform.close_directory(directory)
 
     def restore(self, entry: str, as_copy: bool = False) -> StoredProject:
         """Publish without overwrite; retain the recovery entry on success as well as failure."""
@@ -290,7 +294,7 @@ class ProjectStore:
         with self._mutation():
             directory = self._trash_directory()
             staged: Path | None = None
-            root_fd = None
+            root_fd: DirHandle | None = None
             try:
                 project = self._load_trash(directory, entry)
                 if as_copy:
@@ -302,10 +306,10 @@ class ProjectStore:
                     )
                 destination = self.root / f"{project.id}.json"
                 # Atomic publication refuses any existing entry, including a symlink.
-                root_fd = os.open(self.root.resolve(), os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+                root_fd = fs_platform.open_directory_nofollow(self.root.resolve())
                 fd, name = tempfile.mkstemp(dir=self.root, prefix=".restore-", suffix=".tmp")
                 staged = Path(name)
-                with os.fdopen(fd, "w", encoding="utf-8") as stream:
+                with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as stream:
                     stream.write(to_json_text(project))
                     stream.flush()
                     os.fsync(stream.fileno())
@@ -314,18 +318,12 @@ class ProjectStore:
                         "Staged project failed verification; recovery data retained."
                     )
                 try:
-                    os.link(
-                        staged.name,
-                        destination.name,
-                        src_dir_fd=root_fd,
-                        dst_dir_fd=root_fd,
-                        follow_symlinks=False,
-                    )
+                    fs_platform.publish_no_overwrite(staged, destination, root_fd)
                 except FileExistsError:
                     raise ProjectExistsError(
                         f"Project ID {project.id!r} already exists; restore as a copy instead."
                     ) from None
-                os.fsync(root_fd)
+                fs_platform.fsync_directory(root_fd)
                 return self._read(destination)
             except OSError as exc:
                 raise RestoreError(
@@ -337,5 +335,5 @@ class ProjectStore:
                     with suppress(OSError):
                         staged.unlink(missing_ok=True)
                 if root_fd is not None:
-                    os.close(root_fd)
-                os.close(directory)
+                    fs_platform.close_directory(root_fd)
+                fs_platform.close_directory(directory)

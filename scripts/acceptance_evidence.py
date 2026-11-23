@@ -126,7 +126,9 @@ def main() -> None:
         "mathematical_state_unchanged": True,
         "precision": "Evaluation/probe math.fsum path; sweep plotting can differ by one ULP.",
     }
-    (output / "numerical-performance.json").write_text(json.dumps(evidence, indent=2) + "\n")
+    (output / "numerical-performance.json").write_text(
+        json.dumps(evidence, indent=2) + "\n", newline="\n"
+    )
     print(json.dumps({name: values["median_ms"] for name, values in timings.items()}, indent=2))
 
 

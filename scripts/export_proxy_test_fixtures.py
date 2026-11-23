@@ -43,5 +43,5 @@ def fixtures():
 if __name__ == "__main__":
     for name, value in fixtures().items():
         (ROOT / "frontend/tests/fixtures" / name).write_text(
-            json.dumps(value, indent=2, sort_keys=True) + "\n"
+            json.dumps(value, indent=2, sort_keys=True) + "\n", newline="\n"
         )

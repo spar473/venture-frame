@@ -36,6 +36,8 @@ jobs:
           python scripts/export_openapi.py --check
           python scripts/acceptance_demo.py
           python scripts/acceptance_evidence.py dist/acceptance-evidence
+      - name: Byte-identity manifest for the cross-platform comparison
+        run: python scripts/byte_identity.py --root . --out dist/byte-identity/linux.json --portable
       - name: Frontend and browser workflows
         run: |
           npm --prefix frontend run check
@@ -58,3 +60,104 @@ jobs:
           path: |
             dist/
             frontend/test-results/
+
+  windows-python312:
+    # Native Windows: the Python gate, the frontend gate, byte identity against Linux, a serve
+    # smoke and the installed smoke over HTTP and the CLI. Browser (Playwright) tests, the browser
+    # mode of the installed smoke and the weekly mutation run stay on the Linux job for now.
+    runs-on: windows-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        shell: bash
+    env:
+      # Some tests and scripts read the repository's UTF-8 files with the platform's default
+      # encoding; the application itself names UTF-8 for every file it reads or writes.
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: '26.12.1'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install pinned build and development tools
+        run: |
+          python -m pip install --require-hashes -r requirements/build-py312.txt -r requirements/dev-py312.txt
+          python -m pip install --no-deps --no-build-isolation -e '.[dev]'
+          python -m pip check
+          npm --prefix frontend ci
+      - name: Python and contracts
+        run: |
+          python -m pytest -q
+          ruff check src tests scripts hatch_build.py
+          ruff format --check src tests scripts hatch_build.py
+          mypy
+          python scripts/export_openapi.py --check
+      - name: Byte-identity manifest for the cross-platform comparison
+        run: python scripts/byte_identity.py --root . --out dist/byte-identity/windows.json --portable
+      - name: Frontend gate
+        run: npm --prefix frontend run check
+      - name: Serve smoke
+        run: |
+          python - <<'PY'
+          import json, os, subprocess, sys, time, urllib.request
+          store = os.path.join(os.environ["RUNNER_TEMP"], "serve-smoke")
+          server = subprocess.Popen(
+              [sys.executable, "-m", "mcda_studio", "serve", "--no-open", "--port", "8765",
+               "--store", store]
+          )
+          try:
+              for _ in range(400):
+                  assert server.poll() is None, "mcda serve exited early"
+                  try:
+                      with urllib.request.urlopen("http://127.0.0.1:8765/api/health", timeout=5) as r:
+                          health = json.load(r)
+                      break
+                  except OSError:
+                      time.sleep(0.05)
+              else:
+                  raise SystemExit("mcda serve did not answer /api/health")
+              assert health["status"] == "ok", health
+              print("serve smoke passed:", health["store"])
+          finally:
+              server.terminate()
+              server.wait(timeout=30)
+          PY
+      - name: Both distribution routes and installed smoke (HTTP and CLI)
+        run: |
+          python scripts/build_release.py --skip-frontend
+          python -m pip download --require-hashes --only-binary=:all: -r requirements/runtime-py312.txt -r requirements/build-py312.txt --dest "$RUNNER_TEMP/mcda-wheels"
+          python scripts/smoke_install.py --wheelhouse "$RUNNER_TEMP/mcda-wheels"
+      - uses: actions/upload-artifact@v7.0.2
+        if: always()
+        with:
+          name: windows-python312-evidence
+          path: dist/
+
+  byte-identity-across-platforms:
+    # Every historical output must be the same bytes on Linux and on native Windows.
+    needs: [linux-python312, windows-python312]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v8.0.2
+        with:
+          name: linux-python312-evidence
+          path: linux
+      - uses: actions/download-artifact@v8.0.2
+        with:
+          name: windows-python312-evidence
+          path: windows
+      - name: Compare the two manifests
+        run: |
+          python scripts/byte_identity.py --compare \
+            "$(find linux -name linux.json -path '*byte-identity*' | head -n 1)" \
+            "$(find windows -name windows.json -path '*byte-identity*' | head -n 1)"
