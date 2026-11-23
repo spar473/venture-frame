@@ -1038,6 +1038,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/projects/{project_id}/screening-summary/robustness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Screening Robustness Stored */
+        post: operations["screening_robustness_stored_api_projects__project_id__screening_summary_robustness_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/projects/{project_id}/sensitivity": {
         parameters: {
             query?: never;
@@ -1467,6 +1484,27 @@ export interface paths {
          * @description Two separate screening summaries under explicit profiles, with engine rank movements.
          */
         post: operations["screening_profiles_draft_api_screening_summary_profiles_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/screening-summary/robustness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Screening Robustness Draft
+         * @description Rank ranges and too-close-to-separate groups from SMAA-2 under the uncertainty the
+         *     project states. Read-only; unavailable, with its reason, when none is stated.
+         */
+        post: operations["screening_robustness_draft_api_screening_summary_robustness_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8380,6 +8418,23 @@ export interface components {
             /** Subject Alternative Id */
             subject_alternative_id: string;
         };
+        /** RobustnessRow */
+        RobustnessRow: {
+            /** Alternative Id */
+            alternative_id: string;
+            /** Band Share */
+            band_share: number;
+            /** Mavt Rank */
+            mavt_rank: number;
+            /** Name */
+            name: string;
+            /** Rank1 Share */
+            rank1_share: number;
+            /** Rank High */
+            rank_high: number;
+            /** Rank Low */
+            rank_low: number;
+        };
         /** SampledRange */
         "SampledRange-Input": {
             /**
@@ -8601,6 +8656,60 @@ export interface components {
             /** Profile Ids */
             profile_ids?: string[] | null;
             project: components["schemas"]["Project-Input"];
+        };
+        /** ScreeningRobustness */
+        ScreeningRobustness: {
+            /** Available */
+            available: boolean;
+            /**
+             * Basis
+             * @default
+             */
+            basis: string;
+            configuration: components["schemas"]["AnalysisConfiguration-Output"];
+            /**
+             * Coverage
+             * @default 0.8
+             */
+            coverage: number;
+            /** Draws */
+            draws: number | null;
+            /** Evaluation */
+            evaluation: ("sampled" | "exact_enumeration") | null;
+            /**
+             * Groups
+             * @default []
+             */
+            groups: string[][];
+            /**
+             * Issue Codes
+             * @default []
+             */
+            issue_codes: string[];
+            /**
+             * Label
+             * @default Rank ranges show where each alternative's rank falls in most draws under the uncertainty stated in the project. They are not probabilities of success or predictions.
+             */
+            label: string;
+            /** Parameters */
+            parameters: ("saved" | "defaults") | null;
+            /** Project Fingerprint */
+            project_fingerprint: string;
+            /** Reason */
+            reason: string | null;
+            /**
+             * Rows
+             * @default []
+             */
+            rows: components["schemas"]["RobustnessRow"][];
+            /** Run */
+            run: ("performance" | "preference" | "combined") | null;
+            /** Scenario Id */
+            scenario_id: string | null;
+            /** Seed */
+            seed: number | null;
+            /** Weight Profile Id */
+            weight_profile_id: string | null;
         };
         /** ScreeningSummary */
         ScreeningSummary: {
@@ -12304,6 +12413,41 @@ export interface operations {
             };
         };
     };
+    screening_robustness_stored_api_projects__project_id__screening_summary_robustness_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnalysisOptions"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreeningRobustness"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     sensitivity_stored_api_projects__project_id__sensitivity_post: {
         parameters: {
             query?: never;
@@ -13085,6 +13229,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProfileComparison"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    screening_robustness_draft_api_screening_summary_robustness_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EvaluateDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScreeningRobustness"];
                 };
             };
             /** @description Validation Error */

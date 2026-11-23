@@ -15,7 +15,7 @@ The working tree is never modified. An unmodified baseline run must pass first.
                                       --models-only | --proxy-only | --benchmark-only |
                                       --study-only | --summary-only |
                                       --cleanup-only | --showcase-only |
-                                      --reference_cases-only]
+                                      --reference_cases-only | --robustness-only]
 
 Groups are named after the milestone that introduced them (B3 weighting, B4 sensitivity, B5
 scenarios, B6 results) or after the development itself (RETRY: analysis retry; COVERAGE:
@@ -3875,6 +3875,38 @@ OVERNIGHT["portable"] = (
         "tests/unit/test_sensitivity.py",
         "tests/regression/test_screening_summary_reference.py",
         "tests/regression/test_smaa_reference.py",
+    ),
+)
+
+
+ROBUSTNESS_BACKEND = [
+    Mutation("ROBUSTNESS a rank range drops its last rank when counting draws", "src/mcda_studio/services/screening_robustness_service.py",
+             "        held = sum(counts[low - 1 : high])", "        held = sum(counts[low - 1 : high - 1])"),
+    Mutation("ROBUSTNESS coverage needs more than 80 %, not at least 80 %", "src/mcda_studio/services/screening_robustness_service.py",
+             "return held * COVERAGE.denominator >= COVERAGE.numerator * draws", "return held * COVERAGE.denominator > COVERAGE.numerator * draws"),
+    Mutation("ROBUSTNESS ranges that touch at one rank do not overlap", "src/mcda_studio/services/screening_robustness_service.py",
+             "        if groups and low <= reach:", "        if groups and low < reach:"),
+    Mutation("ROBUSTNESS groups swept in MAVT order", "src/mcda_studio/services/screening_robustness_service.py",
+             "    by_low = sorted(ranges, key=lambda item: (item[1][0], item[1][1], position[item[0]]))", "    by_low = list(ranges)"),
+    Mutation("ROBUSTNESS ties ignore the MAVT rank", "src/mcda_studio/services/screening_robustness_service.py",
+             "key=lambda c: (not c[0] <= preferred_rank <= c[1], c[0])", "key=lambda c: c[0]"),
+    Mutation("ROBUSTNESS enumerated sums lose their rounding tolerance", "src/mcda_studio/services/screening_robustness_service.py",
+             "return held >= float(COVERAGE) - ENUMERATION_TOLERANCE", "return held >= float(COVERAGE)"),
+    Mutation("ROBUSTNESS a project without stated uncertainty is not named as such", "src/mcda_studio/services/screening_robustness_service.py",
+             "    if project.smaa is None:\n        return unavailable(NO_UNCERTAINTY)", "    if False:\n        return unavailable(NO_UNCERTAINTY)"),
+    Mutation("ROBUSTNESS the view's transient run settings replace the saved ones", "src/mcda_studio/services/screening_robustness_service.py",
+             'run_config = requested.model_copy(update={"method": "smaa2", "parameters": parameters})', 'run_config = requested.model_copy(update={"method": "smaa2"})'),
+    Mutation("ROBUSTNESS modifies the submitted project", "src/mcda_studio/services/screening_robustness_service.py",
+             "    requested = (configuration or project.analysis).model_copy(deep=True)",
+             '    project.title += " changed"\n    requested = (configuration or project.analysis).model_copy(deep=True)'),
+]  # fmt: skip
+OVERNIGHT["robustness"] = (
+    ROBUSTNESS_BACKEND,
+    pytest_runner(
+        "Robustness",
+        "tests/regression/test_robustness_reference.py",
+        "tests/unit/test_screening_robustness.py",
+        "tests/api/test_api_screening_robustness.py",
     ),
 )
 
