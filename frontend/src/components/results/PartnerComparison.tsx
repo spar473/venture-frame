@@ -6,7 +6,7 @@ import { CompanyName, companyRow, useCompanyExploration } from "../companyExplor
 import { Caveat, InfoDisclosure } from "../InfoDisclosure";
 import { MessageText } from "../IssueText";
 import { palette } from "./ResultsCharts";
-import { displayNumber } from "./numberDisplay";
+import { ValueText } from "./ValueText";
 
 export function PartnerComparison({ project, context, dossier }: {
   project: Project; context: AnalysisContext; dossier: EvidenceDossier | null;
@@ -109,8 +109,8 @@ function ProfileReadings({ comparison, project }: { comparison: ProfileCompariso
         const other = rightRows.get(row.alternative_id), movement = movements.get(row.alternative_id);
         return <tr key={row.alternative_id} {...companyRow(exploration, row.alternative_id, left.profile_id)}>
           <th scope="row"><CompanyName id={row.alternative_id} profileId={left.profile_id}>{row.name}</CompanyName></th>
-          <td>{row.rank} · {displayNumber(row.value)}{row.class_name ? ` · ${row.class_name}` : ""}</td>
-          <td>{other ? <><CompanyName id={other.alternative_id} profileId={right.profile_id}>{String(other.rank)} · {displayNumber(other.value)}{other.class_name ? ` · ${other.class_name}` : ""}</CompanyName></> : "Unavailable"}</td>
+          <td>{row.rank} · <ValueText value={row.value}/>{row.class_name ? ` · ${row.class_name}` : ""}</td>
+          <td>{other ? <><CompanyName id={other.alternative_id} profileId={right.profile_id}>{String(other.rank)} · <ValueText value={other.value}/>{other.class_name ? ` · ${other.class_name}` : ""}</CompanyName></> : "Unavailable"}</td>
           <td>{movement ? movement.places_changed === 0 ? "Unchanged" : `${movement.places_changed > 0 ? "+" : ""}${String(movement.places_changed)}` : "Unavailable"}</td>
         </tr>;
       })}</tbody>

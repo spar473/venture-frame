@@ -8,6 +8,7 @@ import type {
   StarterTemplate,
   TemplateInfo,
 } from "../api/types";
+import { PRODUCT_TAGLINE, START_PAGE_STARTERS } from "../product";
 import { saveDownload } from "./results/downloads";
 import { Banner, ConfirmDialog, Field, formatDateTime, Modal } from "./ui";
 
@@ -141,15 +142,12 @@ export function Dashboard({ onOpen }: Props) {
 
   return (
     <main className="dashboard">
-      <section className="hero" aria-label="Start a decision">
-        <h1>Make a structured decision</h1>
-        <p className="hero-lead">
-          Compare options against criteria, see why one ranks above another, and keep the evidence and
-          checks behind every number.
-        </p>
+      <section className="hero" aria-label="Start a screen">
+        <h1>Screen companies for due diligence</h1>
+        <p className="hero-lead">{PRODUCT_TAGLINE}</p>
         {starters.length > 0 && (
           <div className="starter-cards">
-            {[...starters].sort((a, b) => starterRank(a.id) - starterRank(b.id)).map((t) => (
+            {startPageStarters(starters).map((t) => (
               <button
                 key={t.id}
                 type="button"
@@ -163,6 +161,14 @@ export function Dashboard({ onOpen }: Props) {
               </button>
             ))}
           </div>
+        )}
+        {starters.some((t) => !START_PAGE_STARTERS.includes(t.id)) && (
+          <p className="hero-more">
+            More starters:{" "}
+            <button type="button" className="link" onClick={() => setDialog({ kind: "new" })}>
+              New project…
+            </button>
+          </p>
         )}
       </section>
       <header className="page-header">
@@ -388,19 +394,11 @@ export function Dashboard({ onOpen }: Props) {
   );
 }
 
-// Blank first, then the venture screening study; any other starter keeps the gallery's order after them.
-const STARTER_ORDER = [
-  "blank",
-  "venture_screening_study",
-  "supplier_selection",
-  "infrastructure_procurement",
-  "venture_screening",
-];
-
-const starterRank = (id: string) => {
-  const index = STARTER_ORDER.indexOf(id);
-  return index < 0 ? STARTER_ORDER.length : index;
-};
+/** A display filter on the API's starter list: only the configured starters, in the configured
+ * order. Every starter stays available in New project… → Starter gallery. */
+export function startPageStarters(starters: readonly StarterTemplate[]): StarterTemplate[] {
+  return START_PAGE_STARTERS.flatMap((id) => starters.filter((t) => t.id === id));
+}
 
 const STARTER_TAGLINES: Record<string, string> = {
   blank: "Start from an empty model",
@@ -417,7 +415,7 @@ function StarterIcon({ id }: { id: string }) {
     supplier_selection: "M3 7l9-4 9 4-9 4-9-4zm0 0v10l9 4 9-4V7M12 11v10",
     infrastructure_procurement: "M2 18h20M4 18V10M20 18V10M2 10c4-5 16-5 20 0M9 18v-5M15 18v-5",
     venture_screening_study: "M3 17l6-6 4 4 8-8M15 7h6v6",
-    venture_screening: "M3 17l6-6 4 4 8-8M15 7h6v6",
+    venture_screening: "M7 3h7l5 5v13H7zM14 3v5h5M10 14l2 2 4-4",
   };
   return (
     <svg className="starter-icon" viewBox="0 0 24 24" aria-hidden="true">

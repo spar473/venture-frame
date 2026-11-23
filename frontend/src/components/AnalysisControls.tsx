@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { MethodInfo, Project } from "../api/types";
 import type { EditorTab } from "../model/issues";
 import type { AnalysisContext, AnalysisSelection } from "../state/analysisContext";
+import { useIsAnalystView } from "../state/editorViewContext";
 import { useMethodAvailability } from "../state/useMethodAvailability";
 import { InfoDisclosure } from "./InfoDisclosure";
 import { ConfirmDialog } from "./ui";
@@ -35,6 +36,7 @@ export function AnalysisControls({ project, context, onSelect, disabled = false,
   /** One undoable edit that makes the viewed method the saved default. */
   onUseMethodAsDefault?: () => void;
 }) {
+  const analyst = useIsAnalystView();
   const resolved = project.weight_profiles.find((p) => p.id === context.resolvedProfileId);
   const viewed = context.configuration.method;
   const saved = project.analysis.method;
@@ -49,7 +51,8 @@ export function AnalysisControls({ project, context, onSelect, disabled = false,
   // Reference resolution only, as in resolveContext: what "automatic" selects, named in the option.
   const automaticId = project.scenarios.find((sc) => sc.id === context.scenarioId)?.weight_profile_id ?? project.weight_profiles[0]?.id;
   const automaticProfile = project.weight_profiles.find((p) => p.id === automaticId);
-  return <section className="analysis-controls" aria-label="Analysis context">
+  const profileLabel = analyst ? "Partner weighting" : "Weight profile";
+  const methodControls = <>
     <label>Method <select aria-label="Method" disabled={disabled} value={viewed}
       onChange={(e) => onSelect({ method: e.target.value, parameters: null })}>
       {(options.some((m) => m.name === viewed) ? options : [...options, { name: viewed, label: viewed }])
@@ -59,19 +62,32 @@ export function AnalysisControls({ project, context, onSelect, disabled = false,
     {onOpenTab && availability.status === "ready" && options.filter(m => availability.result[m.name]).map(m => <button type="button" key={m.name} disabled={disabled} onClick={() => onOpenTab(m.name === "ahp" ? "pairwise" : m.name === "promethee2" ? "outranking" : "classes")}>Set up {m.name === "ahp" ? "AHP" : m.label}</button>)}
     {viewed !== saved && onUseMethodAsDefault && <button type="button" disabled={disabled} onClick={useAsDefault}>
       Use viewed method as saved default</button>}
-    <label>Scenario <select aria-label="Scenario" disabled={disabled} value={context.scenarioId ?? ""}
-      onChange={(e) => onSelect({ scenarioId: e.target.value || null })}>
-      <option value="">Base model</option>
-      {project.scenarios.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-    </select></label>
-    <label>Weight profile <select aria-label="Weight profile" disabled={disabled} value={context.profileId ?? ""}
-      onChange={(e) => onSelect({ profileId: e.target.value || null })}>
-      <option value="" title="Automatic: the scenario's profile, otherwise the first profile">{automaticProfile ? `${automaticProfile.name} (automatic)` : "Automatic"}</option>
-      {project.weight_profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-    </select></label>
+  </>;
+  const scenarioControl = <label>Scenario <select aria-label="Scenario" disabled={disabled} value={context.scenarioId ?? ""}
+    onChange={(e) => onSelect({ scenarioId: e.target.value || null })}>
+    <option value="">Base model</option>
+    {project.scenarios.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+  </select></label>;
+  const profileControl = <label>{profileLabel} <select aria-label={profileLabel} disabled={disabled} value={context.profileId ?? ""}
+    onChange={(e) => onSelect({ profileId: e.target.value || null })}>
+    <option value="" title="Automatic: the scenario's profile, otherwise the first profile">{automaticProfile ? `${automaticProfile.name} (automatic)` : "Automatic"}</option>
+    {project.weight_profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+  </select></label>;
+  const notes = <>
     {viewed !== saved && <span className="muted small" role="status">Viewing {label(viewed)} with its default parameters; the saved method is {label(saved)}.</span>}
-    {viewed === "ahp" && <span className="muted small" aria-label="AHP reads no profile or scenario">AHP reads no weight profile or scenario:
+    {viewed === "ahp" && <span className="muted small" aria-label="AHP reads no profile or scenario">AHP reads no {analyst ? "partner weighting" : "weight profile"} or scenario:
       these two selections do not change its priorities.</span>}
+  </>;
+  // The closed Advanced summary still names a non-default reading, so collapsing never hides it.
+  const scenarioName = project.scenarios.find((s) => s.id === context.scenarioId)?.name;
+  const advancedSuffix = [viewed !== saved ? label(viewed) : null, scenarioName ? `Scenario: ${scenarioName}` : null].filter(Boolean).join(" · ");
+  return <section className={`analysis-controls${analyst ? " analyst" : ""}`} aria-label="Analysis context">
+    {analyst ? <>
+      {profileControl}
+      <details className="analysis-advanced"><summary>Advanced{advancedSuffix && <span className="advanced-state"> · {advancedSuffix}</span>}</summary>
+        <div className="analysis-advanced-body">{methodControls}{scenarioControl}{notes}</div>
+      </details>
+    </> : <>{methodControls}{scenarioControl}{profileControl}{notes}</>}
     <details className="context-details"><summary>Details</summary>
       <span className="muted small">Resolved profile: {resolved?.name ?? "none"} · Revision {context.fingerprint.slice(0, 12)}</span>
     </details>

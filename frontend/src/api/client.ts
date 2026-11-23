@@ -1,3 +1,4 @@
+import { PRODUCT_NAME } from "../product";
 import type { ProxyPlanState, ProxyCriterionPlan, ProxyOperation, ProxyInputs, ProxyInspection, ProxyPairRequest, ProxyComparisonBundle } from "./types";
 import type { StarterTemplate, StarterRequest, StarterMaterialization, ModelComparison, ModelComparisonInspection, ModelTargetSelection, ModelComparisonCompilation, ModelOutputSpec, ModelOutputRun, CheckedFactorRun } from "./types";
 import type { ExternalProposals, ProposalInspection, ProposalReview, ProposalCompilation, ProposalRegistrySupply } from "./types";
@@ -90,7 +91,7 @@ async function request<T>(
     throw new ApiError(
       0,
       "NETWORK",
-      "Cannot reach the MCDA Studio server. Is `mcda serve` still running?",
+      `Cannot reach the ${PRODUCT_NAME} server. Is \`mcda serve\` still running?`,
     );
   }
   if (!response.ok) throw await parseError(response);

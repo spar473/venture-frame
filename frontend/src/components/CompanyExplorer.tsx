@@ -8,6 +8,9 @@ import { Modal } from "./ui";
 import { RatingHint } from "./RatingHint";
 import { MessageText } from "./IssueText";
 import { displayCompact, displayNumber } from "./results/numberDisplay";
+import { closestChangePlain, type ChangeNames } from "./results/closestChange";
+import { ValueText } from "./results/ValueText";
+import { useIsAnalystView } from "../state/editorViewContext";
 import { requirementReason, STATUS_TEXT } from "./results/FeasibilityView";
 
 export interface StudyEvidenceOffer { title: string; load: () => void }
@@ -75,16 +78,21 @@ function CompanyDrawer({ project, context: sourceContext, dossier, studyEvidence
 }
 
 function DetailSections({ result, project, context, dossier, studyEvidence, onSensitivity }: Omit<Props, "children"> & { result: ScreeningDetails }) {
+  const analyst = useIsAnalystView();
   const detail = result.alternative;
   if (!detail) return null;
   const row = detail.row, fragility = row.fragility;
+  const changeNames: ChangeNames = {
+    alternatives: Object.fromEntries(project.alternatives.map(a => [a.id, a.name])),
+    classes: Object.fromEntries((project.sorting?.classes ?? []).map(c => [c.id, c.name])),
+  };
   const probeCriterion = fragility?.criterion_id, probeWeight = fragility?.local_weight;
   // Python's returned claim IDs carry validation; this check only enforces the source binding.
   const boundDossier = dossier?.project_fingerprint === result.project_fingerprint ? dossier : null;
   return <>
     <dl className="company-facts">{detail.header_facts.map(fact => <div key={fact.criterion_id}><dt>{fact.label}</dt><dd>{displayCompact(fact.measurement ?? "Not stated")} {project.criteria.find(c => c.id === fact.criterion_id)?.scale?.unit}</dd></div>)}</dl>
-    <dl className="company-facts"><div><dt>Rank</dt><dd>{row.rank}</dd></div><div><dt>Overall value</dt><dd>{displayNumber(row.value)}</dd></div>
-      {row.class_name && <div><dt>Class</dt><dd>{row.class_name}</dd></div>}{row.margin !== null && <div><dt>Margin to nearest class boundary</dt><dd>{displayNumber(row.margin)}</dd></div>}</dl>
+    <dl className="company-facts"><div><dt>Rank</dt><dd>{row.rank}</dd></div><div><dt>Overall value</dt><dd><ValueText value={row.value}/></dd></div>
+      {row.class_name && <div><dt>Class</dt><dd>{row.class_name}</dd></div>}{row.margin !== null && <div><dt>Margin to nearest class boundary</dt><dd><ValueText value={row.margin}/></dd></div>}</dl>
     <Caveat caption="Preference values under this profile; not probabilities or predictions.">Screening orders further checking under these stated preferences. Values are compensatory MAVT preferences, not probabilities, success rates or financial returns.</Caveat>
     <section aria-label="Company requirements"><h3>Requirements</h3>{detail.requirements
       ? <><p className={`feasibility ${detail.requirements.status}`}>{STATUS_TEXT[detail.requirements.status]}</p><ul>{detail.requirements.checks.map(check => <li key={check.requirement_id}>
@@ -98,13 +106,13 @@ function DetailSections({ result, project, context, dossier, studyEvidence, onSe
         return <li key={driver.criterion_id}><InfoDisclosure label={`Rating details for ${driver.name}`}>
           {rating?.rubric_text || "No rubric text stated."} · Exact contribution: {String(driver.contribution)}
         </InfoDisclosure><RatingHint text={`${driver.name}: ${displayNumber(driver.contribution)}. ${rating?.rubric_text || "No rubric text stated."}`}>
-          {driver.name} <span className="company-contribution-track"><span style={{ width: `${String(driver.contribution * 100)}%` }}/></span> {displayNumber(driver.contribution)}
+          {driver.name} <span className="company-contribution-track"><span style={{ width: `${String(driver.contribution * 100)}%` }}/></span> <ValueText value={driver.contribution}/>
         </RatingHint></li>;
       })}</ul>
     </section>
     <section aria-label="Company closest change"><h3>Closest change</h3>
       {fragility?.status === "change" && probeCriterion && probeWeight != null
-        ? <><p>{fragility.criterion_name}: {fragility.direction === "raise" ? "raise" : "lower"} by {displayNumber(fragility.weight_change ?? 0)} of total weight to {fragility.kind === "rank" ? `exchange rank with ${project.alternatives.find(a => a.id === fragility.other_alternative_id)?.name ?? "another alternative"}` : `reach ${project.sorting?.classes.find(c => c.id === fragility.class_after_id)?.name ?? "another class"}`}.</p>
+        ? <><p>{analyst ? `${closestChangePlain(fragility, changeNames)}.` : <>{fragility.criterion_name}: {fragility.direction === "raise" ? "raise" : "lower"} by {displayNumber(fragility.weight_change ?? 0)} of total weight to {fragility.kind === "rank" ? `exchange rank with ${project.alternatives.find(a => a.id === fragility.other_alternative_id)?.name ?? "another alternative"}` : `reach ${project.sorting?.classes.find(c => c.id === fragility.class_after_id)?.name ?? "another class"}`}.</>}</p>
           <button type="button" onClick={() => onSensitivity({ criterionId: probeCriterion, weight: probeWeight, context })}>Show in Sensitivity</button>
           <InfoDisclosure label="Closest change details">Exact local weight {String(fragility.local_weight)}; baseline {String(fragility.base_local_weight)}. One weight varies at a time; its siblings retain their relative proportions.</InfoDisclosure></>
         : <p>{fragility?.status === "tied" ? `Tied now with ${fragility.tied_with.map(id => project.alternatives.find(a => a.id === id)?.name ?? id).join(", ")}` : fragility?.status === "none" ? "No one-way change in range." : "Closest change detail is unavailable."}</p>}

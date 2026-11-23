@@ -231,7 +231,7 @@ Further limits are listed in [known limitations](docs/development/known-limitati
 | Feature specifications | [Design notes](docs/design/) |
 | Testing | [Testing](docs/development/testing.md) |
 
-The engine is packaged as `mcda_studio` with the command `mcda`.
+Venture Frame is built on the domain-neutral `mcda_studio` engine (CLI `mcda`).
 
 ## Origin
 

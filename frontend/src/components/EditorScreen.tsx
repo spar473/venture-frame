@@ -1,6 +1,7 @@
 import { WeightTrialGate, RESET_TRIAL } from "./WeightTrialGate";
 import { useWeightTrial } from "../state/useWeightTrial";
 import { chooseEditorView, consumeWorkedEntry, viewIntent, type EditorView } from "../state/viewMode";
+import { EditorViewContext } from "../state/editorViewContext";
 import { CompanyExplorer, type StudyEvidenceOffer, type SensitivityDestination } from "./CompanyExplorer";
 import { IssueText, MessageText } from "./IssueText";
 import { ProxyCriterionPanel } from "./ProxyCriterionPanel";
@@ -415,6 +416,7 @@ export function EditorScreen({ projectId, onClose, onOpenOther }: Props) {
   );
 
   return (
+    <EditorViewContext value={view}>
     <WeightTrialGate value={{ active: trial.active, generation: trial.generation, reset: trial.reset }}>
     <CompanyExplorer project={project} context={context} dossier={evidenceDossier} studyEvidence={studyEvidence} blocked={trial.active}
       onSensitivity={destination => {
@@ -593,7 +595,7 @@ export function EditorScreen({ projectId, onClose, onOpenOther }: Props) {
           {tab === "sensitivity" && (trial.active ? <p>{RESET_TRIAL}</p> : <ScopedAnalysis project={project} context={context}>{report =>
             <SensitivityPanel project={project} context={context} validation={report} onSelectCriterion={id => { setSensitivityDestination(null); setSelectedId(id); }} initialProbe={sensitivityDestination}/>}</ScopedAnalysis>)}
           {tab === "results" && <ScopedAnalysis project={project} context={context}>{report =>
-            <ResultsPanel weightTrial={trial} onExploreMavt={() => store.selectAnalysis({ method: project.sorting ? "mavt_sorting" : "mavt", parameters: null })} onOpenTab={setTab} project={project} context={context} validation={report} onSelectCriterion={setSelectedId} methods={meta?.methods} workspaceDossier={evidenceDossier} onParameters={parameters => store.selectAnalysis({ parameters })}/>}</ScopedAnalysis>}
+            <ResultsPanel weightTrial={trial} onExploreMavt={() => store.selectAnalysis({ method: project.sorting ? "mavt_sorting" : "mavt", parameters: null })} onOpenTab={setTab} project={project} context={context} validation={report} onSelectCriterion={setSelectedId} methods={meta?.methods} workspaceDossier={evidenceDossier} studyEvidence={studyEvidence} onParameters={parameters => store.selectAnalysis({ parameters })}/>}</ScopedAnalysis>}
           {tab === "compare" && <ComparePanel project={project} context={context} onOpenTab={setTab}/>}
           {tab === "references" && <ReferenceCasesPanel project={project} context={context}/>}
           {/* Kept mounted while hidden so an open proxy declaration survives leaving the tab. */}
@@ -639,5 +641,6 @@ export function EditorScreen({ projectId, onClose, onOpenOther }: Props) {
     )}/>
     </CompanyExplorer>
     </WeightTrialGate>
+    </EditorViewContext>
   );
 }

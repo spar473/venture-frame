@@ -18,7 +18,8 @@ import { FeasibilityView } from "./results/FeasibilityView";
 import { FlowsView } from "./results/FlowsView";
 import { useFeasibility } from "../state/useFeasibility";
 import { useScreeningSummary } from "../state/useScreeningSummary";
-import { ScreeningSummaryView } from "./results/ScreeningSummaryView";
+import { ScreeningSummaryView, type QuestionSource } from "./results/ScreeningSummaryView";
+import type { StudyEvidenceOffer } from "./CompanyExplorer";
 import { ScreeningReportButton } from "./results/ScreeningReportButton";
 import { saveDownload } from "./results/downloads";
 import { panelsFor } from "./results/panels";
@@ -45,8 +46,10 @@ interface Props {
   /** The reviewed dossier from the Evidence Workspace, when one is open: it feeds the summary's
    * open-question counts exactly as it feeds Open Questions. */
   workspaceDossier?: EvidenceDossier | null;
+  /** The bundled study's evidence, offered beside the open-question counts when it can be loaded. */
+  studyEvidence?: StudyEvidenceOffer | null;
 }
-export function ResultsPanel({ project, context, validation, onSelectCriterion, methods, workspaceDossier, onParameters, onOpenTab, weightTrial, onExploreMavt }: Props) {
+export function ResultsPanel({ project, context, validation, onSelectCriterion, methods, workspaceDossier, studyEvidence, onParameters, onOpenTab, weightTrial, onExploreMavt }: Props) {
   const method = context.configuration.method;
   const localTrial = useWeightTrial(canonical({ fingerprint: context.fingerprint, configuration: context.configuration, dossier: workspaceDossier }));
   const trial = weightTrial ?? localTrial;
@@ -127,7 +130,8 @@ export function ResultsPanel({ project, context, validation, onSelectCriterion, 
     {info?.capabilities.includes("acceptability") && <details><summary>Run settings</summary><RunSettings parameters={context.configuration.parameters} disabled={false} onChange={patch => onParameters?.({ ...context.configuration.parameters, ...patch })}/></details>}
     {trial.active ? <section className="screening-summary-section" aria-label="Screening summary"><h3>What-if screening summary</h3>
       {trialSummary ? <ScreeningSummaryView summary={trialSummary} project={project} hideOpenQuestions/> : <p role="status">{trialRequest.status === "loading" ? "Calculating what-if screening…" : "What-if screening unavailable. Reset to return to the saved reading."}</p>}
-    </section> : <ScreeningSummarySection project={project} request={screening} collapsed={method !== "mavt" && method !== "mavt_sorting"}/>}
+    </section> : <ScreeningSummarySection project={project} request={screening} collapsed={method !== "mavt" && method !== "mavt_sorting"}
+      questions={{ dossier: Boolean(workspaceDossier), offer: studyEvidence ?? null }}/>}
     {supported && <ScreeningReportButton project={project} context={context} dossier={workspaceDossier ?? null} trial={{ active: trial.active, generation: trial.generation }}/>}
     {record && result && has("overall") && <><h3 tabIndex={-1} ref={element => { sections.current.overall = element; }}>Overall values and competition ranks</h3>
       {trial.active ? trialRecord && <RankingChart record={trialRecord} view={view} order={trialRecord.result.ranking.map(row => row.alternative_id)} selectedAlternative={null} selectedCriterion={null} onAlternative={() => undefined} onCriterion={() => undefined}/>
@@ -237,13 +241,13 @@ export function ResultsPanel({ project, context, validation, onSelectCriterion, 
 
 /** The summary leads Results for MAVT and sorting; under another method it stays available, collapsed
  * and labelled as MAVT's reading, so it is never mistaken for that method's own result. */
-export function ScreeningSummarySection({ project, request, collapsed = false }: {
-  project: Project; request: ReturnType<typeof useScreeningSummary>; collapsed?: boolean;
+export function ScreeningSummarySection({ project, request, collapsed = false, questions }: {
+  project: Project; request: ReturnType<typeof useScreeningSummary>; collapsed?: boolean; questions?: QuestionSource;
 }) {
   const body = <>
     {request.status === "loading" && <p role="status">Preparing the screening summary…</p>}
     {request.status === "error" && <><p role="alert">{request.message}</p><button type="button" onClick={request.retry}>Retry summary</button></>}
-    {request.status === "ready" && <ScreeningSummaryView summary={request.result} project={project}/>}
+    {request.status === "ready" && <ScreeningSummaryView summary={request.result} project={project} questions={questions}/>}
   </>;
   return collapsed
     ? <details className="screening-summary-section" aria-label="MAVT screening summary"><summary>MAVT screening summary</summary>{body}</details>

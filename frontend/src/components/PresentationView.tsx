@@ -53,7 +53,7 @@ export function PresentationView({ project, validation, context, fingerprint, di
       <button type="button" className="primary" onClick={onExit}>Exit presentation</button>
     </header>
     {project.description && <p className="presentation-description">{project.description}</p>}
-    <ScreeningSummarySection project={project} request={screening}/>
+    <ScreeningSummarySection project={project} request={screening} questions={{ dossier: Boolean(workspaceDossier) }}/>
     <div className="tree-panel presentation-diagram">
       <ModelTree project={project} index={index} validation={validation} selectedId={selectedId}
         presentation={{ ...presentation, mode: "canvas" }} onPresentation={onPresentation} onSelect={setSelectedId}
