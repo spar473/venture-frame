@@ -2335,7 +2335,9 @@ def write_starter(project_bytes: bytes, dossier_bytes: bytes) -> None:
     content = json.dumps(manifest, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
     manifest["digest"] = hashlib.sha256(content.encode()).hexdigest()
     (STARTER / "manifest.json").write_text(
-        json.dumps(manifest, indent=2, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8"
+        json.dumps(manifest, indent=2, ensure_ascii=False, sort_keys=True) + "\n",
+        encoding="utf-8",
+        newline="\n",
     )
 
 

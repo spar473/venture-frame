@@ -2,6 +2,7 @@
 
 import os
 import socket
+import sys
 import tempfile
 import threading
 import webbrowser
@@ -31,6 +32,10 @@ def run_server(application: Any, host: str, port: int, open_browser: bool) -> No
             # Rebind promptly over TIME_WAIT connections from a stopped server, as uvicorn does.
             # POSIX still refuses a port another socket is listening on; Windows reuse differs.
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        elif sys.platform == "win32":
+            # On Windows SO_REUSEADDR would let another process take the port; exclusive use
+            # refuses a port that any other socket holds, including one bound with SO_REUSEADDR.
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
         try:
             sock.bind(address[4])
             sock.listen(socket.SOMAXCONN)

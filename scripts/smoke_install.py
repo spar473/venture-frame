@@ -29,11 +29,23 @@ EXPECTED = [0.7226678550207962, 0.6599105426568632, 0.5985654393128845, 0.573384
 
 
 def playwright_browsers() -> Path:
-    """Playwright's default browser cache for the calling user, read before HOME is isolated.
-    This smoke workflow is POSIX-only (it uses the bin/ venv layout)."""
+    """Playwright's default browser cache for the calling user, read before HOME is isolated."""
+    if sys.platform == "win32":
+        local = os.environ.get("LOCALAPPDATA") or str(Path.home() / "AppData/Local")
+        return Path(local) / "ms-playwright"
     if sys.platform == "darwin":
         return Path.home() / "Library/Caches/ms-playwright"
     return Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "ms-playwright"
+
+
+def executable(directory: Path, name: str) -> Path:
+    """A program in a virtual environment's or pipx's script directory, on POSIX or Windows."""
+    return directory / (f"{name}.exe" if sys.platform == "win32" else name)
+
+
+def venv_scripts(target: Path) -> Path:
+    """The venv directory holding python and console scripts: bin on POSIX, Scripts on Windows."""
+    return target / ("Scripts" if sys.platform == "win32" else "bin")
 
 
 def run(*command: str, cwd: Path, env: dict[str, str]) -> str:
@@ -73,7 +85,7 @@ def server(command: Path, work: Path, env: dict[str, str]):
         port = probe.getsockname()[1]
     url = f"http://127.0.0.1:{port}"
     log = work / "server.log"
-    with log.open("w") as output:
+    with log.open("w", newline="\n") as output:
         process = subprocess.Popen(
             [
                 str(command),
@@ -167,7 +179,7 @@ def exercise(command: Path, python: Path, work: Path, env: dict[str, str], brows
             assert "require your review" in material["project"]["description"]
             input_file = work / (starter["id"] + "-starter-request.json")
             output_file = work / (starter["id"] + "-starter-materials.json")
-            input_file.write_text(json.dumps(body))
+            input_file.write_text(json.dumps(body), newline="\n")
             run(
                 str(command),
                 "starter-templates",
@@ -199,7 +211,7 @@ def exercise(command: Path, python: Path, work: Path, env: dict[str, str], brows
             },
         )
         source = work / "exported-project.json"
-        source.write_text(json.dumps(exported["source_project"]))
+        source.write_text(json.dumps(exported["source_project"]), newline="\n")
         run(str(command), "validate", str(source), cwd=work, env=env)
         repeated = json.loads(
             run(str(command), "evaluate", str(source), "--json", cwd=work, env=env)
@@ -246,12 +258,21 @@ def main() -> None:
             PIP_CACHE_DIR=str(work / "pip-cache"),
             PIP_CONFIG_FILE=os.devnull,
         )
+        if sys.platform == "win32":
+            # Windows tools keep configuration and user packages in the application-data folders
+            # rather than HOME. USERPROFILE stays: Chrome will not start with a substitute one.
+            for name, folder in (
+                ("APPDATA", "appdata/Roaming"),
+                ("LOCALAPPDATA", "appdata/Local"),
+            ):
+                (work / folder).mkdir(parents=True, exist_ok=True)
+                env[name] = str(work / folder)
         if args.wheelhouse:
             env.update(PIP_NO_INDEX="1", PIP_FIND_LINKS=str(args.wheelhouse.resolve()))
         for index, wheel in enumerate(wheels):
             target = work / f"venv-{index}"
             venv.EnvBuilder(with_pip=True).create(target)
-            python = target / "bin/python"
+            python = executable(venv_scripts(target), "python")
             run(
                 str(python),
                 "-m",
@@ -268,7 +289,7 @@ def main() -> None:
                 str(python), "-m", "pip", "install", "--no-deps", f"{wheel}[api]", cwd=work, env=env
             )
             scenario = work / f"wheel-{index}"
-            exercise(target / "bin/mcda", python, scenario, env, args.browser)
+            exercise(executable(venv_scripts(target), "mcda"), python, scenario, env, args.browser)
             if args.browser:
                 import shutil
 
@@ -284,11 +305,12 @@ def main() -> None:
         # Plain wheel really resolves only base dependencies; no preinstalled API environment.
         target = work / "engine-only"
         venv.EnvBuilder(with_pip=True).create(target)
-        python = target / "bin/python"
+        python = executable(venv_scripts(target), "python")
         run(str(python), "-m", "pip", "install", *pip_args, str(wheels[0]), cwd=work, env=env)
-        run(str(target / "bin/mcda"), "--help", cwd=work, env=env)
+        engine_mcda = executable(venv_scripts(target), "mcda")
+        run(str(engine_mcda), "--help", cwd=work, env=env)
         result = subprocess.run(
-            [str(target / "bin/mcda"), "serve"], cwd=work, env=env, capture_output=True, text=True
+            [str(engine_mcda), "serve"], cwd=work, env=env, capture_output=True, text=True
         )
         assert result.returncode == 1 and "whl[api]" in result.stderr.replace("\n", "")
         run(
@@ -303,6 +325,9 @@ def main() -> None:
             PIPX_HOME=str(work / "pipx"),
             PIPX_BIN_DIR=str(work / "bin"),
             PIPX_MAN_DIR=str(work / "man"),
+            # pipx 1.18 switches to its uv backend whenever uv is on PATH, and uv-made venvs have
+            # no pip for the `pip check` below; keep the documented pip route on every machine.
+            PIPX_DEFAULT_BACKEND="pip",
         )
         command = [
             sys.executable,
@@ -318,8 +343,10 @@ def main() -> None:
 
             command += ["--pip-args", shlex.join(pip_args)]
         run(*command, cwd=work, env=env)
-        pipx_python = work / "pipx/venvs/mcda-studio/bin/python"
-        exercise(work / "bin/mcda", pipx_python, work / "pipx-check", env, args.browser)
+        pipx_python = executable(venv_scripts(work / "pipx/venvs/mcda-studio"), "python")
+        exercise(
+            executable(work / "bin", "mcda"), pipx_python, work / "pipx-check", env, args.browser
+        )
     (output / "result.json").write_text(
         json.dumps(
             {
@@ -337,7 +364,8 @@ def main() -> None:
             },
             indent=2,
         )
-        + "\n"
+        + "\n",
+        newline="\n",
     )
     print(f"Installed smoke passed; evidence: {output}")
 

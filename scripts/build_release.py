@@ -4,12 +4,13 @@ import argparse
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tarfile
 import tempfile
 import zipfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parents[1]
 EXAMPLES = (
@@ -21,7 +22,9 @@ EXAMPLES = (
 
 
 def run(*command: str, cwd: Path = ROOT) -> None:
-    subprocess.run(command, cwd=cwd, check=True)
+    # On Windows npm is npm.cmd, which only a full path (or a shell) finds.
+    program = shutil.which(command[0]) if sys.platform == "win32" else None
+    subprocess.run((program or command[0], *command[1:]), cwd=cwd, check=True)
 
 
 def inspect_wheel(path: Path) -> dict[str, object]:
@@ -49,7 +52,7 @@ def inspect_wheel(path: Path) -> dict[str, object]:
         for manifest in manifests:
             data = json.loads(archive.read(manifest))
             for artifact in data["artifacts"]:
-                target = str(Path(manifest).parent / artifact["path"])
+                target = (PurePosixPath(manifest).parent / artifact["path"]).as_posix()
                 assert target in names, target
                 assert hashlib.sha256(archive.read(target)).hexdigest() == artifact["sha256"]
         assert any(
@@ -125,7 +128,7 @@ def main() -> None:
         f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.relative_to(out).as_posix()}\n"
         for p in files
     )
-    (out / "MANIFEST.sha256").write_text(manifest)
+    (out / "MANIFEST.sha256").write_text(manifest, newline="\n")
     print(manifest, end="")
 
 

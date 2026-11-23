@@ -30,7 +30,7 @@ def main() -> int:
         print("openapi.json is up to date")
         return 0
     TARGET.parent.mkdir(parents=True, exist_ok=True)
-    TARGET.write_text(text, encoding="utf-8")
+    TARGET.write_text(text, encoding="utf-8", newline="\n")
     print(f"wrote {TARGET} ({len(text)} bytes)")
     return 0
 

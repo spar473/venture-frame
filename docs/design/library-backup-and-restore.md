@@ -29,8 +29,11 @@ work.
 - encryption, signatures or proof of who made an archive;
 - a GUI or HTTP API;
 - backing up while a server runs (online backup);
-- merging into an existing library, or restoring a single project;
-- Windows (library ownership is POSIX-only today).
+- merging into an existing library, or restoring a single project.
+
+Since 23 November 2026 backup, verify and restore also run on native Windows. Where Windows has
+no `dir_fd`, `O_NOFOLLOW` or directory `fsync`, the checks in
+[known limitations](../development/known-limitations.md) are used instead.
 
 ## Commands
 

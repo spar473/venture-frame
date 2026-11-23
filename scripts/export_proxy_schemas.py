@@ -33,7 +33,7 @@ def main():
             if not file.is_file() or file.read_text() != text:
                 raise SystemExit(f"Out of date proxy schema: {name}")
         else:
-            file.write_text(text)
+            file.write_text(text, newline="\n")
     print("Proxy schemas are current")
 
 

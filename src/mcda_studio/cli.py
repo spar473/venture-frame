@@ -102,6 +102,7 @@ from mcda_studio.services import feasibility_service as feasibility
 from mcda_studio.services import project_service as ps
 from mcda_studio.services import questions_service as questions
 from mcda_studio.services import templates
+from mcda_studio.storage import fs_platform
 from mcda_studio.storage import library_backup as backups
 from mcda_studio.storage.json_repository import JsonProjectRepository, save_model, to_json_text
 from mcda_studio.storage.library_lock import managed_write
@@ -245,7 +246,7 @@ def _save_result(result: Any, target: Path) -> None:
 
 def _save_text(text: str, target: Path) -> None:
     with managed_write(target):
-        target.write_text(text, encoding="utf-8")
+        target.write_text(text, encoding="utf-8", newline="\n")
 
 
 def _load_dossier(path: Path) -> EvidenceDossier:
@@ -261,11 +262,11 @@ def _new_file(target: Path, contents: str) -> None:
         fd, name = tempfile.mkstemp(dir=target.parent, prefix=f".{target.name}.", suffix=".tmp")
         temporary = Path(name)
         try:
-            with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as stream:
                 stream.write(contents)
                 stream.flush()
                 os.fsync(stream.fileno())
-            os.link(temporary, target)
+            fs_platform.link_no_overwrite(temporary, target)
         finally:
             temporary.unlink(missing_ok=True)
 

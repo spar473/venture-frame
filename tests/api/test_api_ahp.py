@@ -251,7 +251,7 @@ def test_the_cli_judges_checks_runs_and_clears(
     monkeypatch.setattr(cli, "console", Console(width=160))
     monkeypatch.setattr(cli, "err_console", Console(stderr=True, width=160))
     path = tmp_path / "tiny.json"
-    path.write_text(to_json_text(tiny_project()))
+    path.write_text(to_json_text(tiny_project()), encoding="utf-8", newline="\n")
     start = path.read_bytes()
     f = str(path)
     runner = CliRunner()

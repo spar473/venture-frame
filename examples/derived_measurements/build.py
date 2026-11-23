@@ -57,8 +57,8 @@ def build(name, title, criterion, unit, upper, direction, units, factors, expres
             for key, expr, u, alt in expressions
         ],
     )
-    (HERE / f"{name}-project.json").write_text(to_json_text(p), encoding="utf-8")
-    (HERE / f"{name}-model.json").write_text(to_json_text(model), encoding="utf-8")
+    (HERE / f"{name}-project.json").write_text(to_json_text(p), encoding="utf-8", newline="\n")
+    (HERE / f"{name}-model.json").write_text(to_json_text(model), encoding="utf-8", newline="\n")
 
 
 if __name__ == "__main__":

@@ -34,7 +34,7 @@ def main():
             if not file.is_file() or file.read_text() != text:
                 raise SystemExit(f"Out of date model schema: {name}")
         else:
-            file.write_text(text)
+            file.write_text(text, newline="\n")
     print("Model/check/starter schemas are current")
 
 

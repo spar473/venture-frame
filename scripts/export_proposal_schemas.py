@@ -27,7 +27,7 @@ def main():
             if not file.is_file() or file.read_text() != text:
                 raise SystemExit(f"Proposal schema out of date: {file.name}")
         else:
-            file.write_text(text)
+            file.write_text(text, newline="\n")
     print("Proposal schemas current.")
 
 

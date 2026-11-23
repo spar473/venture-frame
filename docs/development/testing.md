@@ -36,6 +36,47 @@ and call the full gate passed.
 
 The browser tests and the mutation check take a few minutes each. Run them one at a time.
 
+### Native Windows (PowerShell)
+
+The same gate, with Windows paths. Set `PYTHONUTF8=1` first: the application names UTF-8 for every
+file it reads or writes, but some tests and development scripts read the repository's UTF-8 files
+with the platform's default encoding, which on Windows is often not UTF-8.
+
+```powershell
+py -3.12 -m venv .venv
+.venv\Scripts\python -m pip install --require-hashes -r requirements/build-py312.txt -r requirements/dev-py312.txt
+.venv\Scripts\python -m pip install --no-deps --no-build-isolation -e '.[dev]'
+$env:PYTHONUTF8 = "1"
+.venv\Scripts\python -m pytest -q
+.venv\Scripts\ruff check src tests scripts hatch_build.py
+.venv\Scripts\ruff format --check src tests scripts hatch_build.py
+.venv\Scripts\mypy
+.venv\Scripts\python scripts/byte_identity.py --root . --out $env:TEMP\windows.json --portable
+npm --prefix frontend run check
+```
+
+The hash locks include `colorama`, which pip installs only on Windows, behind a
+`sys_platform == "win32"` marker ([dependency locks](../../requirements/README.md)).
+`.gitattributes` checks every text file out with LF endings, so a Windows clone has the same bytes
+as a POSIX one even with `core.autocrlf=true`.
+
+Windows-only tests are in `tests/unit/test_fs_platform.py`. Each POSIX-only test that is skipped
+on Windows has a counterpart there that tests the equivalent Windows defence:
+
+| POSIX-only test (skipped on Windows) | Windows counterpart in `test_fs_platform.py` |
+| --- | --- |
+| `test_recovery.py::test_failure_preserves_original_recovery_and_active_projects[directory-sync]` | `test_failure_right_after_publication_retains_recovery_data` |
+| `test_recovery.py::test_non_regular_recovery_file_cannot_block_listing` (FIFO) | `test_a_directory_in_place_of_a_trash_entry_cannot_block_listing` |
+| `test_library_backup.py::test_member_names_outside_the_allowlist_are_refused[projects\a.json]` | `test_a_backslash_member_name_is_refused_on_windows` |
+| `test_library_backup.py::test_new_files_are_created_exclusively` | `test_new_files_are_created_exclusively_even_over_a_dangling_link` |
+| `test_library_coordination.py::test_interrupted_restore_retains_recoverable_data_and_releases_owner[True]` | `test_restore_interrupted_after_publication_in_a_subprocess` |
+
+Several tests create symbolic links, which Windows allows only with the symlink privilege: enable
+Developer Mode, or use an elevated prompt (as the hosted Windows runners do). Without it those
+tests fail with `WinError 1314`. The Windows-only tests fall back to junctions, which need no
+privilege, or skip a file-symlink case. The full browser suite and the mutation check are run on
+Linux; the installed smoke runs on both (see below).
+
 ### Environment notes
 
 - **Use the virtualenv path exactly as written** (`.venv/bin/python`). Resolving its symlink can
@@ -197,8 +238,13 @@ is part of this package, not a precondition for the earlier application-test rec
 MCDA_CHROMIUM='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' .venv/bin/python scripts/smoke_install.py --browser --wheelhouse /tmp/mcda-wheels
 ```
 
-On Linux omit `MCDA_CHROMIUM` after installing Playwright Chromium as above. These scripts use
-POSIX venv paths on the two scoped platforms; Windows is not claimed. Never use a real library.
+On Linux omit `MCDA_CHROMIUM` after installing Playwright Chromium as above. `smoke_install.py`
+handles both virtual-environment layouts (`bin/` and Windows `Scripts\`) and the Windows
+Playwright cache (`%LOCALAPPDATA%\ms-playwright`); on Windows set `MCDA_CHROMIUM` to an installed
+Chrome (for example `C:\Program Files\Google\Chrome\Application\chrome.exe`) for `--browser`.
+It pins pipx to its pip backend, because pipx 1.18 otherwise switches to uv whenever `uv` is on
+`PATH`, and uv-made environments have no pip for the smoke's `pip check`. Never use a real
+library.
 
 `build_release.py` normally runs `npm ci` and the frontend build. It then builds a direct wheel
 and an sdist, extracts the sdist outside the checkout, and builds its wheel with no build isolation
@@ -223,7 +269,11 @@ root; the scripts never resolve frontend assets from the checkout on behalf of t
 Linux CI (`.github/workflows/ci.yml`) runs Python 3.12 and Node 26.12.1, the application gate,
 archive paths and installed GUI smoke. Mutation checks run manually/weekly. CI configuration is
 not evidence of an actual hosted run until pushed/executed; the installation check record shows
-what was actually run. Platform expansion needs its own deliberate scope.
+what was actually run. A `windows-python312` job on `windows-latest` runs the Python gate, the
+frontend gate, a serve smoke, both distribution routes and the installed smoke over HTTP and the
+CLI; `byte-identity-across-platforms` then compares the Linux and Windows byte-identity
+manifests. Browser tests, the browser mode of the installed smoke and mutation checks run on Linux
+only.
 
 ## Library ownership and recovery checks
 
