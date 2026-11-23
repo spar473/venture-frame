@@ -16,8 +16,11 @@
   text files out with LF, so a Windows checkout and its saved projects match the POSIX bytes.
 - `scripts/build_release.py` checks wheel member names with `/` and finds `npm.cmd`, so both
   build routes run on Windows. `scripts/smoke_install.py` understands the Windows
-  virtual-environment layout and Playwright cache. The hash locks do not yet install on Windows (they lack `colorama`), so there is no
-  Windows CI job yet.
+  virtual-environment layout and Playwright cache, and pins pipx to its pip backend.
+- The hash locks install on Windows: each gains `colorama==0.4.6` (pip-compile's Windows output)
+  behind a `sys_platform == "win32"` marker, so macOS and Linux install exactly what they did.
+- CI gains a `windows-python312` job (Python and frontend gates, serve smoke, installed smoke over
+  HTTP and the CLI) and a job comparing the Linux and Windows byte-identity manifests.
 
 ## 0.1.0 — 17 November 2026
 

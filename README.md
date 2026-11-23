@@ -135,11 +135,6 @@ npm --prefix frontend run build
 .venv\Scripts\mcda serve --open
 ```
 
-> **Windows, for now:** the hash-pinned dependency locks were generated on macOS and do not yet
-> list `colorama`, a dependency that pip installs only on Windows, so the `--require-hashes` step
-> stops there until the locks are regenerated. See
-> [known limitations](docs/development/known-limitations.md).
-
 The application opens at <http://127.0.0.1:8765>. Select **Venture screening** on the start page
 to open case 2. The server listens on the local machine only and has no authentication. The
 [user guide](docs/user-guide.md) covers every screen.

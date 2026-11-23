@@ -259,9 +259,9 @@ def main() -> None:
             PIP_CONFIG_FILE=os.devnull,
         )
         if sys.platform == "win32":
-            # Windows tools read the profile and application-data folders instead of HOME.
+            # Windows tools keep configuration and user packages in the application-data folders
+            # rather than HOME. USERPROFILE stays: Chrome will not start with a substitute one.
             for name, folder in (
-                ("USERPROFILE", "home"),
                 ("APPDATA", "appdata/Roaming"),
                 ("LOCALAPPDATA", "appdata/Local"),
             ):
@@ -325,6 +325,9 @@ def main() -> None:
             PIPX_HOME=str(work / "pipx"),
             PIPX_BIN_DIR=str(work / "bin"),
             PIPX_MAN_DIR=str(work / "man"),
+            # pipx 1.18 switches to its uv backend whenever uv is on PATH, and uv-made venvs have
+            # no pip for the `pip check` below; keep the documented pip route on every machine.
+            PIPX_DEFAULT_BACKEND="pip",
         )
         command = [
             sys.executable,

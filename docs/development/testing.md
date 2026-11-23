@@ -55,10 +55,10 @@ $env:PYTHONUTF8 = "1"
 npm --prefix frontend run check
 ```
 
-The hash locks do not yet list `colorama`, which pip installs only on Windows, so the first
-install line stops there until the locks are regenerated on Windows (see
-[known limitations](known-limitations.md)). `.gitattributes` checks every text file out with LF
-endings, so a Windows clone has the same bytes as a POSIX one even with `core.autocrlf=true`.
+The hash locks include `colorama`, which pip installs only on Windows, behind a
+`sys_platform == "win32"` marker ([dependency locks](../../requirements/README.md)).
+`.gitattributes` checks every text file out with LF endings, so a Windows clone has the same bytes
+as a POSIX one even with `core.autocrlf=true`.
 
 Windows-only tests are in `tests/unit/test_fs_platform.py`. Each POSIX-only test that is skipped
 on Windows has a counterpart there that tests the equivalent Windows defence:
@@ -74,8 +74,8 @@ on Windows has a counterpart there that tests the equivalent Windows defence:
 Several tests create symbolic links, which Windows allows only with the symlink privilege: enable
 Developer Mode, or use an elevated prompt (as the hosted Windows runners do). Without it those
 tests fail with `WinError 1314`. The Windows-only tests fall back to junctions, which need no
-privilege, or skip a file-symlink case. Browser tests, the installed smoke and the mutation check
-are run on Linux.
+privilege, or skip a file-symlink case. The full browser suite and the mutation check are run on
+Linux; the installed smoke runs on both (see below).
 
 ### Environment notes
 
@@ -240,8 +240,11 @@ MCDA_CHROMIUM='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' .ve
 
 On Linux omit `MCDA_CHROMIUM` after installing Playwright Chromium as above. `smoke_install.py`
 handles both virtual-environment layouts (`bin/` and Windows `Scripts\`) and the Windows
-Playwright cache (`%LOCALAPPDATA%\ms-playwright`), but on Windows it stops at the runtime hash
-lock until the locks list `colorama`. Never use a real library.
+Playwright cache (`%LOCALAPPDATA%\ms-playwright`); on Windows set `MCDA_CHROMIUM` to an installed
+Chrome (for example `C:\Program Files\Google\Chrome\Application\chrome.exe`) for `--browser`.
+It pins pipx to its pip backend, because pipx 1.18 otherwise switches to uv whenever `uv` is on
+`PATH`, and uv-made environments have no pip for the smoke's `pip check`. Never use a real
+library.
 
 `build_release.py` normally runs `npm ci` and the frontend build. It then builds a direct wheel
 and an sdist, extracts the sdist outside the checkout, and builds its wheel with no build isolation
@@ -266,7 +269,11 @@ root; the scripts never resolve frontend assets from the checkout on behalf of t
 Linux CI (`.github/workflows/ci.yml`) runs Python 3.12 and Node 26.12.1, the application gate,
 archive paths and installed GUI smoke. Mutation checks run manually/weekly. CI configuration is
 not evidence of an actual hosted run until pushed/executed; the installation check record shows
-what was actually run. There is no Windows job yet: the hash locks do not install on Windows.
+what was actually run. A `windows-python312` job on `windows-latest` runs the Python gate, the
+frontend gate, a serve smoke, both distribution routes and the installed smoke over HTTP and the
+CLI; `byte-identity-across-platforms` then compares the Linux and Windows byte-identity
+manifests. Browser tests, the browser mode of the installed smoke and mutation checks run on Linux
+only.
 
 ## Library ownership and recovery checks
 
