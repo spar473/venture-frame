@@ -14,8 +14,9 @@
 - `mcda serve` binds with `SO_EXCLUSIVEADDRUSE` on Windows, so no other process can take its port.
 - Every text file is written with LF line endings on every platform, and `.gitattributes` checks
   text files out with LF, so a Windows checkout and its saved projects match the POSIX bytes.
-- `scripts/smoke_install.py` understands the Windows virtual-environment layout and Playwright
-  cache. The hash locks do not yet install on Windows (they lack `colorama`), so there is no
+- `scripts/build_release.py` checks wheel member names with `/` and finds `npm.cmd`, so both
+  build routes run on Windows. `scripts/smoke_install.py` understands the Windows
+  virtual-environment layout and Playwright cache. The hash locks do not yet install on Windows (they lack `colorama`), so there is no
   Windows CI job yet.
 
 ## 0.1.0 — 17 November 2026
