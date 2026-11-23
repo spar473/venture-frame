@@ -10,6 +10,9 @@ The rules each guard enforces are in ``docs/design/library-backup-and-restore.md
 * **Restore** verifies first, claims a new directory with ``mkdir``, writes each member with
   ``O_EXCL | O_NOFOLLOW`` under that library's ownership, and re-checks the result. A marker file
   flags the library as incomplete until the end; the server refuses such a library.
+
+The platform-specific opens, links and directory operations are in ``fs_platform``; on native
+Windows they use the checks described there instead of ``dir_fd`` and ``O_NOFOLLOW``.
 """
 
 import hashlib
@@ -30,6 +33,8 @@ from typing import Any
 from mcda_studio.domain.errors import McdaError
 from mcda_studio.domain.project import SCHEMA_VERSION, Project
 from mcda_studio.runtime import package_version
+from mcda_studio.storage import fs_platform
+from mcda_studio.storage.fs_platform import DirHandle
 from mcda_studio.storage.json_repository import JsonProjectRepository
 from mcda_studio.storage.library_lock import LOCK_FILE, LibraryOwnership
 from mcda_studio.storage.project_store import TRASH_DIR, ProjectStore
@@ -141,8 +146,11 @@ def _load(kind: str, name: str, raw: Any) -> Project:
     return project
 
 
-def _read_regular(name: str, dir_fd: int) -> tuple[bytes, int]:
-    fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=dir_fd)
+def _read_regular(name: str, dir_fd: DirHandle) -> tuple[bytes, int]:
+    try:
+        fd = fs_platform.open_read_nofollow(name, dir_fd)
+    except fs_platform.NotRegularFileError:  # Windows: refused before opening
+        raise BackupError(f"{name} is not a regular file") from None
     with os.fdopen(fd, "rb") as stream:
         info = os.fstat(stream.fileno())
         if not stat.S_ISREG(info.st_mode):
@@ -153,14 +161,13 @@ def _read_regular(name: str, dir_fd: int) -> tuple[bytes, int]:
     return data, info.st_mtime_ns
 
 
-def _scan(dir_fd: int) -> list[os.DirEntry[str]]:
-    with os.scandir(dir_fd) as entries:
-        return sorted(entries, key=lambda e: e.name)
+def _scan(dir_fd: DirHandle) -> list[os.DirEntry[str]]:
+    return sorted(fs_platform.scan(dir_fd), key=lambda e: e.name)
 
 
 def _skip_reason(entry: os.DirEntry[str], pattern: re.Pattern[str]) -> str | None:
-    if entry.is_symlink():
-        return "symlink, not followed"
+    if fs_platform.is_link(entry):
+        return "symlink, not followed"  # on Windows also a junction or other reparse point
     if entry.name.startswith(".") and entry.name.endswith(".tmp"):
         return "temporary stage file from an interrupted save or restore"
     if entry.name.startswith("."):
@@ -177,15 +184,13 @@ def _skip_reason(entry: os.DirEntry[str], pattern: re.Pattern[str]) -> str | Non
 def _collect(root: Path, report: BackupReport) -> list[tuple[str, bytes, int]]:
     """Read every included file once; the same bytes are hashed and archived."""
     members: list[tuple[str, bytes, int]] = []
-    root_fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY)
+    root_fd = fs_platform.open_directory(root)
     try:
         for entry in _scan(root_fd):
             if entry.name == LOCK_FILE:
                 continue  # the ownership marker is expected and never archived
-            if entry.name == TRASH_DIR and not entry.is_symlink() and entry.is_dir():
-                trash_fd = os.open(
-                    TRASH_DIR, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=root_fd
-                )
+            if entry.name == TRASH_DIR and not fs_platform.is_link(entry) and entry.is_dir():
+                trash_fd = fs_platform.open_directory_nofollow(TRASH_DIR, root_fd)
                 try:
                     for item in _scan(trash_fd):
                         reason = _skip_reason(item, _TRASH_FILE)
@@ -195,7 +200,7 @@ def _collect(root: Path, report: BackupReport) -> list[tuple[str, bytes, int]]:
                         data, mtime = _read_regular(item.name, trash_fd)
                         members.append((f"trash/{item.name}", data, mtime))
                 finally:
-                    os.close(trash_fd)
+                    fs_platform.close_directory(trash_fd)
                 continue
             reason = _skip_reason(entry, _ACTIVE_FILE)
             if reason:
@@ -204,7 +209,7 @@ def _collect(root: Path, report: BackupReport) -> list[tuple[str, bytes, int]]:
             data, mtime = _read_regular(entry.name, root_fd)
             members.append((f"projects/{entry.name}", data, mtime))
     finally:
-        os.close(root_fd)
+        fs_platform.close_directory(root_fd)
     if len(members) + 1 > MAX_MEMBERS:
         raise BackupError(f"the library has more than {MAX_MEMBERS - 1} files to back up")
     if sum(len(data) for _, data, _ in members) > MAX_TOTAL_BYTES:
@@ -220,11 +225,11 @@ def _zip_info(name: str) -> zipfile.ZipInfo:
 
 
 def _fsync_dir(path: Path) -> None:
-    fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY)
+    fd = fs_platform.open_directory(path)
     try:
-        os.fsync(fd)
+        fs_platform.fsync_directory(fd)
     finally:
-        os.close(fd)
+        fs_platform.close_directory(fd)
 
 
 def _inside(path: Path, root: Path) -> bool:
@@ -274,7 +279,7 @@ def create_backup(store: str | Path, archive: str | Path) -> BackupReport:
                 os.fsync(stream.fileno())
             checked = verify_backup(staged)
             try:
-                os.link(staged, target, follow_symlinks=False)
+                fs_platform.link_no_overwrite(staged, target, follow_symlinks=False)
             except FileExistsError:
                 raise BackupError(
                     f"{target} appeared during the backup; nothing was replaced"
@@ -331,6 +336,10 @@ def _check_members(zf: zipfile.ZipFile) -> dict[str, zipfile.ZipInfo]:
     seen: set[str] = set()
     for info in infos:
         name = info.filename
+        if fs_platform.WINDOWS and "\\" in info.orig_filename:
+            # zipfile on Windows turns a stored backslash into "/"; refuse it as POSIX does.
+            problems.append(f"{info.orig_filename!r}: not an allowed member name")
+            continue
         if _member_kind(name) is None:
             problems.append(f"{name!r}: not an allowed member name")
             continue
@@ -480,15 +489,14 @@ def verify_backup(archive: str | Path) -> BackupReport:
 
 
 # ---- restore ----------------------------------------------------------------------------------
-def _write_new(name: str, data: bytes, modified_ns: int, dir_fd: int) -> None:
-    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC
-    fd = os.open(name, flags, 0o644, dir_fd=dir_fd)
+def _write_new(name: str, data: bytes, modified_ns: int, dir_fd: DirHandle) -> None:
+    fd = fs_platform.create_exclusive(name, dir_fd, 0o644)
     try:
         view = memoryview(data)
         while view:
             view = view[os.write(fd, view) :]
         os.fsync(fd)
-        os.utime(fd, ns=(modified_ns, modified_ns))
+        fs_platform.set_times(fd, name, dir_fd, modified_ns)
     finally:
         os.close(fd)
 
@@ -530,9 +538,9 @@ def restore_backup(archive: str | Path, target: str | Path) -> BackupReport:
         ) from None
     except OSError as exc:
         raise BackupError(f"cannot create {destination}: {exc}") from exc
-    created: list[tuple[str, int]] = []  # (name, dir_fd) of every file this restore wrote
-    root_fd = os.open(destination, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
-    trash_fd: int | None = None
+    created: list[tuple[str, DirHandle]] = []  # (name, dir_fd) of every file this restore wrote
+    root_fd = fs_platform.open_directory_nofollow(destination)
+    trash_fd: DirHandle | None = None
     try:
         # The marker comes first, so a crash at any later point leaves a refused library.
         _write_new(INCOMPLETE_MARKER, b"restore in progress\n", time.time_ns(), root_fd)
@@ -547,35 +555,33 @@ def restore_backup(archive: str | Path, target: str | Path) -> BackupReport:
                         raise BackupError("the archive changed during the restore")
                     kind, name = entry["path"].split("/", 1)
                     if kind == "trash" and trash_fd is None:
-                        os.mkdir(TRASH_DIR, dir_fd=root_fd)
-                        trash_fd = os.open(
-                            TRASH_DIR, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=root_fd
-                        )
+                        fs_platform.mkdir_in(TRASH_DIR, root_fd)
+                        trash_fd = fs_platform.open_directory_nofollow(TRASH_DIR, root_fd)
                     dir_fd = root_fd if kind == "projects" else trash_fd
                     assert dir_fd is not None
                     _write_new(name, data, entry["modified_ns"], dir_fd)
                     created.append((name, dir_fd))
             if trash_fd is not None:
-                os.fsync(trash_fd)
-            os.fsync(root_fd)
+                fs_platform.fsync_directory(trash_fd)
+            fs_platform.fsync_directory(root_fd)
             _recheck(destination, entries)
-            os.unlink(INCOMPLETE_MARKER, dir_fd=root_fd)
-            os.fsync(root_fd)
+            fs_platform.unlink_in(INCOMPLETE_MARKER, root_fd)
+            fs_platform.fsync_directory(root_fd)
     except BaseException:
         # Remove exactly what this restore created; never a recursive delete.
         for name, dir_fd in reversed(created):
             with suppress(OSError):
-                os.unlink(name, dir_fd=dir_fd)
+                fs_platform.unlink_in(name, dir_fd)
         with suppress(OSError):
-            os.unlink(LOCK_FILE, dir_fd=root_fd)
+            fs_platform.unlink_in(LOCK_FILE, root_fd)
         if trash_fd is not None:
             with suppress(OSError):
-                os.rmdir(TRASH_DIR, dir_fd=root_fd)
+                fs_platform.rmdir_in(TRASH_DIR, root_fd)
         with suppress(OSError):
             os.rmdir(destination)
         raise
     finally:
         if trash_fd is not None:
-            os.close(trash_fd)
-        os.close(root_fd)
+            fs_platform.close_directory(trash_fd)
+        fs_platform.close_directory(root_fd)
     return report
