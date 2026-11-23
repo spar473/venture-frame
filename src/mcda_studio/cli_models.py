@@ -38,7 +38,7 @@ def _write(output: Path | None, value: Any) -> None:
     if output is None:
         typer.echo(text, nl=False)
     else:
-        with output.open("x", encoding="utf-8") as handle:
+        with output.open("x", encoding="utf-8", newline="\n") as handle:
             handle.write(text)
 
 

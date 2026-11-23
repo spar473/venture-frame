@@ -327,7 +327,7 @@ def main() -> int:
     if args.portable:
         hold_machine_fixed()
     data = manifest(args.root.resolve())
-    args.out.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n")
+    args.out.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", newline="\n")
     print(f"{len(data)} outputs hashed from {args.root}")
     return 0
 

@@ -122,7 +122,8 @@ def main() -> None:
     )
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
-        json.dumps(build_project().model_dump(mode="json"), sort_keys=True, indent=2) + "\n"
+        json.dumps(build_project().model_dump(mode="json"), sort_keys=True, indent=2) + "\n",
+        newline="\n",
     )
     print(path)
 

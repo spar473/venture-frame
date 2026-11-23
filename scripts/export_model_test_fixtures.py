@@ -144,7 +144,7 @@ def write_fixtures(target, *, check=False):
             except AssertionError as exc:
                 raise SystemExit(f"Out of date component fixture: {exc}") from exc
         else:
-            file.write_text(text)
+            file.write_text(text, newline="\n")
 
 
 def main(argv=None):

@@ -1455,7 +1455,9 @@ def main() -> int:
     try:
         if args.write_schemas is not None:
             for name, schema in schemas().items():
-                (args.write_schemas / name).write_text(schema_text(schema), encoding="utf-8")
+                (args.write_schemas / name).write_text(
+                    schema_text(schema), encoding="utf-8", newline="\n"
+                )
             print("Version-1 manifest and report schemas written")
             return 0
         if args.verify_report is not None:

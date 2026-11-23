@@ -504,7 +504,7 @@ def command_snapshot(args: argparse.Namespace) -> int:
             "snapshots": [kept[u] for u in sorted(kept)],
         }
         tmp = out / "snapshots.json.tmp"
-        tmp.write_text(pretty(document), encoding="utf-8")
+        tmp.write_text(pretty(document), encoding="utf-8", newline="\n")
         tmp.replace(index_path)
     print(f"{saved} pages saved, {skipped} not saved, {len(kept)} recorded in {index_path}")
     return 0
@@ -1721,7 +1721,7 @@ def command_fetch_model(args: argparse.Namespace) -> int:
     }
     if is_laya:
         record.update(route="own repository", files=LAYA_FILES)
-    (target / "mcda-model-revision.json").write_text(pretty(record), encoding="utf-8")
+    (target / "mcda-model-revision.json").write_text(pretty(record), encoding="utf-8", newline="\n")
     print(f"model {args.repo} at revision {revision} in {target}")
     return 0
 

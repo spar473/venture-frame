@@ -125,7 +125,7 @@ def main() -> None:
         f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.relative_to(out).as_posix()}\n"
         for p in files
     )
-    (out / "MANIFEST.sha256").write_text(manifest)
+    (out / "MANIFEST.sha256").write_text(manifest, newline="\n")
     print(manifest, end="")
 
 

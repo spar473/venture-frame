@@ -46,4 +46,4 @@ if __name__ == "__main__":
             if file.read_text() != text:
                 raise SystemExit(f"Proposal test fixture stale: {name}")
         else:
-            file.write_text(text)
+            file.write_text(text, newline="\n")

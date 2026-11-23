@@ -17,7 +17,7 @@ SPEC.loader.exec_module(benchmark)
 
 
 def write(path, value):
-    path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n")
+    path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", newline="\n")
     return {"path": path.name, "sha256": benchmark.sha(path.read_bytes())}
 
 

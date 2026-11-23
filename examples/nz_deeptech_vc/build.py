@@ -236,7 +236,7 @@ def main() -> None:
     here = Path(__file__).parent
     JsonProjectRepository().save(build_project(), here / "project.json")
     (here / "expected_weights.json").write_text(
-        json.dumps(EXPECTED_WEIGHTS, indent=2) + "\n", encoding="utf-8"
+        json.dumps(EXPECTED_WEIGHTS, indent=2) + "\n", encoding="utf-8", newline="\n"
     )
     print(f"wrote {here / 'project.json'} and expected_weights.json")
 
