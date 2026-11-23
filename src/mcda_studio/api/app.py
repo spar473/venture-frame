@@ -17,6 +17,7 @@ from mcda_studio.api import operations as ops
 from mcda_studio.api import schemas as sc
 from mcda_studio.api.errors import ApiError, from_mcda_error, install_handlers
 from mcda_studio.api.model_comparisons import router as models_router
+from mcda_studio.api.origin import CrossOriginGuard
 from mcda_studio.api.proposals import ProposalBodyLimit
 from mcda_studio.api.proposals import router as proposals_router
 from mcda_studio.api.proxy import router as proxy_router
@@ -1079,6 +1080,7 @@ def create_app(
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=_LOCAL_HOSTS)
     install_handlers(app)
     app.add_middleware(ProposalBodyLimit)
+    app.add_middleware(CrossOriginGuard)  # added last, so it runs first
     app.include_router(_router(examples, dist))
     app.include_router(proposals_router)
     app.include_router(models_router)
