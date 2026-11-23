@@ -141,6 +141,40 @@ BACKEND += [
     ),
 ]
 
+# Explicit cross-site guard (Origin and Sec-Fetch-Site), exercised by the API tests.
+BACKEND += [
+    Mutation(
+        "Origin guard is not installed",
+        "src/mcda_studio/api/app.py",
+        "    app.add_middleware(CrossOriginGuard)  # added last, so it runs first\n",
+        "",
+    ),
+    Mutation(
+        "Origin guard ignores Sec-Fetch-Site",
+        "src/mcda_studio/api/origin.py",
+        "if fetch_site is not None and fetch_site.strip().lower() not in ALLOWED_FETCH_SITES:",
+        "if False:",
+    ),
+    Mutation(
+        "Origin guard ignores Origin",
+        "src/mcda_studio/api/origin.py",
+        "if origin is not None and not _trusted_origin(origin.strip(), _serving_port(scope, headers)):",
+        "if False:",
+    ),
+    Mutation(
+        "Origin guard accepts a local origin on any port",
+        "src/mcda_studio/api/origin.py",
+        "        and origin_port == port\n",
+        "",
+    ),
+    Mutation(
+        "Origin guard accepts any host",
+        "src/mcda_studio/api/origin.py",
+        "        and parts.hostname in TRUSTED_HOSTS\n",
+        "",
+    ),
+]
+
 FRONTEND = [
     Mutation(
         "F1 project is always dirty",

@@ -2,12 +2,28 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
-// In development the Vite server proxies /api to the Python backend (`mcda serve`).
+// In development the Vite server proxies /api to the Python backend (`mcda serve`). The backend
+// refuses writes whose Origin is not its own address, so the proxy presents the page's same-origin
+// request with the backend's origin.
 const backend = process.env.MCDA_BACKEND ?? "http://127.0.0.1:8765";
+const backendOrigin = new URL(backend).origin;
 
 export default defineConfig({
   plugins: [react()],
-  server: { port: 5173, proxy: { "/api": { target: backend, changeOrigin: false } } },
+  server: {
+    port: 5173,
+    proxy: {
+      "/api": {
+        target: backend,
+        changeOrigin: false,
+        configure: (proxy) => {
+          proxy.on("proxyReq", (request) => {
+            if (request.getHeader("origin") !== undefined) request.setHeader("origin", backendOrigin);
+          });
+        },
+      },
+    },
+  },
   build: { outDir: "dist", sourcemap: true },
   test: {
     environment: "jsdom",

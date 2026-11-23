@@ -124,6 +124,7 @@ Every error has this body (`details` may be empty):
 | HTTP | `code` | When |
 | --- | --- | --- |
 | 400 | `MCDA_ERROR` | Any other domain error |
+| 403 | `CROSS_ORIGIN_REFUSED` | A `POST`, `PUT`, `PATCH` or `DELETE` from a web page on another site: `Sec-Fetch-Site` is present and not `same-origin` or `none`, or `Origin` is present and is not `http://` on `localhost`, `127.0.0.1` or `[::1]` with the server's own port. A request with neither header (the CLI, scripts, `curl`) is allowed. `GET`, `HEAD` and `OPTIONS` are never refused for this |
 | 404 | `PROJECT_NOT_FOUND` | No project with that ID |
 | 404 | `EXAMPLE_NOT_FOUND` | No bundled example with that name |
 | 404 | `NOT_FOUND` | No such API endpoint (also when a frontend is mounted) |
@@ -525,7 +526,9 @@ browser. It is not a server endpoint.
   Within that server, RLock and If-Match still protect project edits. External/uncooperative programs
   can bypass advisory locking; see operating limits (development record, not included).
 - **No authentication.** The API is for the local user only (loopback, no CORS). Do not expose it
-  on a network.
+  on a network. State-changing requests from other websites are refused explicitly
+  (`CROSS_ORIGIN_REFUSED`); this is not authentication, and any local program can still call the
+  API.
 - **Incomplete OpenAPI errors.** The OpenAPI document does not enumerate the non-422 error
   responses; see [Errors](#errors).
 
