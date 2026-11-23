@@ -24,6 +24,8 @@
   behind a `sys_platform == "win32"` marker, so macOS and Linux install exactly what they did.
 - CI gains a `windows-python312` job (Python and frontend gates, serve smoke, installed smoke over
   HTTP and the CLI) and a job comparing the Linux and Windows byte-identity manifests.
+- The Linux CI job's time limit rises from 25 to 35 minutes, the same as the Windows job. It takes
+  about 18–24 minutes, and the 25-minute limit cancelled passing runs on slower runners.
 
 ### Explicit cross-site check
 
