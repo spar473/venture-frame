@@ -378,10 +378,11 @@ class Fetcher:
         self._robots: dict[str, urllib.robotparser.RobotFileParser | bool] = {}
 
     def _wait(self) -> None:
-        pause = self.interval - (time.monotonic() - self._last)
+        # perf_counter: monotonic everywhere, and fine-grained on Windows (monotonic ticks 15.6 ms)
+        pause = self.interval - (time.perf_counter() - self._last)
         if pause > 0:
             time.sleep(pause)
-        self._last = time.monotonic()
+        self._last = time.perf_counter()
 
     def get(self, url: str) -> tuple[int | None, str, bytes, str, str]:
         """(status, final url, body, content type, error). A status is None on a transport error."""

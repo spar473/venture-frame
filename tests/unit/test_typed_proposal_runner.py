@@ -70,7 +70,7 @@ class Site:
 
         class Handler(BaseHTTPRequestHandler):
             def do_GET(self):  # noqa: N802
-                site.hits.append((self.path, self.headers.get("User-Agent"), time.monotonic()))
+                site.hits.append((self.path, self.headers.get("User-Agent"), time.perf_counter()))
                 if self.path == "/robots.txt":
                     if site.robots is None:
                         self.send_response(404)

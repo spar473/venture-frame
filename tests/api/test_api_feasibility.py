@@ -153,7 +153,7 @@ def test_the_cli_states_checks_prints_beside_and_clears(
     monkeypatch.setattr(cli, "console", Console(width=200))
     monkeypatch.setattr(cli, "err_console", Console(stderr=True, width=200))
     path = tmp_path / "q.json"
-    path.write_text(to_json_text(repo.load(QUALIFICATION)))
+    path.write_text(to_json_text(repo.load(QUALIFICATION)), encoding="utf-8", newline="\n")
     start = path.read_bytes()
     f = str(path)
     runner = CliRunner()
