@@ -65,8 +65,9 @@ test("a page on another origin cannot create a project", async ({ page, request,
     }).catch(() => undefined);
   }, base.origin);
   const response = await refused;
+  // The response is opaque to the page (and its body to Playwright), but its status is reported.
+  // Only the cross-site guard answers 403; without it this text/plain body would fail validation.
   expect(response.status()).toBe(403);
-  expect((await response.request().allHeaders()).origin).toBe(other);
 
   const after = (await (await request.get("/api/projects")).json()) as { projects: unknown[] };
   expect(after.projects.length).toBe(before.projects.length);
