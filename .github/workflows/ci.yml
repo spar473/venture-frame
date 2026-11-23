@@ -10,7 +10,9 @@ permissions:
 jobs:
   linux-python312:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    # The job takes about 18-24 minutes (Python gate, every browser workflow, both distribution
+    # routes and the installed GUI); 25 minutes cancelled passing runs on slower runners.
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-python@v7.1.0
