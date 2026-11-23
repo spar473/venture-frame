@@ -17,6 +17,9 @@
 - `scripts/build_release.py` checks wheel member names with `/` and finds `npm.cmd`, so both
   build routes run on Windows. `scripts/smoke_install.py` understands the Windows
   virtual-environment layout and Playwright cache, and pins pipx to its pip backend.
+- The typed-proposal runner spaces requests from the end of the previous one (so a slow local
+  connection on Windows cannot bring two requests closer than the interval) and retries a refused
+  rename of its snapshot index briefly on Windows.
 - The hash locks install on Windows: each gains `colorama==0.4.6` (pip-compile's Windows output)
   behind a `sys_platform == "win32"` marker, so macOS and Linux install exactly what they did.
 - CI gains a `windows-python312` job (Python and frontend gates, serve smoke, installed smoke over
