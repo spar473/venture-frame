@@ -6,6 +6,7 @@ Every archive here is built in a temporary directory; no user library is touched
 import json
 import os
 import stat
+import sys
 import zipfile
 from pathlib import Path
 
@@ -211,7 +212,13 @@ def test_verify_writes_nothing(tmp_path):
         "../escape.json",
         "/absolute.json",
         "projects/../escape.json",
-        "projects\\a.json",
+        pytest.param(
+            "projects\\a.json",
+            marks=pytest.mark.skipif(
+                sys.platform == "win32",
+                reason="zipfile on Windows stores a backslash as /; see test_fs_platform",
+            ),
+        ),
         "projects/ä.json",
         "projects/",
         "projects/a.json/",
@@ -391,6 +398,7 @@ def test_restore_writes_nothing_when_the_archive_fails_verification(tmp_path):
     assert not (tmp_path / "restored").exists() and not (tmp_path / "escape.json").exists()
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX only; counterpart in test_fs_platform")
 def test_new_files_are_created_exclusively(tmp_path):
     (tmp_path / "x.json").write_text("existing")
     fd = os.open(tmp_path, os.O_RDONLY | os.O_DIRECTORY)

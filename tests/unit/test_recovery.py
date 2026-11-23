@@ -1,6 +1,7 @@
 """Recovery properties: no overwrite, no escapes and no loss of recovery data on failures."""
 
 import os
+import sys
 
 import pytest
 
@@ -107,7 +108,20 @@ def test_existing_destination_symlink_is_not_followed_or_replaced(tmp_path):
     assert entry.exists()
 
 
-@pytest.mark.parametrize("failure", ["stage", "link", "directory-sync"])
+@pytest.mark.parametrize(
+    "failure",
+    [
+        "stage",
+        "link",
+        pytest.param(
+            "directory-sync",
+            marks=pytest.mark.skipif(
+                sys.platform == "win32",
+                reason="Windows has no directory fsync; counterpart in test_fs_platform.py",
+            ),
+        ),
+    ],
+)
 def test_failure_preserves_original_recovery_and_active_projects(tmp_path, monkeypatch, failure):
     from mcda_studio.storage import project_store as module
 
@@ -140,6 +154,7 @@ def test_failure_preserves_original_recovery_and_active_projects(tmp_path, monke
     assert not list(store.root.glob(".restore-*.tmp"))
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX FIFO; counterpart in test_fs_platform")
 def test_non_regular_recovery_file_cannot_block_listing(tmp_path):
     store, project, entry = deleted(tmp_path)
     entry.unlink()
