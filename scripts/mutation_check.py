@@ -1689,8 +1689,10 @@ SUMMARY_FRONTEND = [
     Mutation("SUMMARY a response for another profile shown", "frontend/src/state/useScreeningSummary.ts",
              'result.status === "available" && (result.weight_profile_id !== context.resolvedProfileId',
              'result.status === "never" && (result.weight_profile_id !== context.resolvedProfileId'),
-    Mutation("SUMMARY a raised weight shown as lowered", "frontend/src/components/results/ScreeningSummaryView.tsx",
+    Mutation("SUMMARY a raised weight shown as lowered", "frontend/src/components/results/closestChange.ts",
              'const sign = f.direction === "raise" ? "+" : "−";', 'const sign = f.direction === "raise" ? "−" : "+";'),
+    Mutation("SUMMARY a raised weight reads as lost in the Analyst view", "frontend/src/components/results/closestChange.ts",
+             'const verb = f.direction === "raise" ? "gains" : "loses";', 'const verb = f.direction === "raise" ? "loses" : "gains";'),
     Mutation("SUMMARY a failed requirement shown as met", "frontend/src/components/results/ScreeningSummaryView.tsx",
              'if (r.status === "fail") return', 'if (r.status === "pass") return'),
 ]  # fmt: skip
