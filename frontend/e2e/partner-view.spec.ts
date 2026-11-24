@@ -126,6 +126,19 @@ test("case 2 shows rank ranges, one too-close group and the lead sentence", asyn
   await expect(table.locator("td.rank-cell .rank-range").nth(1)).toHaveText("(2–3)");
 });
 
+test("case 2 shows decision confidence under the summary, from the same draws", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openStudy(page);
+  const table = page.getByRole("table", { name: "Decision confidence", exact: true });
+  await expect(table).toBeVisible({ timeout: 30_000 });
+  await expect(table.getByRole("columnheader")).toHaveText(["Alternative", "First", "Top 3", "Prioritise for diligence", "Monitor", "Not now"]);
+  await expect(table.getByRole("rowheader")).toHaveText(["Upstock", "Wellumio", "Hectre", "Wych", "Captivate Technology", "Scentian Bio", "Hnry", "Kea Aerospace"]);
+  await expect(table.getByRole("row").nth(1).getByRole("cell")).toHaveText(["93% (92–94%)", "> 99% (99–100%)", "97% (97–98%)", "3% (2–3%)", "0% (0–1%)"]);
+  await expect(table.getByRole("row").nth(4).getByRole("cell").nth(2)).toHaveText("36% (34–37%)"); // Wych, Prioritise
+  await expect(page.getByText("Share of draws under the uncertainty stated in the project; not probabilities of success.")).toBeVisible();
+  await axe(page, "decision confidence");
+});
+
 test("the company drawer and partner comparison read in the Analyst view's terms", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await openStudy(page);

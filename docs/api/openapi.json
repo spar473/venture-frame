@@ -4191,6 +4191,55 @@
         "title": "ClassChange",
         "type": "object"
       },
+      "ClassShare": {
+        "additionalProperties": false,
+        "properties": {
+          "class_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+            "title": "Class Id",
+            "type": "string"
+          },
+          "lower": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lower"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "share": {
+            "title": "Share",
+            "type": "number"
+          },
+          "upper": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upper"
+          }
+        },
+        "required": [
+          "share",
+          "lower",
+          "upper",
+          "class_id",
+          "name"
+        ],
+        "title": "ClassShare",
+        "type": "object"
+      },
       "ClassSummary": {
         "additionalProperties": false,
         "properties": {
@@ -19371,6 +19420,17 @@
             "title": "Band Share",
             "type": "number"
           },
+          "classes": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ClassShare"
+            },
+            "title": "Classes",
+            "type": "array"
+          },
+          "first": {
+            "$ref": "#/components/schemas/ShareEstimate"
+          },
           "mavt_rank": {
             "title": "Mavt Rank",
             "type": "integer"
@@ -19390,6 +19450,9 @@
           "rank_low": {
             "title": "Rank Low",
             "type": "integer"
+          },
+          "top_ranks": {
+            "$ref": "#/components/schemas/ShareEstimate"
           }
         },
         "required": [
@@ -19399,7 +19462,10 @@
           "rank_low",
           "rank_high",
           "band_share",
-          "rank1_share"
+          "rank1_share",
+          "first",
+          "top_ranks",
+          "classes"
         ],
         "title": "RobustnessRow",
         "type": "object"
@@ -20217,6 +20283,22 @@
             "title": "Basis",
             "type": "string"
           },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "confidence_label": {
+            "default": "Decision confidence is the share of draws, under the uncertainty stated in the project, in which an alternative is first, is in the top ranks or falls in a class. It describes how settled the screening reading is, not a probability of success.",
+            "title": "Confidence Label",
+            "type": "string"
+          },
           "configuration": {
             "$ref": "#/components/schemas/AnalysisConfiguration-Output"
           },
@@ -20353,6 +20435,17 @@
             ],
             "title": "Seed"
           },
+          "top_k": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top K"
+          },
           "weight_profile_id": {
             "anyOf": [
               {
@@ -20380,10 +20473,13 @@
           "draws",
           "seed",
           "parameters",
+          "top_k",
+          "confidence",
           "rows",
           "groups",
           "basis",
-          "label"
+          "label",
+          "confidence_label"
         ],
         "title": "ScreeningRobustness",
         "type": "object"
@@ -21787,6 +21883,45 @@
         ],
         "title": "Severity",
         "type": "string"
+      },
+      "ShareEstimate": {
+        "additionalProperties": false,
+        "description": "A share of draws with SMAA-2's exact interval; no interval under exact enumeration.",
+        "properties": {
+          "lower": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lower"
+          },
+          "share": {
+            "title": "Share",
+            "type": "number"
+          },
+          "upper": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upper"
+          }
+        },
+        "required": [
+          "share",
+          "lower",
+          "upper"
+        ],
+        "title": "ShareEstimate",
+        "type": "object"
       },
       "SharedDraw": {
         "additionalProperties": false,

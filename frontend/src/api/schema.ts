@@ -3203,6 +3203,19 @@ export interface components {
             /** Weight */
             weight: number;
         };
+        /** ClassShare */
+        ClassShare: {
+            /** Class Id */
+            class_id: string;
+            /** Lower */
+            lower: number | null;
+            /** Name */
+            name: string;
+            /** Share */
+            share: number;
+            /** Upper */
+            upper: number | null;
+        };
         /** ClassSummary */
         ClassSummary: {
             /** Alternative Ids */
@@ -8424,6 +8437,12 @@ export interface components {
             alternative_id: string;
             /** Band Share */
             band_share: number;
+            /**
+             * Classes
+             * @default []
+             */
+            classes: components["schemas"]["ClassShare"][];
+            first: components["schemas"]["ShareEstimate"];
             /** Mavt Rank */
             mavt_rank: number;
             /** Name */
@@ -8434,6 +8453,7 @@ export interface components {
             rank_high: number;
             /** Rank Low */
             rank_low: number;
+            top_ranks: components["schemas"]["ShareEstimate"];
         };
         /** SampledRange */
         "SampledRange-Input": {
@@ -8666,6 +8686,13 @@ export interface components {
              * @default
              */
             basis: string;
+            /** Confidence */
+            confidence: number | null;
+            /**
+             * Confidence Label
+             * @default Decision confidence is the share of draws, under the uncertainty stated in the project, in which an alternative is first, is in the top ranks or falls in a class. It describes how settled the screening reading is, not a probability of success.
+             */
+            confidence_label: string;
             configuration: components["schemas"]["AnalysisConfiguration-Output"];
             /**
              * Coverage
@@ -8708,6 +8735,8 @@ export interface components {
             scenario_id: string | null;
             /** Seed */
             seed: number | null;
+            /** Top K */
+            top_k: number | null;
             /** Weight Profile Id */
             weight_profile_id: string | null;
         };
@@ -9165,6 +9194,18 @@ export interface components {
          * @enum {string}
          */
         Severity: "error" | "warning" | "info";
+        /**
+         * ShareEstimate
+         * @description A share of draws with SMAA-2's exact interval; no interval under exact enumeration.
+         */
+        ShareEstimate: {
+            /** Lower */
+            lower: number | null;
+            /** Share */
+            share: number;
+            /** Upper */
+            upper: number | null;
+        };
         /**
          * SharedDraw
          * @description Cells from one source: they use one common uniform draw through their own quantiles.

@@ -3922,6 +3922,20 @@ ROBUSTNESS_BACKEND = [
     Mutation("ROBUSTNESS modifies the submitted project", "src/mcda_studio/services/screening_robustness_service.py",
              "    requested = (configuration or project.analysis).model_copy(deep=True)",
              '    project.title += " changed"\n    requested = (configuration or project.analysis).model_copy(deep=True)'),
+    Mutation("CONFIDENCE top ranks count one rank too few", "src/mcda_studio/services/screening_robustness_service.py",
+             "    return sum(counts[:k])", "    return sum(counts[: k - 1])"),
+    Mutation("CONFIDENCE top ranks ignore a project with fewer alternatives than TOP_K", "src/mcda_studio/services/screening_robustness_service.py",
+             "    top_k = min(TOP_K, len(result.ranking))", "    top_k = TOP_K"),
+    Mutation("CONFIDENCE the first share is sole first, not tied first", "src/mcda_studio/services/screening_robustness_service.py",
+             "            share=estimates[0].frequency, lower=estimates[0].lower, upper=estimates[0].upper",
+             "            share=entry.sole_first.frequency, lower=estimates[0].lower, upper=estimates[0].upper"),
+    Mutation("CONFIDENCE classes in the alternative's own order, not best first", "src/mcda_studio/services/screening_robustness_service.py",
+             "            for band in result.classes\n", "            for band in reversed(result.classes)\n"),
+    Mutation("CONFIDENCE intervals at a fixed 90 % level", "src/mcda_studio/services/screening_robustness_service.py",
+             "    lower, upper = clopper_pearson(count, draws, confidence)", "    lower, upper = clopper_pearson(count, draws, 0.90)"),
+    Mutation("CONFIDENCE the report rounds an interval inward", "src/mcda_studio/services/screening_report_service.py",
+             "    low, high = math.floor(estimate.lower * 100), math.ceil(estimate.upper * 100)",
+             "    low, high = round(estimate.lower * 100), round(estimate.upper * 100)"),
 ]  # fmt: skip
 OVERNIGHT["robustness"] = (
     ROBUSTNESS_BACKEND,
@@ -3930,6 +3944,8 @@ OVERNIGHT["robustness"] = (
         "tests/regression/test_robustness_reference.py",
         "tests/unit/test_screening_robustness.py",
         "tests/api/test_api_screening_robustness.py",
+        "tests/regression/test_decision_confidence_reference.py",
+        "tests/regression/test_screening_report_reference.py",
     ),
 )
 

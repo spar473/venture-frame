@@ -380,6 +380,48 @@ def test_a_model_the_engine_cannot_evaluate_gives_an_unavailable_line_not_a_tabl
     assert "<table>" not in html.split("Partner comparison")[0]
 
 
+def percent_cell(count: int, n: int) -> str:
+    """A share of draws as the report shows it, by own code: whole percent, "< 1%" and "> 99%"
+    for shares that round to 0 or 100 without being so, then the exact 95 % interval from SciPy,
+    widened outward to whole percents."""
+    from math import ceil, floor
+
+    from scipy.stats import beta
+
+    share = count / n
+    if 0 < share < 0.005:
+        text = "< 1%"
+    elif 0.995 <= share < 1:
+        text = "> 99%"
+    else:
+        text = f"{round(Decimal(share) * 100):.0f}%"
+    low = 0.0 if count == 0 else float(beta.ppf(0.025, count, n - count + 1))
+    high = 1.0 if count == n else float(beta.ppf(0.975, count + 1, n - count))
+    return f"{text} ({floor(low * 100)}–{ceil(high * 100)}%)"
+
+
+@pytest.mark.parametrize("name", PROFILES)
+def test_every_decision_confidence_cell_equals_smaa_counts(name):
+    project, _ = study()
+    shown = tables(render())[f"{name}: decision confidence"]
+    header, body = shown[0], shown[1:]
+    assert header == ["Alternative", "First", "Top 3", "Prioritise for diligence", "Monitor",
+                      "Not now"]  # fmt: skip
+    smaa = analysis_service.evaluate_project(
+        project, AnalysisConfiguration(method="smaa2", weight_profile_id=PROFILES[name])
+    )
+    assert isinstance(smaa, SmaaResult) and smaa.samples is not None
+    n = smaa.samples
+    by = {a.name: a for a in smaa.acceptability}
+    assert [row[0] for row in body] == [r.name for r in smaa.ranking]
+    for row in body:
+        acceptability = by[row[0]]
+        counts = [e.count for e in acceptability.ranks]
+        classes = [acceptability.classes[c.class_id].count for c in smaa.classes]
+        expected = [counts[0], sum(counts[:3]), *classes]
+        assert row[1:] == [percent_cell(c, n) for c in expected]  # type: ignore[arg-type]
+
+
 def test_looking_never_changes_the_project():
     project, dossier = study()
     before = project.fingerprint()
