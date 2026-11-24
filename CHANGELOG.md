@@ -37,6 +37,39 @@
 - The development server (`npm run dev`) presents proxied API requests with the backend's origin,
   so the guard accepts them.
 
+### Partner view
+
+- **Venture Frame in the interface.** The page title, wordmark and connection error name Venture
+  Frame, from one frontend product configuration (`frontend/src/product.ts`). The Python package
+  `mcda_studio`, the CLI `mcda`, the API title, Python's error messages and the backup manifest
+  are unchanged.
+- **Start page.** "Screen companies for due diligence", with three starters: Blank, Venture
+  screening and the evidence-and-model workflows. Every other starter stays in **New project… →
+  Starter gallery**, linked under the cards.
+- **Analyst view.** The header leads with **Partner weighting**; Method, Set up and Scenario sit
+  in a collapsed **Advanced** section whose label still names a non-default method or scenario.
+  Values, margins and contributions in the screening summary, company detail and partner
+  comparison show three decimals ("< 0.001" below that), with the full value on hover. The closest
+  change reads "Moves to Monitor if Problem severity and willingness to pay gains 6.1 pts of
+  weight". The Builder view, every export, the screening report and all JSON and CSV keep their
+  exact text and precision.
+- **Open-question counts** say whether they come from the model only or include the evidence
+  dossier, and offer to load the study's evidence. How questions are counted is unchanged.
+- **Robustness bands** (new read-only output; [design](docs/design/robustness-bands.md)). From
+  SMAA-2's rank acceptabilities under the uncertainty a project states: each alternative's rank
+  range (the shortest run of ranks holding at least 80 % of draws) and the groups whose ranges
+  overlap, shown as "Too close to separate". `POST /api/screening-summary/robustness` and the
+  stored-project route, behind the cross-site check. The screening summary shows `2 (2–6)`, a
+  group marker and one lead sentence; the bands load after the summary and are hidden during a
+  what-if trial. SMAA-2, the screening summary response and its fixture are unchanged.
+- **Screening report** (version 3) adds each rank range and one line per too-close group, or one
+  line saying why there are none. The case reports, their previews and the two golden reports are
+  regenerated; nothing else in them changed.
+- Development: `@axe-core/playwright` (MPL-2.0, development only) for an accessibility scan in the
+  new browser spec;
+  `scripts/mutation_check.py` gains nine robustness mutants and two report mutants, and finds
+  `npm.cmd`/`npx.cmd` on Windows.
+
 ## 0.1.0 — 17 November 2026
 
 First public release of Venture Frame: the MCDA Studio engine, command line and local interface,

@@ -14,7 +14,7 @@ the evidence behind every rating, and how close each call is.
 [Case studies](#case-studies) · [Product tour](#product-tour) · [Getting started](#getting-started) ·
 [Methodology](#methodology) · [Scope and limitations](#scope-and-limitations)
 
-![Screening summary of the venture study: rank, class and margin, mandate status, largest contributions, closest change and open questions for each company](docs/images/screening-summary.png)
+![Screening summary of the venture study: rank and rank range, class and margin, mandate status, largest contributions, closest change and open questions for each company, with the six middle companies marked too close to separate](docs/images/screening-summary.png)
 
 ## Overview
 
@@ -28,7 +28,7 @@ into an explicit, inspectable model:
 | **Mandate screening** | Stage, geography and sector requirements, shown beside the ranking. No score can offset a failure. |
 | **Partner profiles** | Each partner's weighting produces its own ranking, side by side. Nothing is averaged. |
 | **Prioritisation classes** | *Prioritise for diligence / Monitor / Not now*, with each company's margin to the next class. |
-| **Decision sensitivity** | The exact weight change that would reorder two companies or move one across a class boundary. |
+| **Decision sensitivity** | The exact weight change that would reorder two companies or move one across a class boundary, and which ranks are too close to separate under the stated uncertainty. |
 | **Sourced evidence** | Every rating is linked to a dated, cited claim. Disputed and outdated claims stay visible. |
 | **Method cross-checks** | Sampled uncertainty analysis and a non-compensatory method, each reported separately. |
 | **Shareable reports** | A single self-contained HTML file per screen, readable without installing anything. |

@@ -1,7 +1,8 @@
 # User guide
 
-This guide walks through building and analysing a decision in MCDA Studio. Installation and
-startup are in the [README](../README.md). The design notes in [`design/`](design/) give the
+This guide walks through building and analysing a decision in Venture Frame, which is built on
+the domain-neutral `mcda_studio` engine (CLI `mcda`). Installation and startup are in the
+[README](../README.md). The design notes in [`design/`](design/) give the
 exact rules behind each screen.
 
 ## Contents
@@ -42,9 +43,10 @@ exact rules behind each screen.
 
 ## 2. Create or open a project
 
-- **New project:** on the start page, choose one of the four starters (Blank, Supplier selection,
-  Infrastructure procurement or Venture screening), or use **New project…** for a blank project or
-  a template.
+- **New project:** the start page shows three starters (Blank, Venture screening and the
+  venture evidence-and-model workflows). **New project…** (also linked as "More starters" under the
+  cards) opens the full starter gallery, including Supplier selection and Infrastructure
+  procurement, and offers a blank project or a template.
 - **Examples:** import a bundled example. The `nz_deeptech_vc` example is a complete,
   fully worked model and a good place to start.
 - **Stable IDs:** every alternative, criterion, profile and scenario has an ID that survives
@@ -54,6 +56,16 @@ exact rules behind each screen.
   (results, sensitivity, scenarios, compare), **Evidence** (evidence, open questions) and **Decide**
   (decision record). The bar above the content chooses the method, scenario and weight profile
   being viewed; **Details** shows the resolved profile and the project revision.
+- **Analyst view and Builder view.** **Analyst view** (top right) is for reading a screen: results,
+  sensitivity, comparison, evidence, questions and the decision record, with nothing to edit by
+  accident. Its bar leads with **Partner weighting** (the weight profile); **Method**, **Set up …**
+  and **Scenario** sit under a collapsed **Advanced** section, whose label names a non-default
+  method or scenario (for example "Advanced · Scenario: Linear market size") so collapsing never
+  hides what is being read. The saved method applies whether or not Advanced is open. In the
+  Analyst view the screening summary, company detail and partner comparison show values, margins
+  and contributions to three decimal places (below 0.001 they read "< 0.001"); hover a number for
+  its full value. **Builder view** adds the model editors and keeps four decimals and the original
+  wording everywhere. Exports and reports are the same in both views.
 
 ## 3. Build the model
 
@@ -219,6 +231,27 @@ Details: [scenarios](design/scenarios.md).
 - **Linked inspection.** Select any bar, segment or cell to see the alternative or criterion in
   full.
 
+### Screening summary and rank ranges
+
+The summary at the top of Results has one row per alternative: rank, overall value, class and
+margin, mandate status, the two largest contributions, the closest change and the open questions.
+
+- **Closest change** is the smallest change to one criterion's weight that would move the
+  alternative's rank or class. The Analyst view says it in percentage points of the total weight:
+  "Moves to Monitor if Problem severity and willingness to pay gains 6.1 pts of weight". The Builder
+  view keeps "+0.0615 of total weight on … → moves to Monitor". One weight changes at a time.
+- **Open questions** says where its counts come from: "model only" (weight and stated-uncertainty
+  questions) or "model and evidence dossier" (adding outdated, disputed and unreviewed claims).
+  Load the study's evidence from the ⓘ beside the header, or from **Evidence**, to include them.
+- **Rank ranges.** When the project states uncertainty (SMAA-2's ranges), the Rank column reads,
+  for example, `2 (2–6)`: in at least 80 % of SMAA-2's draws the alternative's rank falls between
+  2 and 6. Alternatives whose ranges overlap share a marker labelled **Too close to separate**, and
+  one sentence above the table names the leader's share of first places and the overlapping group.
+  The ⓘ beside it says what varied and what did not. Ranges load just after the summary, use the
+  saved SMAA-2 parameters (or SMAA-2's defaults) and the selected profile and scenario, and are
+  hidden during a what-if trial. A project with no stated uncertainty shows the rank alone and says
+  why. A range is not a probability of success. Details: [robustness bands](design/robustness-bands.md).
+
 **Hiding series** is for inspection only. It never renormalises values, and hidden items are
 always disclosed. Tables show every number without hovering, and matrices support arrow keys.
 Details: [results and exports](design/results-and-exports.md).
@@ -227,8 +260,9 @@ Details: [results and exports](design/results-and-exports.md).
 
 **Download screening report** (Results) saves one HTML file you can open or forward without
 installing anything, and print to A4 PDF from a browser. It holds, for every saved weight profile,
-the screening summary (rank, class and margin, mandate status, the two largest contributions, the
-closest change and the open questions), a side-by-side partner comparison, the mandate failures,
+the screening summary (rank and rank range, class and margin, mandate status, the two largest
+contributions, the closest change and the open questions, and which alternatives are too close to
+separate), a side-by-side partner comparison, the mandate failures,
 each method's leader without any consensus, evidence freshness, the top open questions and the
 project fingerprint. Its "Read this first" box starts with the project's own description (that is
 where a study says what it is not, whose information it uses and whether anyone was contacted),
