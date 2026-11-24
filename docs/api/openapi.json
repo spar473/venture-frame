@@ -19359,6 +19359,51 @@
         "title": "ReviewedAnnotation",
         "type": "object"
       },
+      "RobustnessRow": {
+        "additionalProperties": false,
+        "properties": {
+          "alternative_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+            "title": "Alternative Id",
+            "type": "string"
+          },
+          "band_share": {
+            "title": "Band Share",
+            "type": "number"
+          },
+          "mavt_rank": {
+            "title": "Mavt Rank",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "rank1_share": {
+            "title": "Rank1 Share",
+            "type": "number"
+          },
+          "rank_high": {
+            "title": "Rank High",
+            "type": "integer"
+          },
+          "rank_low": {
+            "title": "Rank Low",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "alternative_id",
+          "name",
+          "mavt_rank",
+          "rank_low",
+          "rank_high",
+          "band_share",
+          "rank1_share"
+        ],
+        "title": "RobustnessRow",
+        "type": "object"
+      },
       "SampledRange-Input": {
         "additionalProperties": false,
         "properties": {
@@ -20158,6 +20203,189 @@
           "project"
         ],
         "title": "ScreeningReportRequest",
+        "type": "object"
+      },
+      "ScreeningRobustness": {
+        "additionalProperties": false,
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "basis": {
+            "default": "",
+            "title": "Basis",
+            "type": "string"
+          },
+          "configuration": {
+            "$ref": "#/components/schemas/AnalysisConfiguration-Output"
+          },
+          "coverage": {
+            "default": 0.8,
+            "title": "Coverage",
+            "type": "number"
+          },
+          "draws": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Draws"
+          },
+          "evaluation": {
+            "anyOf": [
+              {
+                "enum": [
+                  "sampled",
+                  "exact_enumeration"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evaluation"
+          },
+          "groups": {
+            "default": [],
+            "items": {
+              "items": {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "issue_codes": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Issue Codes",
+            "type": "array"
+          },
+          "label": {
+            "default": "Rank ranges show where each alternative's rank falls in most draws under the uncertainty stated in the project. They are not probabilities of success or predictions.",
+            "title": "Label",
+            "type": "string"
+          },
+          "parameters": {
+            "anyOf": [
+              {
+                "enum": [
+                  "saved",
+                  "defaults"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parameters"
+          },
+          "project_fingerprint": {
+            "title": "Project Fingerprint",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "rows": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/RobustnessRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "run": {
+            "anyOf": [
+              {
+                "enum": [
+                  "performance",
+                  "preference",
+                  "combined"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run"
+          },
+          "scenario_id": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario Id"
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed"
+          },
+          "weight_profile_id": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Profile Id"
+          }
+        },
+        "required": [
+          "project_fingerprint",
+          "configuration",
+          "weight_profile_id",
+          "scenario_id",
+          "available",
+          "reason",
+          "issue_codes",
+          "coverage",
+          "run",
+          "evaluation",
+          "draws",
+          "seed",
+          "parameters",
+          "rows",
+          "groups",
+          "basis",
+          "label"
+        ],
+        "title": "ScreeningRobustness",
         "type": "object"
       },
       "ScreeningSummary": {
@@ -27951,6 +28179,58 @@
         ]
       }
     },
+    "/api/projects/{project_id}/screening-summary/robustness": {
+      "post": {
+        "operationId": "screening_robustness_stored_api_projects__project_id__screening_summary_robustness_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalysisOptions"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreeningRobustness"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Screening Robustness Stored",
+        "tags": [
+          "analysis"
+        ]
+      }
+    },
     "/api/projects/{project_id}/sensitivity": {
       "post": {
         "operationId": "sensitivity_stored_api_projects__project_id__sensitivity_post",
@@ -28975,6 +29255,48 @@
           }
         },
         "summary": "Screening Profiles Draft",
+        "tags": [
+          "analysis"
+        ]
+      }
+    },
+    "/api/screening-summary/robustness": {
+      "post": {
+        "description": "Rank ranges and too-close-to-separate groups from SMAA-2 under the uncertainty the\nproject states. Read-only; unavailable, with its reason, when none is stated.",
+        "operationId": "screening_robustness_draft_api_screening_summary_robustness_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvaluateDraftRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreeningRobustness"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Screening Robustness Draft",
         "tags": [
           "analysis"
         ]

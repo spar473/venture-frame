@@ -1,7 +1,7 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 import { resolve } from "node:path";
 import type { ProfileComparison, Project, ScreeningDetails } from "../src/api/types";
-import { openTab, readJson, REPO, saveState, storedFile } from "./helpers";
+import { openTab, readJson, REPO, saveState, starterCard, storedFile } from "./helpers";
 
 const study = readJson(resolve(REPO, "examples/nz_venture_screening/project.json")) as Project;
 async function snapshot(request: APIRequestContext, id: string) {
@@ -26,7 +26,7 @@ function detailResponse(page: Page, id: string, profile: string) {
 
 test("partner readings use separate engine ranks and endpoint profiles without changing the saved model", async ({ page, request }) => {
   test.setTimeout(90_000); await page.goto("/");
-  await page.getByRole("button", { name: "Start from Venture screening", exact: true }).click();
+  await starterCard(page, "Venture screening").click();
   await page.getByRole("button", { name: "Open worked example — Venture screening", exact: true }).click(); await openTab(page, "Results");
   const before = await snapshot(request, study.id), received = comparisonResponse(page);
   await page.getByRole("checkbox", { name: "Compare partners", exact: true }).check();
@@ -42,8 +42,8 @@ test("partner readings use separate engine ranks and endpoint profiles without c
   for (const alternative of left.summary.rows) {
     const other = right.summary.rows.find(row => row.alternative_id === alternative.alternative_id); if (!other) throw Error("Other endpoint missing");
     const row = table.locator("tbody tr").filter({ has: page.locator(`th button[data-company-id="${alternative.alternative_id}"]`) });
-    await expect(row.locator("td").nth(0)).toHaveText(`${String(alternative.rank)} · ${alternative.value.toFixed(4)}${alternative.class_name ? ` · ${alternative.class_name}` : ""}`);
-    await expect(row.locator("td").nth(1)).toHaveText(`${String(other.rank)} · ${other.value.toFixed(4)}${other.class_name ? ` · ${other.class_name}` : ""}`);
+    await expect(row.locator("td").nth(0)).toHaveText(`${String(alternative.rank)} · ${alternative.value.toFixed(3)}${alternative.class_name ? ` · ${alternative.class_name}` : ""}`);
+    await expect(row.locator("td").nth(1)).toHaveText(`${String(other.rank)} · ${other.value.toFixed(3)}${other.class_name ? ` · ${other.class_name}` : ""}`);
   }
   const hnry = right.summary.rows.find(row => row.alternative_id === "hnry"); if (!hnry) throw Error("Hnry missing");
   const rightDetail = detailResponse(page, "hnry", right.profile_id);
@@ -51,7 +51,7 @@ test("partner readings use separate engine ranks and endpoint profiles without c
   await rightEndpoint.focus(); await page.keyboard.press("Space"); const detail = await (await rightDetail).json() as ScreeningDetails;
   expect(detail.alternative?.row).toEqual(hnry);
   const drawer = page.getByRole("dialog", { name: "Hnry", exact: true }); await expect(drawer).toContainText("Commercial/traction-led");
-  await expect(page.getByLabel("Weight profile", { exact: true })).toHaveValue("");
+  await expect(page.getByLabel("Partner weighting", { exact: true })).toHaveValue("");
   await page.keyboard.press("Escape"); await expect(drawer).toHaveCount(0);
   const leftDetail = detailResponse(page, "hnry", left.profile_id);
   await region.locator('g[data-company-id="hnry"] > path').click(); await leftDetail;
@@ -65,7 +65,7 @@ test("partner readings use separate engine ranks and endpoint profiles without c
   await page.getByRole("dialog", { name: "Upstock", exact: true }).getByRole("button", { name: "Show in Sensitivity", exact: true }).click();
   const body = (await probe).postDataJSON() as { node_id: string; weight: number; configuration: { weight_profile_id: string | null } };
   expect(body).toMatchObject({ node_id: change.criterion_id, weight: change.local_weight, configuration: { weight_profile_id: right.profile_id } });
-  await expect(page.getByLabel("Weight profile", { exact: true })).toHaveValue(right.profile_id);
+  await expect(page.getByLabel("Partner weighting", { exact: true })).toHaveValue(right.profile_id);
   await unchanged(page, request, study.id, before);
 });
 

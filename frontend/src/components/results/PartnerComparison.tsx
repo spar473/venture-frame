@@ -6,7 +6,7 @@ import { CompanyName, companyRow, useCompanyExploration } from "../companyExplor
 import { Caveat, InfoDisclosure } from "../InfoDisclosure";
 import { MessageText } from "../IssueText";
 import { palette } from "./ResultsCharts";
-import { displayNumber } from "./numberDisplay";
+import { ValueText } from "./ValueText";
 
 export function PartnerComparison({ project, context, dossier }: {
   project: Project; context: AnalysisContext; dossier: EvidenceDossier | null;
@@ -90,11 +90,11 @@ function ProfileReadings({ comparison, project }: { comparison: ProfileCompariso
           <path d={`M 286 ${String(y1)} L 614 ${String(y2)}`} stroke={color} strokeWidth={movement.emphasize ? 4 : 1.5} fill="none"
             role="button" tabIndex={0} aria-label={`Open ${row.name} screening detail under ${left.name}`}
             onClick={event => open(event, row.alternative_id, left.profile_id)} onKeyDown={event => open(event, row.alternative_id, left.profile_id)}/>
-          <g role="button" tabIndex={0} aria-label={`Open ${row.name} screening detail under ${left.name}, rank ${String(row.rank)}`}
+          <g role="button" tabIndex={0} aria-label={`${String(row.rank)}. ${row.name}: open screening detail under ${left.name}`}
             onClick={event => open(event, row.alternative_id, left.profile_id)} onKeyDown={event => open(event, row.alternative_id, left.profile_id)}>
             <foreignObject x="20" y={labelY1 - 18} width="244" height="38"><div className="partner-company-label" title={row.name}>{row.rank}. {row.name}</div></foreignObject><circle cx="286" cy={y1} r="4" fill={color}/>
           </g>
-          <g role="button" tabIndex={0} aria-label={`Open ${other.name} screening detail under ${right.name}, rank ${String(other.rank)}`}
+          <g role="button" tabIndex={0} aria-label={`${String(other.rank)}. ${other.name}: open screening detail under ${right.name}`}
             onClick={event => open(event, other.alternative_id, right.profile_id)} onKeyDown={event => open(event, other.alternative_id, right.profile_id)}>
             <circle cx="614" cy={y2} r="4" fill={rightColor}/><foreignObject x="636" y={labelY2 - 18} width="244" height="38"><div className="partner-company-label right" title={other.name}>{other.rank}. {other.name}</div></foreignObject>
           </g>
@@ -109,8 +109,8 @@ function ProfileReadings({ comparison, project }: { comparison: ProfileCompariso
         const other = rightRows.get(row.alternative_id), movement = movements.get(row.alternative_id);
         return <tr key={row.alternative_id} {...companyRow(exploration, row.alternative_id, left.profile_id)}>
           <th scope="row"><CompanyName id={row.alternative_id} profileId={left.profile_id}>{row.name}</CompanyName></th>
-          <td>{row.rank} · {displayNumber(row.value)}{row.class_name ? ` · ${row.class_name}` : ""}</td>
-          <td>{other ? <><CompanyName id={other.alternative_id} profileId={right.profile_id}>{String(other.rank)} · {displayNumber(other.value)}{other.class_name ? ` · ${other.class_name}` : ""}</CompanyName></> : "Unavailable"}</td>
+          <td>{row.rank} · <ValueText value={row.value}/>{row.class_name ? ` · ${row.class_name}` : ""}</td>
+          <td>{other ? <><CompanyName id={other.alternative_id} profileId={right.profile_id}>{String(other.rank)} · <ValueText value={other.value}/>{other.class_name ? ` · ${other.class_name}` : ""}</CompanyName></> : "Unavailable"}</td>
           <td>{movement ? movement.places_changed === 0 ? "Unchanged" : `${movement.places_changed > 0 ? "+" : ""}${String(movement.places_changed)}` : "Unavailable"}</td>
         </tr>;
       })}</tbody>

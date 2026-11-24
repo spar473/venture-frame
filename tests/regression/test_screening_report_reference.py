@@ -19,11 +19,13 @@ from html.parser import HTMLParser
 from pathlib import Path
 
 import pytest
+import robustness_oracle
 import screening_summary_oracle as oracle
 
 from mcda_studio.domain.evidence import EvidenceDossier
 from mcda_studio.domain.preferences import AnalysisConfiguration
-from mcda_studio.services import questions_service, screening_report_service
+from mcda_studio.domain.results import SmaaResult
+from mcda_studio.services import analysis_service, questions_service, screening_report_service
 from mcda_studio.storage.json_repository import JsonProjectRepository
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -113,6 +115,25 @@ def rows_of(html: str, profile_name: str) -> dict[str, dict[str, str]]:
 PROFILES = {"Technical/IP-led": "technical_ip", "Commercial/traction-led": "commercial_traction"}
 
 
+def rank_of(shown: dict[str, str]) -> str:
+    """The rank in a "Rank (range)" cell such as "2 (2–6)"."""
+    return shown["Rank (range)"].split(" ", 1)[0]
+
+
+def expected_ranges(project, profile_id: str) -> dict[str, str]:
+    """Each alternative's "(low–high)" from SMAA-2's counts, by the independent oracle."""
+    configuration = AnalysisConfiguration(method="smaa2", weight_profile_id=profile_id)
+    smaa = analysis_service.evaluate_project(project, configuration)
+    assert isinstance(smaa, SmaaResult) and smaa.samples is not None
+    mavt = {r.alternative_id: r.rank for r in smaa.ranking}
+    out = {}
+    for a in smaa.acceptability:
+        counts = [e.count for e in a.ranks]
+        low, high = robustness_oracle.rank_range(counts, mavt[a.alternative_id], smaa.samples)
+        out[a.alternative_id] = f"({low}–{high})"
+    return out
+
+
 @pytest.mark.parametrize("name", PROFILES)
 def test_every_summary_number_in_the_report_equals_the_independent_oracle(name):
     project, dossier = study()
@@ -131,11 +152,12 @@ def test_every_summary_number_in_the_report_equals_the_independent_oracle(name):
         if q.alternative_id:
             counts[q.alternative_id] = counts.get(q.alternative_id, 0) + 1
     parsed = rows_of(html, name)
+    ranges = expected_ranges(project, PROFILES[name])
     assert set(parsed) == set(alternatives.values())
     requirement_names = {r.id: r.name for r in project.requirements}
     for alt_id, row in truth.items():
         shown = parsed[alternatives[alt_id]]
-        assert shown["Rank"] == str(row["rank"])
+        assert shown["Rank (range)"] == f"{row['rank']} {ranges[alt_id]}"
         assert shown["Overall value"] == sig4(row["value"])
         assert shown["Class (margin)"] == f"{classes[row['class']]} ({sig4(row['margin'])})"
         assert shown["Open questions"] == str(counts.get(alt_id, 0))
@@ -190,7 +212,7 @@ def test_the_partner_comparison_matches_each_profiles_own_ranks_and_classes():
     for row in table[1:]:
         for i, name in enumerate(PROFILES):
             summary = by_profile[name][row[0]]
-            assert row[1 + 2 * i] == summary["Rank"]
+            assert row[1 + 2 * i] == rank_of(summary)
             assert row[2 + 2 * i] == summary["Class (margin)"].rsplit(" (", 1)[0]
     ranks = {row[0]: (row[1], row[3]) for row in table[1:]}
     assert ranks["Wellumio"] == ("2", "5")  # the profiles really differ, so a mix-up is visible
@@ -202,7 +224,7 @@ def test_the_wrong_profile_cannot_pass_a_selected_profile_is_the_only_one_shown(
     assert "Partner comparison" in html
     assert "one weight profile" in html  # one profile: nothing to compare, and it says so
     rows = rows_of(html, "Commercial/traction-led")
-    assert rows["Wellumio"]["Rank"] == "5" and rows["Hectre"]["Rank"] == "2"
+    assert rank_of(rows["Wellumio"]) == "5" and rank_of(rows["Hectre"]) == "2"
     with pytest.raises(Exception, match="does not exist"):
         render(profile_ids=["nope"])
 

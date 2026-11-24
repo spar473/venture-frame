@@ -4,6 +4,8 @@ import { api } from "../../src/api/client";
 import type { Project, ScreeningSummary } from "../../src/api/types";
 import { ScreeningSummarySection } from "../../src/components/ResultsPanel";
 import { ScreeningSummaryView } from "../../src/components/results/ScreeningSummaryView";
+import { POINTS_NOTE } from "../../src/components/results/closestChange";
+import { EditorViewContext } from "../../src/state/editorViewContext";
 import { BASE_SELECTION, resolveContext } from "../../src/state/analysisContext";
 import { useScreeningSummary } from "../../src/state/useScreeningSummary";
 import projectJSON from "../fixtures/screening-study-project.json";
@@ -25,7 +27,8 @@ describe("the screening summary table", () => {
     render(<ScreeningSummaryView summary={summary} project={project}/>);
     expect(rows().map((r) => within(r).getByRole("rowheader").textContent)).toEqual(summary.rows.map((r) => r.name));
     const headers = screen.getAllByRole("columnheader").map((h) => h.textContent);
-    expect(headers).toEqual(["Rank", "Alternative", "Overall value", "Class (margin)", "Requirements", "Largest contributions", "Closest change", "Open questions"]);
+    expect(headers).toEqual(["Rank", "Alternative", "Overall value", "Class (margin)", "Requirements", "Largest contributions", "Closest change", "Open questions (model only)ⓘ"]);
+    expect(screen.queryByText(POINTS_NOTE)).not.toBeInTheDocument();
     expect(cells("Hectre")).toEqual([
       "2", "0.5991", "Monitor (0.0009)", "Meets all",
       "Commercial stage 0.1008; Customer validation 0.0907",
@@ -64,6 +67,30 @@ describe("the screening summary table", () => {
     render(<ScreeningSummaryView summary={changed} project={project}/>);
     expect(cells(first.name)[5]).toBe(`Tied now with ${second.name}`);
     expect(cells(second.name)[5]).toBe("No one-way change in range");
+  });
+
+  it("in the Analyst view shows three decimals with the full value in title, and plain closest changes", () => {
+    render(<EditorViewContext value="analyst"><ScreeningSummaryView summary={summary} project={project}/></EditorViewContext>);
+    expect(cells("Hectre")).toEqual([
+      "2", "0.599", "Monitor (0.001)", "Meets all",
+      "Commercial stage 0.101; Customer validation 0.091",
+      "Moves to Prioritise for diligence if Strategic partnerships and channels loses 0.1 pts of weight", "22",
+    ]);
+    expect(cells("Upstock")[5]).toBe("Swaps with Wych if Market gains 41.4 pts of weight");
+    const hectre = summary.rows.find((r) => r.name === "Hectre");
+    if (!hectre?.margin) throw new Error("fixture margin");
+    expect(screen.getByText("0.001")).toHaveAttribute("title", String(hectre.margin));
+    expect(screen.getByText(POINTS_NOTE)).toBeInTheDocument();
+  });
+
+  it("names the source of the open-question counts and offers the study's evidence", () => {
+    const load = vi.fn();
+    const { rerender } = render(<ScreeningSummaryView summary={summary} project={project} questions={{ dossier: false, offer: { title: "Study", load } }}/>);
+    fireEvent.click(screen.getByRole("button", { name: "About the open-question counts" }));
+    fireEvent.click(screen.getByRole("button", { name: "Load the study's evidence" }));
+    expect(load).toHaveBeenCalledTimes(1);
+    rerender(<ScreeningSummaryView summary={summary} project={project} questions={{ dossier: true }}/>);
+    expect(screen.getByRole("columnheader", { name: /^Open questions \(model and evidence dossier\)/ })).toBeInTheDocument();
   });
 
   it("is collapsed and labelled as MAVT's reading under another method", () => {

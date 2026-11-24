@@ -4,6 +4,7 @@ import type { Project } from "../../src/api/types";
 import { AnalysisControls } from "../../src/components/AnalysisControls";
 import { BASE_SELECTION, resolveContext, type AnalysisSelection } from "../../src/state/analysisContext";
 import { META, node, projectWith } from "../fixtures";
+import { EditorViewContext } from "../../src/state/editorViewContext";
 
 function setup(selection: AnalysisSelection = BASE_SELECTION, parameters: Record<string, unknown> = {}) {
   const project: Project = projectWith([node("cost")], {
@@ -64,4 +65,31 @@ it("disables only API-confirmed missing setup and offers the editor without chan
     fireEvent.click(screen.getByRole("button", { name: "Set up AHP" })); expect(open).toHaveBeenCalledWith("pairwise");
     expect(select).not.toHaveBeenCalled(); expect(project).toEqual(before);
   } finally { vi.restoreAllMocks(); vi.useRealTimers(); }
+});
+
+describe("Analyst-view header", () => {
+  function analyst(selection: AnalysisSelection = BASE_SELECTION) {
+    const project: Project = projectWith([node("cost")], { analysis: { method: "mavt", scenario_id: null, weight_profile_id: null, parameters: {} } });
+    render(<EditorViewContext value="analyst"><AnalysisControls project={project} context={resolveContext(project, "fp", selection)}
+      onSelect={vi.fn()} methods={META.methods} onUseMethodAsDefault={vi.fn()}/></EditorViewContext>);
+  }
+  it("leads with Partner weighting and keeps Method and Scenario in a closed Advanced section", () => {
+    analyst();
+    expect(screen.getByLabelText("Partner weighting")).toBeVisible();
+    expect(screen.queryByLabelText("Weight profile")).toBeNull();
+    const advanced = screen.getByText("Advanced").closest("details");
+    expect(advanced).not.toHaveAttribute("open");
+    expect(advanced).toContainElement(screen.getByLabelText("Method"));
+    expect(advanced).toContainElement(screen.getByLabelText("Scenario"));
+  });
+  it("names a non-default method on the closed Advanced summary", () => {
+    analyst({ ...BASE_SELECTION, method: "mavt_sorting" });
+    expect(screen.getByText("Advanced").closest("summary")).toHaveTextContent("Advanced · Value-based sorting (MAVT)");
+    expect(screen.getByText("Advanced").closest("details")).toContainElement(screen.getByRole("button", { name: "Use viewed method as saved default" }));
+  });
+  it("leaves the Builder view's header as it was", () => {
+    setup();
+    expect(screen.getByLabelText("Weight profile")).toBeVisible();
+    expect(screen.queryByText("Advanced")).toBeNull();
+  });
 });

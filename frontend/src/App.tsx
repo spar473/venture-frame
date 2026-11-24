@@ -2,13 +2,14 @@ import { useEffect } from "react";
 import { Dashboard } from "./components/Dashboard";
 import { EditorScreen } from "./components/EditorScreen";
 import { ConfirmDialog } from "./components/ui";
+import { PRODUCT_NAME } from "./product";
 import { useRoute } from "./state/navigation";
 
 export function App() {
   const { route, navigate, pendingLeave, saveAndLeave, discardAndLeave, stay } = useRoute();
 
   useEffect(() => {
-    document.title = route.page === "dashboard" ? "MCDA Studio" : "MCDA Studio · editor";
+    document.title = route.page === "dashboard" ? PRODUCT_NAME : `${PRODUCT_NAME} · editor`;
   }, [route]);
 
   return (
@@ -20,7 +21,7 @@ export function App() {
               <svg className="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M4 19V11M10 19V5M16 19v-6M22 19H2" />
               </svg>
-              MCDA Studio
+              {PRODUCT_NAME}
             </span>
             <span className="spacer" />
             <span className="appbar-note">Runs locally · your files stay on this computer</span>

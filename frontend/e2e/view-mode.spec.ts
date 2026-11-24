@@ -2,13 +2,13 @@ import { expect, test, type APIRequestContext, type Page } from "@playwright/tes
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { EvidenceDossier, EvidenceWorkspace, Project } from "../src/api/types";
-import { evidenceClaim, openTab, readJson, REPO, saveState, storedFile } from "./helpers";
+import { evidenceClaim, openTab, readJson, REPO, saveState, starterCard, storedFile } from "./helpers";
 
 const study = readJson(resolve(REPO, "examples/nz_venture_screening/project.json")) as Project;
 const dossier = readJson(resolve(REPO, "examples/nz_venture_screening/evidence.json")) as EvidenceDossier;
 const analystTabs = ["Results", "Sensitivity", "Compare", "Reference cases", "Evidence", "Open Questions", "Decision"];
 async function gallery(page: Page) {
-  await page.goto("/"); await page.getByRole("button", { name: "Start from Venture screening", exact: true }).click();
+  await page.goto("/"); await starterCard(page, "Venture screening").click();
   await page.getByRole("button", { name: "Open worked example — Venture screening", exact: true }).click();
   await expect(page.getByRole("button", { name: "Analyst view", exact: true })).toHaveAttribute("aria-pressed", "true");
 }

@@ -15,7 +15,7 @@ The working tree is never modified. An unmodified baseline run must pass first.
                                       --models-only | --proxy-only | --benchmark-only |
                                       --study-only | --summary-only |
                                       --cleanup-only | --showcase-only |
-                                      --reference_cases-only]
+                                      --reference_cases-only | --robustness-only]
 
 Groups are named after the milestone that introduced them (B3 weighting, B4 sensitivity, B5
 scenarios, B6 results) or after the development itself (RETRY: analysis retry; COVERAGE:
@@ -42,6 +42,11 @@ class Mutation:
     file: str
     old: str
     new: str
+
+
+def node_tool(name: str) -> str:
+    """npm or npx by full path: on Windows they are .cmd files that a bare name does not launch."""
+    return shutil.which(name) or name
 
 
 BACKEND = [
@@ -1684,8 +1689,10 @@ SUMMARY_FRONTEND = [
     Mutation("SUMMARY a response for another profile shown", "frontend/src/state/useScreeningSummary.ts",
              'result.status === "available" && (result.weight_profile_id !== context.resolvedProfileId',
              'result.status === "never" && (result.weight_profile_id !== context.resolvedProfileId'),
-    Mutation("SUMMARY a raised weight shown as lowered", "frontend/src/components/results/ScreeningSummaryView.tsx",
+    Mutation("SUMMARY a raised weight shown as lowered", "frontend/src/components/results/closestChange.ts",
              'const sign = f.direction === "raise" ? "+" : "−";', 'const sign = f.direction === "raise" ? "−" : "+";'),
+    Mutation("SUMMARY a raised weight reads as lost in the Analyst view", "frontend/src/components/results/closestChange.ts",
+             'const verb = f.direction === "raise" ? "gains" : "loses";', 'const verb = f.direction === "raise" ? "loses" : "gains";'),
     Mutation("SUMMARY a failed requirement shown as met", "frontend/src/components/results/ScreeningSummaryView.tsx",
              'if (r.status === "fail") return', 'if (r.status === "pass") return'),
 ]  # fmt: skip
@@ -1891,12 +1898,16 @@ def run_clean_demo_guard(work: Path) -> bool:
     if not env.get("MCDA_CHROMIUM") and chrome.is_file():
         env["MCDA_CHROMIUM"] = str(chrome)
     build = subprocess.run(
-        ["npm", "run", "build"], cwd=work / "frontend", env=env, capture_output=True, text=True
+        [node_tool("npm"), "run", "build"],
+        cwd=work / "frontend",
+        env=env,
+        capture_output=True,
+        text=True,
     )
     if build.returncode:
         raise RuntimeError("Clean-demo mutant did not build:\n" + build.stdout + build.stderr)
     result = subprocess.run(
-        ["npx", "playwright", "test", "e2e/clean-demo.spec.ts"],
+        [node_tool("npx"), "playwright", "test", "e2e/clean-demo.spec.ts"],
         cwd=work / "frontend",
         env=env,
         capture_output=True,
@@ -2670,7 +2681,7 @@ def run_seam(work: Path) -> bool:
 
 
 def run_frontend(work: Path) -> bool:
-    cmd = ["npx", "vitest", "run", "--reporter=dot", "--bail=1"]
+    cmd = [node_tool("npx"), "vitest", "run", "--reporter=dot", "--bail=1"]
     if subprocess.run(cmd, cwd=work / "frontend", capture_output=True, text=True).returncode == 0:
         return True
     # Several component tests wait on real timers and fail when the machine is busy. Run the same
@@ -2801,8 +2812,20 @@ REPORT_BACKEND = [
     Mutation(
         "REPORT a company's rank is swapped with its mirror",
         "src/mcda_studio/services/screening_report_service.py",
-        "        cells = [_e(row.rank), _e(row.name), _e(_n(row.value))]",
-        "        cells = [_e(len(summary.rows) + 1 - row.rank), _e(row.name), _e(_n(row.value))]",
+        "        rank = _e(row.rank)",
+        "        rank = _e(len(summary.rows) + 1 - row.rank)",
+    ),
+    Mutation(
+        "REPORT a rank range is printed from the wrong alternative",
+        "src/mcda_studio/services/screening_report_service.py",
+        "        band = ranges.get(row.alternative_id)",
+        "        band = ranges.get(summary.rows[0].alternative_id)",
+    ),
+    Mutation(
+        "REPORT overlapping groups are left out of the report",
+        "src/mcda_studio/services/screening_report_service.py",
+        "    together = [group for group in bands.groups if len(group) > 1]",
+        "    together = []",
     ),
     Mutation(
         "REPORT a company's class is replaced by the lowest class",
@@ -3875,6 +3898,38 @@ OVERNIGHT["portable"] = (
         "tests/unit/test_sensitivity.py",
         "tests/regression/test_screening_summary_reference.py",
         "tests/regression/test_smaa_reference.py",
+    ),
+)
+
+
+ROBUSTNESS_BACKEND = [
+    Mutation("ROBUSTNESS a rank range drops its last rank when counting draws", "src/mcda_studio/services/screening_robustness_service.py",
+             "        held = sum(counts[low - 1 : high])", "        held = sum(counts[low - 1 : high - 1])"),
+    Mutation("ROBUSTNESS coverage needs more than 80 %, not at least 80 %", "src/mcda_studio/services/screening_robustness_service.py",
+             "return held * COVERAGE.denominator >= COVERAGE.numerator * draws", "return held * COVERAGE.denominator > COVERAGE.numerator * draws"),
+    Mutation("ROBUSTNESS ranges that touch at one rank do not overlap", "src/mcda_studio/services/screening_robustness_service.py",
+             "        if groups and low <= reach:", "        if groups and low < reach:"),
+    Mutation("ROBUSTNESS groups swept in MAVT order", "src/mcda_studio/services/screening_robustness_service.py",
+             "    by_low = sorted(ranges, key=lambda item: (item[1][0], item[1][1], position[item[0]]))", "    by_low = list(ranges)"),
+    Mutation("ROBUSTNESS ties ignore the MAVT rank", "src/mcda_studio/services/screening_robustness_service.py",
+             "key=lambda c: (not c[0] <= preferred_rank <= c[1], c[0])", "key=lambda c: c[0]"),
+    Mutation("ROBUSTNESS enumerated sums lose their rounding tolerance", "src/mcda_studio/services/screening_robustness_service.py",
+             "return held >= float(COVERAGE) - ENUMERATION_TOLERANCE", "return held >= float(COVERAGE)"),
+    Mutation("ROBUSTNESS a project without stated uncertainty is not named as such", "src/mcda_studio/services/screening_robustness_service.py",
+             "    if project.smaa is None:\n        return unavailable(NO_UNCERTAINTY)", "    if False:\n        return unavailable(NO_UNCERTAINTY)"),
+    Mutation("ROBUSTNESS the view's transient run settings replace the saved ones", "src/mcda_studio/services/screening_robustness_service.py",
+             'run_config = requested.model_copy(update={"method": "smaa2", "parameters": parameters})', 'run_config = requested.model_copy(update={"method": "smaa2"})'),
+    Mutation("ROBUSTNESS modifies the submitted project", "src/mcda_studio/services/screening_robustness_service.py",
+             "    requested = (configuration or project.analysis).model_copy(deep=True)",
+             '    project.title += " changed"\n    requested = (configuration or project.analysis).model_copy(deep=True)'),
+]  # fmt: skip
+OVERNIGHT["robustness"] = (
+    ROBUSTNESS_BACKEND,
+    pytest_runner(
+        "Robustness",
+        "tests/regression/test_robustness_reference.py",
+        "tests/unit/test_screening_robustness.py",
+        "tests/api/test_api_screening_robustness.py",
     ),
 )
 

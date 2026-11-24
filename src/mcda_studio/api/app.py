@@ -78,6 +78,7 @@ from mcda_studio.services import results_service as results
 from mcda_studio.services import screening_details_service as screening_details
 from mcda_studio.services import screening_profiles_service as screening_profiles
 from mcda_studio.services import screening_report_service as screening_report
+from mcda_studio.services import screening_robustness_service as screening_robustness
 from mcda_studio.services import screening_summary_service as screening
 from mcda_studio.services import screening_what_if_service as screening_what_if
 from mcda_studio.services import templates
@@ -664,6 +665,30 @@ def _router(examples_dir: Path | None, frontend: Path | None) -> APIRouter:
         """Two separate screening summaries under explicit profiles, with engine rank movements."""
         return screening_profiles.compare_profiles(
             req.project, req.configuration, req.profile_ids, req.dossier
+        )
+
+    @r.post(
+        "/screening-summary/robustness",
+        response_model=screening_robustness.ScreeningRobustness,
+        tags=["analysis"],
+    )
+    def screening_robustness_draft(
+        req: sc.EvaluateDraftRequest,
+    ) -> screening_robustness.ScreeningRobustness:
+        """Rank ranges and too-close-to-separate groups from SMAA-2 under the uncertainty the
+        project states. Read-only; unavailable, with its reason, when none is stated."""
+        return screening_robustness.screening_robustness(req.project, req.configuration)
+
+    @r.post(
+        "/projects/{project_id}/screening-summary/robustness",
+        response_model=screening_robustness.ScreeningRobustness,
+        tags=["analysis"],
+    )
+    def screening_robustness_stored(
+        project_id: str, opts: sc.AnalysisOptions, store: Store
+    ) -> screening_robustness.ScreeningRobustness:
+        return screening_robustness.screening_robustness(
+            store.get(project_id).project, opts.configuration
         )
 
     @r.post("/screening-summary", response_model=screening.ScreeningSummary, tags=["analysis"])

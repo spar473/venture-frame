@@ -1,14 +1,14 @@
 import { expect, test, type APIRequestContext, type Locator, type Page } from "@playwright/test";
 import { resolve } from "node:path";
 import type { AnySensitivityResult, EvidenceDossier, Project, ScreeningDetails } from "../src/api/types";
-import { openTab, readJson, REPO, saveState, storedFile } from "./helpers";
+import { openAdvanced, openTab, readJson, REPO, saveState, starterCard, storedFile } from "./helpers";
 
 const project = readJson(resolve(REPO, "examples/nz_venture_screening/project.json")) as Project;
 const dossier = readJson(resolve(REPO, "examples/nz_venture_screening/evidence.json")) as EvidenceDossier;
 const endpoint = `/api/projects/${project.id}`;
 async function start(page: Page, request: APIRequestContext) {
   await page.goto("/");
-  await page.getByRole("button", { name: "Start from Venture screening", exact: true }).click();
+  await starterCard(page, "Venture screening").click();
   await page.getByRole("button", { name: "Open worked example — Venture screening", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1, name: project.title, exact: true })).toBeVisible();
   await openTab(page, "Results"); await expect(page.getByRole("table", { name: "Screening summary", exact: true })).toBeVisible();
@@ -27,13 +27,13 @@ function responseFor(page: Page, id: string, withDossier = false) {
     return body.alternative_id === id && (!withDossier || Boolean(body.dossier));
   });
 }
-async function openDetail(page: Page, trigger: Locator, id: string, name: string) {
+async function openDetail(page: Page, trigger: Locator, id: string, name: string, digits = 3) {
   const response = responseFor(page, id); await trigger.click();
   const data = await (await response).json() as ScreeningDetails;
   const dialog = page.getByRole("dialog", { name, exact: true });
   await expect(dialog.getByRole("region", { name: "Company contributions", exact: true }).locator("li")).toHaveCount(16);
   if (!data.alternative) throw Error("missing company detail");
-  await expect(dialog.getByText(data.alternative.row.value.toFixed(4), { exact: true })).toBeVisible();
+  await expect(dialog.getByText(data.alternative.row.value.toFixed(digits), { exact: true })).toBeVisible();
   if (id === "hnry") {
     const requirements = dialog.getByRole("region", { name: "Company requirements", exact: true });
     await expect(requirements).toContainText("fails"); await expect(requirements).toContainText("Series B or later");
@@ -48,7 +48,7 @@ test("company triggers share complete screening detail and loaded sources withou
   const families = ["summary", "ranking", "contribution", "feasibility", "comparison", "evidence", "questions"] as const;
   let loaded = false;
   for (const family of families) {
-    if (family === "comparison") { await page.getByLabel("Method", { exact: true }).selectOption("promethee2"); await openTab(page, "Compare"); }
+    if (family === "comparison") { await openAdvanced(page); await page.getByLabel("Method", { exact: true }).selectOption("promethee2"); await openTab(page, "Compare"); }
     else if (family === "evidence") await openTab(page, "Evidence");
     else if (family === "questions") await openTab(page, "Open Questions");
     else await openTab(page, "Results");
@@ -120,7 +120,7 @@ test("presentation company detail shares the study evidence and Escape keeps the
   await expect(page.getByRole("button", { name: "Exit presentation", exact: true })).toBeVisible();
   const trigger = page.getByRole("table", { name: "Screening summary", exact: true }).getByRole("button", { name: "Upstock", exact: true });
   const opener = await trigger.elementHandle();
-  const { dialog } = await openDetail(page, trigger, "upstock", "Upstock");
+  const { dialog } = await openDetail(page, trigger, "upstock", "Upstock", 4); // the presentation view is Builder-only
   const loaded = responseFor(page, "upstock", true);
   await dialog.getByRole("button", { name: "Load the study's evidence", exact: true }).click(); await loaded;
   await expect(dialog.getByRole("button", { name: "Load the study's evidence", exact: true })).toHaveCount(0);

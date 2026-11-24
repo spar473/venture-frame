@@ -122,6 +122,7 @@ Python package.
 - TypeScript (Apache-2.0)
 - Vitest (MIT)
 - Playwright Test (Apache-2.0)
+- @axe-core/playwright and axe-core, for the accessibility scan in the browser tests (MPL-2.0)
 - Testing Library: jest-dom, react, user-event (MIT)
 - jsdom (MIT)
 - ESLint, @eslint/js, typescript-eslint, eslint-plugin-react-hooks, globals (MIT)
