@@ -100,7 +100,8 @@ export function BandsLead({ request, layout, names }: { request: BandsRequest | 
   if (request.status === "loading") return <p className="summary-lead pending" aria-hidden="true"/>;
   if (request.status === "error") return <p className="summary-lead muted small" role="status">Rank ranges could not be loaded. <button type="button" className="link" onClick={request.retry}>Retry rank ranges</button></p>;
   if (!layout) return <p className="summary-lead muted small">Rank ranges unavailable. <InfoDisclosure label="Why there are no rank ranges">{request.result.reason}</InfoDisclosure></p>;
-  return <p className="summary-lead" aria-live="polite">{leadSentence(layout, names)}{" "}
+  // A no-break space keeps the ⓘ with the sentence's last word.
+  return <p className="summary-lead" aria-live="polite">{leadSentence(layout, names)}{" "}
     <InfoDisclosure label="How rank ranges are found">Each rank range is the shortest run of ranks that holds at least {displayShare(layout.result.coverage)} of
       the draws; alternatives whose ranges overlap are too close to separate. {layout.result.basis} {layout.result.label}</InfoDisclosure></p>;
 }
