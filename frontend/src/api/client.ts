@@ -4,7 +4,7 @@ import type { StarterTemplate, StarterRequest, StarterMaterialization, ModelComp
 import type { ExternalProposals, ProposalInspection, ProposalReview, ProposalCompilation, ProposalRegistrySupply } from "./types";
 import type { DecisionDetails as FactorDecision, FactorInspection, FactorRunParameters, FactorRunRecord } from "./types";
 import type {
-  AhpMatrixPreview, PairwiseJudgement, MethodComparison, MethodComparisonExportRequest, FeasibilityResult, QuestionsResult, DecisionImpact, ReferenceCasesResult, ReferenceCasesValidation, ScreeningSummary, ScreeningDetails, ProfileComparison, ScreeningWhatIf, DerivedPreview,
+  AhpMatrixPreview, PairwiseJudgement, MethodComparison, MethodComparisonExportRequest, FeasibilityResult, QuestionsResult, DecisionImpact, ReferenceCasesResult, ReferenceCasesValidation, ScreeningSummary, ScreeningRobustness, ScreeningDetails, ProfileComparison, ScreeningWhatIf, DerivedPreview,
   EvidenceInspection, EvidenceWorkspace, ClaimReview, DerivedCompilation,
   CalculationInspection, CalculationWorkspace, CalculationApplication, CalculationEvent,
   EvidenceCompilation, EvidenceCompilationInspection, ArtifactBinding, ProjectCopyReceipt, ImportedProjectDocument,
@@ -186,6 +186,8 @@ export const api = {
     request<ProfileComparison>("POST", "/api/screening-summary/profiles", { body: { project, configuration, profile_ids: profileIds, dossier }, signal }),
   screeningSummary: (project: Project, configuration: AnalysisConfiguration, signal?: AbortSignal, dossier?: unknown) =>
     request<ScreeningSummary>("POST", "/api/screening-summary", { body: { project, configuration, dossier }, signal }),
+  screeningRobustness: (project: Project, configuration: AnalysisConfiguration, signal?: AbortSignal) =>
+    request<ScreeningRobustness>("POST", "/api/screening-summary/robustness", { body: { project, configuration }, signal }),
   health: () => request<Health>("GET", "/api/health"),
   meta: () => request<Meta>("GET", "/api/meta"),
   templates: () => request<TemplateInfo[]>("GET", "/api/templates"),

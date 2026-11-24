@@ -44,6 +44,11 @@ class Mutation:
     new: str
 
 
+def node_tool(name: str) -> str:
+    """npm or npx by full path: on Windows they are .cmd files that a bare name does not launch."""
+    return shutil.which(name) or name
+
+
 BACKEND = [
     Mutation(
         "B1 edit applies partial operations instead of refusing all",
@@ -1891,12 +1896,16 @@ def run_clean_demo_guard(work: Path) -> bool:
     if not env.get("MCDA_CHROMIUM") and chrome.is_file():
         env["MCDA_CHROMIUM"] = str(chrome)
     build = subprocess.run(
-        ["npm", "run", "build"], cwd=work / "frontend", env=env, capture_output=True, text=True
+        [node_tool("npm"), "run", "build"],
+        cwd=work / "frontend",
+        env=env,
+        capture_output=True,
+        text=True,
     )
     if build.returncode:
         raise RuntimeError("Clean-demo mutant did not build:\n" + build.stdout + build.stderr)
     result = subprocess.run(
-        ["npx", "playwright", "test", "e2e/clean-demo.spec.ts"],
+        [node_tool("npx"), "playwright", "test", "e2e/clean-demo.spec.ts"],
         cwd=work / "frontend",
         env=env,
         capture_output=True,
@@ -2670,7 +2679,7 @@ def run_seam(work: Path) -> bool:
 
 
 def run_frontend(work: Path) -> bool:
-    cmd = ["npx", "vitest", "run", "--reporter=dot", "--bail=1"]
+    cmd = [node_tool("npx"), "vitest", "run", "--reporter=dot", "--bail=1"]
     if subprocess.run(cmd, cwd=work / "frontend", capture_output=True, text=True).returncode == 0:
         return True
     # Several component tests wait on real timers and fail when the machine is busy. Run the same
@@ -2801,8 +2810,20 @@ REPORT_BACKEND = [
     Mutation(
         "REPORT a company's rank is swapped with its mirror",
         "src/mcda_studio/services/screening_report_service.py",
-        "        cells = [_e(row.rank), _e(row.name), _e(_n(row.value))]",
-        "        cells = [_e(len(summary.rows) + 1 - row.rank), _e(row.name), _e(_n(row.value))]",
+        "        rank = _e(row.rank)",
+        "        rank = _e(len(summary.rows) + 1 - row.rank)",
+    ),
+    Mutation(
+        "REPORT a rank range is printed from the wrong alternative",
+        "src/mcda_studio/services/screening_report_service.py",
+        "        band = ranges.get(row.alternative_id)",
+        "        band = ranges.get(summary.rows[0].alternative_id)",
+    ),
+    Mutation(
+        "REPORT overlapping groups are left out of the report",
+        "src/mcda_studio/services/screening_report_service.py",
+        "    together = [group for group in bands.groups if len(group) > 1]",
+        "    together = []",
     ),
     Mutation(
         "REPORT a company's class is replaced by the lowest class",

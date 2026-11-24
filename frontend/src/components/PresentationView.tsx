@@ -4,6 +4,7 @@ import { indexTree } from "../model/visibleTree";
 import type { AnalysisContext } from "../state/analysisContext";
 import { ModelTree, type DiagramWeights, type TreePresentation } from "./ModelTree";
 import { ScreeningSummarySection } from "./ResultsPanel";
+import { useScreeningRobustness } from "../state/useScreeningRobustness";
 import { useScreeningSummary } from "../state/useScreeningSummary";
 
 interface Props {
@@ -27,6 +28,7 @@ export function PresentationView({ project, validation, context, fingerprint, di
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const screening = useScreeningSummary(project, context, workspaceDossier);
+  const bands = useScreeningRobustness(project, context, screening.status === "ready" && screening.result.status === "available");
   useEffect(() => { heading.current?.focus(); }, []);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") onExit(); };
@@ -53,7 +55,7 @@ export function PresentationView({ project, validation, context, fingerprint, di
       <button type="button" className="primary" onClick={onExit}>Exit presentation</button>
     </header>
     {project.description && <p className="presentation-description">{project.description}</p>}
-    <ScreeningSummarySection project={project} request={screening} questions={{ dossier: Boolean(workspaceDossier) }}/>
+    <ScreeningSummarySection project={project} request={screening} questions={{ dossier: Boolean(workspaceDossier) }} bands={bands}/>
     <div className="tree-panel presentation-diagram">
       <ModelTree project={project} index={index} validation={validation} selectedId={selectedId}
         presentation={{ ...presentation, mode: "canvas" }} onPresentation={onPresentation} onSelect={setSelectedId}

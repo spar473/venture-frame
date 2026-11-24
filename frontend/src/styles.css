@@ -709,3 +709,10 @@ table.grid.projects td:first-child .project-link, table.grid.projects td:first-c
 /* Partner view: quieter column sources and notes under the screening summary. */
 .column-source { color: var(--muted); font-weight: 400; font-size: 11.5px; }
 .summary-note { margin: 6px 0 0; }
+/* Robustness bands: the range beside each rank, and one marker per too-close-to-separate group. */
+.summary-lead { margin: 0 0 10px; font-size: 13.5px; line-height: 1.5; max-width: 120ch; }
+.summary-lead.pending { min-height: 1.5em; }
+.rank-cell { white-space: nowrap; }
+.rank-range { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.rank-cell.in-group { box-shadow: inset 3px 0 0 var(--accent); }
+.band-label { display: block; margin-top: 2px; max-width: 13ch; color: var(--accent); font-size: 11px; font-weight: 500; line-height: 1.25; white-space: normal; }

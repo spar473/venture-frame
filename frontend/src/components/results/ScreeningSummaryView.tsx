@@ -5,6 +5,7 @@ import type { StudyEvidenceOffer } from "../CompanyExplorer";
 import { Caveat, InfoDisclosure } from "../InfoDisclosure";
 import { RatingHint } from "../RatingHint";
 import { closestChangeExact, closestChangePlain, POINTS_NOTE, type ChangeNames } from "./closestChange";
+import { BandsLead, bandLayout, groupMarkers, RankCell, type BandsRequest } from "./RobustnessBands";
 import { ValueText } from "./ValueText";
 
 const COLUMN_LABELS: Record<ScreeningSummary["columns"][number]["column"], string> = {
@@ -37,8 +38,10 @@ function QuestionsHeader({ source }: { source: QuestionSource }) {
 }
 
 /** The engine's screening summary as a table: one row per alternative, nothing computed here. */
-export function ScreeningSummaryView({ summary, project, hideOpenQuestions = false, questions = { dossier: false } }: {
+export function ScreeningSummaryView({ summary, project, hideOpenQuestions = false, questions = { dossier: false }, bands }: {
   summary: ScreeningSummary; project: Project; hideOpenQuestions?: boolean; questions?: QuestionSource;
+  /** Rank ranges for the same revision, profile and scenario; omitted where they do not apply. */
+  bands?: BandsRequest;
 }) {
   const exploration = useCompanyExploration();
   const analyst = useIsAnalystView();
@@ -51,11 +54,14 @@ export function ScreeningSummaryView({ summary, project, hideOpenQuestions = fal
   const shown = new Set(summary.columns.filter((c) => c.available && !(hideOpenQuestions && c.column === "open_questions")).map((c) => c.column));
   const absent = summary.columns.filter((c) => !c.available && !(hideOpenQuestions && c.column === "open_questions"));
   const closestChange = analyst ? closestChangePlain : closestChangeExact;
+  const layout = bandLayout(bands);
+  const markers = groupMarkers(summary.rows.map((row) => row.alternative_id), layout, names.alternatives);
   return <div className="screening-summary">
+    <BandsLead request={bands} layout={layout} names={names.alternatives}/>
     <div className="table-scroll" tabIndex={0}>
       <table className="grid" aria-label="Screening summary">
         <thead><tr>
-          <th scope="col">Rank</th><th scope="col">Alternative</th><th scope="col">Overall value</th>
+          <th scope="col">{layout ? "Rank (range)" : "Rank"}</th><th scope="col">Alternative</th><th scope="col">Overall value</th>
           {shown.has("classes") && <th scope="col">Class (margin)</th>}
           {shown.has("requirements") && <th scope="col">Requirements</th>}
           <th scope="col">Largest contributions</th>
@@ -63,7 +69,7 @@ export function ScreeningSummaryView({ summary, project, hideOpenQuestions = fal
           {shown.has("open_questions") && <th scope="col"><QuestionsHeader source={questions}/></th>}
         </tr></thead>
         <tbody>{summary.rows.map((row) => <tr key={row.alternative_id} {...companyRow(exploration, row.alternative_id)}>
-          <td>{row.rank}</td>
+          <RankCell id={row.alternative_id} rank={row.rank} layout={layout} marker={markers.get(row.alternative_id)}/>
           <th scope="row"><CompanyName id={row.alternative_id}>{row.name}</CompanyName></th>
           <td><ValueText value={row.value}/></td>
           {shown.has("classes") && <td>{row.class_name}{row.margin != null && <> (<ValueText value={row.margin}/>)</>}</td>}

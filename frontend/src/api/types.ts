@@ -74,6 +74,7 @@ export type ScreeningWhatIf = S["ScreeningWhatIf"];
 export type ProfileComparison = S["ProfileComparison"];
 export type ScreeningDetails = S["ScreeningDetails"];
 export type ScreeningSummary = S["ScreeningSummary"];
+export type ScreeningRobustness = S["ScreeningRobustness"];
 export type DecisionImpact = S["DecisionImpact"];
 export type ReferenceCasesResult = S["ReferenceCasesResult"];
 export type ReferenceCasesValidation = S["ReferenceCasesValidation"];

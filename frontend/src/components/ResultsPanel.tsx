@@ -19,6 +19,8 @@ import { FlowsView } from "./results/FlowsView";
 import { useFeasibility } from "../state/useFeasibility";
 import { useScreeningSummary } from "../state/useScreeningSummary";
 import { ScreeningSummaryView, type QuestionSource } from "./results/ScreeningSummaryView";
+import type { BandsRequest } from "./results/RobustnessBands";
+import { useScreeningRobustness } from "../state/useScreeningRobustness";
 import type { StudyEvidenceOffer } from "./CompanyExplorer";
 import { ScreeningReportButton } from "./results/ScreeningReportButton";
 import { saveDownload } from "./results/downloads";
@@ -66,6 +68,8 @@ export function ResultsPanel({ project, context, validation, onSelectCriterion, 
   const evaluation = useAnalysisRecord(project, validation, context);
   const feasibility = useFeasibility(project, context.fingerprint);
   const screening = useScreeningSummary(project, context, workspaceDossier);
+  // Bands load after the summary renders, so the summary is never slower; a trial hides them.
+  const bands = useScreeningRobustness(project, context, screening.status === "ready" && screening.result.status === "available" && !trial.active);
   const sections = useRef<Record<string, HTMLElement | null>>({});
   function jump(id: string) { const target = sections.current[id]; target?.scrollIntoView({ block: "start" }); target?.focus({ preventScroll: true }); }
   const fullRecord = evaluation.status === "ready" ? evaluation.result : null;
@@ -122,7 +126,7 @@ export function ResultsPanel({ project, context, validation, onSelectCriterion, 
   return <WeightTrialGate value={{ active: trial.active, generation: trial.generation, reset: trial.reset }}><section className="panel results-workspace" aria-label="Results">
     <h2>Results</h2>
     <WhatIfWeights trial={trial} request={trialRequest} supported={supported} onExplore={onExploreMavt}/>
-    {trial.active && <><p className="note">What-if, not saved. Other Results views use the saved weights.</p><p className="muted small">Open-question counts reflect the saved weights</p><p>{RESET_DOWNLOAD}</p></>}
+    {trial.active && <><p className="note">What-if, not saved. Other Results views use the saved weights.</p><p className="muted small">Open-question counts reflect the saved weights</p><p className="muted small">Rank ranges use the saved weights. Reset what-if to see them.</p><p>{RESET_DOWNLOAD}</p></>}
     {trial.active && project.weight_profiles.length >= 2 ? <p>Compare partners: {RESET_TRIAL}</p> : project.weight_profiles.length >= 2 ? <label className="partner-toggle"><input type="checkbox" checked={comparePartners} onChange={event => setComparePartners(event.target.checked)}/> Compare partners</label>
       : <p className="muted small">Two weight profiles are needed to compare partners.</p>}
     {comparePartners && project.weight_profiles.length >= 2 && !trial.active && <PartnerComparison project={project} context={context} dossier={workspaceDossier ?? null}/>}
@@ -131,7 +135,7 @@ export function ResultsPanel({ project, context, validation, onSelectCriterion, 
     {trial.active ? <section className="screening-summary-section" aria-label="Screening summary"><h3>What-if screening summary</h3>
       {trialSummary ? <ScreeningSummaryView summary={trialSummary} project={project} hideOpenQuestions/> : <p role="status">{trialRequest.status === "loading" ? "Calculating what-if screening…" : "What-if screening unavailable. Reset to return to the saved reading."}</p>}
     </section> : <ScreeningSummarySection project={project} request={screening} collapsed={method !== "mavt" && method !== "mavt_sorting"}
-      questions={{ dossier: Boolean(workspaceDossier), offer: studyEvidence ?? null }}/>}
+      questions={{ dossier: Boolean(workspaceDossier), offer: studyEvidence ?? null }} bands={bands}/>}
     {supported && <ScreeningReportButton project={project} context={context} dossier={workspaceDossier ?? null} trial={{ active: trial.active, generation: trial.generation }}/>}
     {record && result && has("overall") && <><h3 tabIndex={-1} ref={element => { sections.current.overall = element; }}>Overall values and competition ranks</h3>
       {trial.active ? trialRecord && <RankingChart record={trialRecord} view={view} order={trialRecord.result.ranking.map(row => row.alternative_id)} selectedAlternative={null} selectedCriterion={null} onAlternative={() => undefined} onCriterion={() => undefined}/>
@@ -241,13 +245,13 @@ export function ResultsPanel({ project, context, validation, onSelectCriterion, 
 
 /** The summary leads Results for MAVT and sorting; under another method it stays available, collapsed
  * and labelled as MAVT's reading, so it is never mistaken for that method's own result. */
-export function ScreeningSummarySection({ project, request, collapsed = false, questions }: {
-  project: Project; request: ReturnType<typeof useScreeningSummary>; collapsed?: boolean; questions?: QuestionSource;
+export function ScreeningSummarySection({ project, request, collapsed = false, questions, bands }: {
+  project: Project; request: ReturnType<typeof useScreeningSummary>; collapsed?: boolean; questions?: QuestionSource; bands?: BandsRequest;
 }) {
   const body = <>
     {request.status === "loading" && <p role="status">Preparing the screening summary…</p>}
     {request.status === "error" && <><p role="alert">{request.message}</p><button type="button" onClick={request.retry}>Retry summary</button></>}
-    {request.status === "ready" && <ScreeningSummaryView summary={request.result} project={project} questions={questions}/>}
+    {request.status === "ready" && <ScreeningSummaryView summary={request.result} project={project} questions={questions} bands={bands}/>}
   </>;
   return collapsed
     ? <details className="screening-summary-section" aria-label="MAVT screening summary"><summary>MAVT screening summary</summary>{body}</details>

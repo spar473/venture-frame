@@ -28,13 +28,18 @@ from mcda_studio.domain.results import MavtResult
 from mcda_studio.services import analysis_service, comparison_service, evidence_service
 from mcda_studio.services.feasibility_service import number
 from mcda_studio.services.questions_service import Question, open_questions
+from mcda_studio.services.screening_robustness_service import (
+    COVERAGE,
+    ScreeningRobustness,
+    screening_robustness,
+)
 from mcda_studio.services.screening_summary_service import (
     ScreeningSummary,
     SummaryRow,
     screening_summary,
 )
 
-REPORT_VERSION = 2
+REPORT_VERSION = 3
 #: Optional extra statements appended to "Read this first" (a note file or the API's ``notes``).
 NOTE_MAX_LINES = 20
 NOTE_MAX_CHARS = 300
@@ -79,6 +84,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .disclaimer p.statement { margin: 0 0 6pt; padding-bottom: 6pt; border-bottom: 0.5pt solid #777; }
 .muted { color: #444; font-size: 9pt; }
 .fail { font-weight: 700; }
+.range { color: #444; white-space: nowrap; }
 footer { margin-top: 18pt; border-top: 1pt solid #777; padding-top: 6pt; font-size: 8.5pt;
   color: #333; }
 footer dt { font-weight: 700; float: left; clear: left; width: 38mm; }
@@ -163,7 +169,10 @@ def _mandate(row: SummaryRow, requirement_names: dict[str, str]) -> str:
 
 
 def _summary_table(
-    project: Project, summary: ScreeningSummary, names: dict[str, str]
+    project: Project,
+    summary: ScreeningSummary,
+    names: dict[str, str],
+    bands: ScreeningRobustness | None = None,
 ) -> tuple[str, list[str]]:
     available = {c.column: c for c in summary.columns}
     classes = {c.id: c.name for c in project.sorting.classes} if project.sorting else {}
@@ -173,8 +182,9 @@ def _summary_table(
         for column in summary.columns
         if not column.available and column.reason
     ]
+    ranges = {r.alternative_id: r for r in bands.rows} if bands and bands.available else {}
     headers: list[tuple[str, bool]] = [
-        ("Rank", True),
+        ("Rank (range)" if ranges else "Rank", True),
         ("Alternative", False),
         ("Overall value", True),
     ]
@@ -197,7 +207,11 @@ def _summary_table(
         headers.append(("Open questions", True))
     rows = []
     for row in summary.rows:
-        cells = [_e(row.rank), _e(row.name), _e(_n(row.value))]
+        band = ranges.get(row.alternative_id)
+        rank = _e(row.rank)
+        if band is not None:
+            rank += f' <span class="range">({band.rank_low}–{band.rank_high})</span>'
+        cells = [rank, _e(row.name), _e(_n(row.value))]
         if use_classes:
             margin = f" ({_n(row.margin)})" if row.margin is not None else ""
             cells.append(_e(f"{row.class_name}{margin}"))
@@ -213,6 +227,25 @@ def _summary_table(
             cells.append(_e(row.open_questions))
         rows.append(cells)
     return _table(headers, rows), notes
+
+
+def _bands_lines(bands: ScreeningRobustness, names: dict[str, str]) -> list[str]:
+    """Escaped paragraphs under a profile's table: the overlapping groups and the run's basis."""
+    if not bands.available:
+        return [f'<p class="muted">Rank ranges: not available. {_e(bands.reason)}</p>']
+    together = [group for group in bands.groups if len(group) > 1]
+    lines = [
+        f"<p>Too close to separate under the stated uncertainty: "
+        f"{_e(', '.join(names.get(a, a) for a in group))}.</p>"
+        for group in together
+    ] or ["<p>Every rank is separated under the stated uncertainty.</p>"]
+    coverage = f"{round(bands.coverage * 100)}%"
+    lines.append(
+        f'<p class="muted">Rank range: the shortest run of ranks holding at least {coverage} of '
+        f"SMAA-2 draws; ranges that overlap are too close to separate. {_e(bands.basis)} "
+        f"{_e(bands.label)}</p>"
+    )
+    return lines
 
 
 def _active(claim: Claim) -> bool:
@@ -367,13 +400,17 @@ def screening_report(
 
     # Rankings per profile
     body.append("<h2>Screening summary by profile</h2>")
-    for _id, name, summary in readings:
+    for profile_id, name, summary in readings:
         body.append(f"<h3>{_e(name)}</h3>")
         if summary.status != "available":
             body.append(f"<p>{_e(summary.reason)}</p>")
             continue
-        table, notes = _summary_table(project, summary, names)
+        bands = screening_robustness(
+            project, requested.model_copy(update={"weight_profile_id": profile_id})
+        )
+        table, notes = _summary_table(project, summary, names, bands)
         body.append(table)
+        body.extend(_bands_lines(bands, names))
         body.extend(f'<p class="muted">{_e(note)}</p>' for note in notes)
     body.append(f'<p class="muted">{_e(primary.label)}</p>')
 
@@ -515,6 +552,7 @@ def screening_report(
         "generated_on": generated_on.isoformat() if generated_on else None,
         "questions_per_type": QUESTIONS_PER_GROUP,
         "notes": len(extra),
+        "rank_range_coverage": float(COVERAGE),
         "report_version": REPORT_VERSION,
     }
     facts = [
