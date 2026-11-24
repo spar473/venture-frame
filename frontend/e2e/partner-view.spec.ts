@@ -51,7 +51,12 @@ test("the start page names the product and shows only the configured starters", 
   await expect(cards.locator(".starter-title")).toHaveText(["Blank", "Venture screening", "Venture screening: evidence and model workflows (invented data)"]);
   await expect(page.getByText("Runs locally · your files stay on this computer")).toBeVisible();
   await settled(page);
-  if (screenshots) await expect(page).toHaveScreenshot("start-page.png", { animations: "disabled", caret: "hide" });
+  if (screenshots) {
+    // The app bar and starters only: the project list below depends on what earlier specs stored.
+    const hero = await page.locator("section.hero").boundingBox();
+    if (!hero) throw Error("missing start-page hero");
+    await expect(page).toHaveScreenshot("start-page.png", { animations: "disabled", caret: "hide", clip: { x: 0, y: 0, width: 1440, height: Math.ceil(hero.y + hero.height) } });
+  }
   await axe(page, "start-page");
   // Every other starter stays one step away, in New project… → Starter gallery.
   await page.getByText("More starters:").getByRole("button", { name: "New project…" }).click();
