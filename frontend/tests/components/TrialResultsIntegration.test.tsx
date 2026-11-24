@@ -59,7 +59,7 @@ it("reranks only the summary and ranking chart, hides counts and blocks exports,
   for (const name of ["Download analysis JSON", "Download CSV", "Download ranking SVG", "Download contributions SVG"]) expect(screen.getByRole("button", { name })).toBeDisabled();
   expect(screen.queryByRole("checkbox", { name: "Compare partners" })).toBeNull(); expect(screen.getByText("Compare partners: Reset what-if to use this", { exact: true })).toBeVisible();
   fireEvent.click(screen.getByRole("button", { name: "Reset" })); await tick();
-  expect(screen.getByRole("columnheader", { name: "Open questions (model only)ⓘ" })).toBeVisible(); expect(screen.getByRole("button", { name: "Download ranking SVG" })).toBeEnabled();
+  expect(screen.getByRole("columnheader", { name: "Open questions (model only)" })).toBeVisible(); expect(screen.getByRole("button", { name: "Download ranking SVG" })).toBeEnabled();
   expect(api.analysisRecord).toHaveBeenCalledTimes(1); expect(edit).not.toHaveBeenCalled(); expect(save).not.toHaveBeenCalled(); expect(project).toEqual(before);
 });
 it("permanently suppresses a saved export started before a trial even when it resolves after Reset, then uses the original export body", async () => {

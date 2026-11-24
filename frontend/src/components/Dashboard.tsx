@@ -152,7 +152,6 @@ export function Dashboard({ onOpen }: Props) {
                 key={t.id}
                 type="button"
                 className="starter-card"
-                aria-label={`Start from ${t.title}`}
                 onClick={() => setDialog({ kind: "new", starter: t.id })}
               >
                 <StarterIcon id={t.id} />

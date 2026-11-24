@@ -1,10 +1,10 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import type { ProjectDocument } from "../src/api/types";
-import { openTab, saveState, storedFile } from "./helpers";
+import { openTab, saveState, starterCard, storedFile } from "./helpers";
 const id = "nz_venture_screening_study";
 async function gallery(page: Page) {
-  await page.goto("/"); await page.getByRole("button", { name: "Start from Venture screening", exact: true }).click();
+  await page.goto("/"); await starterCard(page, "Venture screening").click();
   await page.getByRole("button", { name: "Open worked example — Venture screening", exact: true }).click();
   await expect(page.getByRole("table", { name: "Screening summary", exact: true })).toBeVisible();
 }

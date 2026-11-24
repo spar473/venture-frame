@@ -196,3 +196,14 @@ export async function goToProblem(page: Page, code: string): Promise<void> {
   await expect(issue.locator("code")).toHaveText(code);
   await issue.getByRole("button").first().click();
 }
+
+/** In the Analyst view, Method, Set up and Scenario sit under a collapsed Advanced section. */
+export async function openAdvanced(page: Page): Promise<void> {
+  const advanced = page.locator("details.analysis-advanced");
+  if (await advanced.count() && await advanced.getAttribute("open") === null) await advanced.locator(":scope > summary").click();
+}
+
+/** A start-page starter card by its title; its accessible name is the title and description. */
+export function starterCard(page: Page, title: string): Locator {
+  return page.locator(".starter-card").filter({ has: page.locator(".starter-title").getByText(title, { exact: true }) });
+}

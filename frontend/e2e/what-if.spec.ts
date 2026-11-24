@@ -1,10 +1,10 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import type { ProjectDocument, ScreeningWhatIf } from "../src/api/types";
-import { openTab, saveState, storedFile } from "./helpers";
+import { openAdvanced, openTab, saveState, starterCard, storedFile } from "./helpers";
 const id = "nz_venture_screening_study";
 async function gallery(page: Page) {
-  await page.goto("/"); await page.getByRole("button", { name: "Start from Venture screening", exact: true }).click();
+  await page.goto("/"); await starterCard(page, "Venture screening").click();
   await page.getByRole("button", { name: "Open worked example — Venture screening", exact: true }).click();
   await expect(page.getByRole("table", { name: "Screening summary", exact: true })).toBeVisible();
 }
@@ -43,6 +43,7 @@ test("a trial changes only the Results summary and ranking chart, blocks other c
   await expect(page.getByLabel("Evidence claims", { exact: true })).toBeVisible(); await openTab(page, "Results");
   const summary = page.getByRole("table", { name: "Screening summary", exact: true });
   await expect(summary.locator("tbody tr")).toHaveCount(8);
+  await expect(summary.getByText("(2–6)", { exact: true })).toBeVisible(); // rank ranges arrive after the summary
   const savedRows = await summary.locator("tbody tr").allTextContents(), ranking = await page.getByRole("table", { name: "Ranking", exact: true }).allTextContents();
   const segments = await page.locator(".results-chart rect[data-contribution]").evaluateAll(nodes => nodes.map(node => node.getAttribute("data-contribution")));
   const before = await snapshot(request), savedJSON = await download(page, "Download analysis JSON"), savedCSV = await download(page, "Download CSV");
@@ -61,9 +62,9 @@ test("a trial changes only the Results summary and ranking chart, blocks other c
   const trial = await (await received).json() as ScreeningWhatIf; expect(trial.status).toBe("available");
   if (!trial.record || !trial.summary) throw Error("Trial result missing");
   await expect(page.getByText("Open-question counts reflect the saved weights", { exact: true })).toBeVisible();
-  await expect(summary.getByRole("columnheader", { name: "Open questions", exact: true })).toHaveCount(0);
+  await expect(summary.getByRole("columnheader", { name: /^Open questions/ })).toHaveCount(0);
   expect(await summary.locator("tbody tr").locator("th").allTextContents()).toEqual(trial.summary.rows.map(row => row.name));
-  expect(await summary.locator("tbody tr").evaluateAll(rows => rows.map(row => row.querySelectorAll("td")[1]?.textContent))).toEqual(trial.summary.rows.map(row => row.value.toFixed(4)));
+  expect(await summary.locator("tbody tr").evaluateAll(rows => rows.map(row => row.querySelectorAll("td")[1]?.textContent))).toEqual(trial.summary.rows.map(row => row.value.toFixed(3)));
   const chart = page.getByRole("group", { name: "Overall MAVT values", exact: true });
   expect(await chart.locator("g[data-alternative-id]").evaluateAll(nodes => nodes.map(node => node.getAttribute("data-alternative-id")))).toEqual(trial.record.result.ranking.map(row => row.alternative_id));
   expect(await page.getByRole("table", { name: "Ranking", exact: true }).allTextContents()).toEqual(ranking);
@@ -75,7 +76,8 @@ test("a trial changes only the Results summary and ranking chart, blocks other c
   await openTab(page, "Compare"); await expect(page.getByRole("table", { name: "Methods side by side", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Download comparison JSON", exact: true })).toBeDisabled(); await expect(page.getByRole("button", { name: "Download comparison CSV", exact: true })).toBeDisabled();
   await openTab(page, "Results"); await expect(page.getByRole("button", { name: "Reset", exact: true })).toBeEnabled(); await page.getByRole("button", { name: "Reset", exact: true }).click();
-  await expect(summary.getByRole("columnheader", { name: "Open questions", exact: true })).toBeVisible(); expect(await summary.locator("tbody tr").allTextContents()).toEqual(savedRows);
+  await expect(summary.getByRole("columnheader", { name: "Open questions (model and evidence dossier)", exact: true })).toBeVisible();
+  await expect(summary.getByText("(2–6)", { exact: true })).toBeVisible(); expect(await summary.locator("tbody tr").allTextContents()).toEqual(savedRows);
   expect((await download(page, "Download analysis JSON")).equals(savedJSON)).toBe(true); expect((await download(page, "Download CSV")).equals(savedCSV)).toBe(true);
   expect(trialBodies.length).toBeGreaterThan(1);
   for (const body of trialBodies) { expect((body as { project: unknown }).project).toEqual(before.body.project); expect(body).not.toHaveProperty("dossier"); }
@@ -88,8 +90,8 @@ test("exact uncapped ratings remain full precision, all-zero trials are unavaila
   let received = response(page, { team: 137.12345678901235 }); await exactRating(page, "Team", "137.12345678901235");
   const precise = await (await received).json() as ScreeningWhatIf;
   expect(precise.ratings).toEqual({ team: 137.12345678901235 }); expect(precise.controls.find(control => control.criterion_id === "team")?.raw_rating).toBe(137.12345678901235);
-  received = response(page, {}); await page.getByLabel("Weight profile", { exact: true }).selectOption("commercial_traction"); await received;
-  await expect(page.getByRole("button", { name: "Reset", exact: true })).toBeDisabled(); await expect(page.getByRole("columnheader", { name: "Open questions", exact: true })).toBeVisible();
+  received = response(page, {}); await page.getByLabel("Partner weighting", { exact: true }).selectOption("commercial_traction"); await received;
+  await expect(page.getByRole("button", { name: "Reset", exact: true })).toBeDisabled(); await expect(page.getByRole("columnheader", { name: "Open questions (model only)", exact: true })).toBeVisible();
   const zero: Record<string, number> = {};
   for (const [key, name] of [["team", "Team"], ["problem_solution", "Problem and solution"], ["market", "Market"], ["traction", "Traction"]]) {
     if (!key || !name) throw Error("Control missing"); zero[key] = 0;
@@ -97,7 +99,7 @@ test("exact uncapped ratings remain full precision, all-zero trials are unavaila
   }
   await expect(page.getByRole("table", { name: "Screening summary", exact: true })).toHaveCount(0); await expect(page.getByRole("group", { name: "Overall MAVT values", exact: true })).toHaveCount(0);
   await expect(page.getByText("Open-question counts reflect the saved weights", { exact: true })).toBeVisible();
-  received = response(page, {}); await page.getByLabel("Scenario", { exact: true }).selectOption("linear_market_size"); await received;
+  received = response(page, {}); await openAdvanced(page); await page.getByLabel("Scenario", { exact: true }).selectOption("linear_market_size"); await received;
   await expect(page.getByRole("button", { name: "Reset", exact: true })).toBeDisabled(); await expect(page.getByRole("table", { name: "Screening summary", exact: true })).toBeVisible();
   await unchanged(page, request, before);
 });

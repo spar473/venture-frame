@@ -66,7 +66,7 @@ export function ScreeningSummaryView({ summary, project, hideOpenQuestions = fal
           {shown.has("requirements") && <th scope="col">Requirements</th>}
           <th scope="col">Largest contributions</th>
           {shown.has("fragility") && <th scope="col" title={summary.fragility_definition}>Closest change</th>}
-          {shown.has("open_questions") && <th scope="col"><QuestionsHeader source={questions}/></th>}
+          {shown.has("open_questions") && <th scope="col" aria-label={`Open questions (${questions.dossier ? "model and evidence dossier" : "model only"})`}><QuestionsHeader source={questions}/></th>}
         </tr></thead>
         <tbody>{summary.rows.map((row) => <tr key={row.alternative_id} {...companyRow(exploration, row.alternative_id)}>
           <RankCell id={row.alternative_id} rank={row.rank} layout={layout} marker={markers.get(row.alternative_id)}/>

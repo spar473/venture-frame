@@ -1,5 +1,5 @@
 import { expect, test, type Page, type Request } from "@playwright/test";
-import { openTab, storedFile } from "./helpers";
+import { openAdvanced, openTab, starterCard, storedFile } from "./helpers";
 
 const projectId = "nz_venture_screening_study";
 const analystTabs = ["Results", "Sensitivity", "Compare", "Reference cases", "Evidence", "Open Questions", "Decision"];
@@ -77,7 +77,7 @@ test("clean worked study: every workspace view stays readable and read-only", as
   page.on("requestfinished", value => pending.delete(value)); page.on("requestfailed", value => pending.delete(value));
   await page.addInitScript(id => sessionStorage.setItem(`mcda:editor-view:${id}`, "builder"), projectId);
   await page.goto("/");
-  await page.getByRole("button", { name: "Start from Venture screening", exact: true }).click();
+  await starterCard(page, "Venture screening").click();
   await page.getByRole("button", { name: "Open worked example — Venture screening", exact: true }).click();
   await expect(page.getByRole("button", { name: "Analyst view", exact: true })).toHaveAttribute("aria-pressed", "true");
   expect(await page.getByRole("tab").allTextContents()).toEqual(analystTabs);
@@ -115,20 +115,20 @@ test("clean worked study: every workspace view stays readable and read-only", as
   for (const tab of builderTabs) { await openTab(page, tab); await settled(page, pending, tab); await check(`Builder ${tab}`); }
   await page.getByRole("button", { name: "Analyst view", exact: true }).click(); await openTab(page, "Results");
   for (const profile of ["commercial_traction", "technical_ip"]) {
-    await page.getByLabel("Weight profile", { exact: true }).selectOption(profile);
+    await page.getByLabel("Partner weighting", { exact: true }).selectOption(profile);
     for (const tab of ["Results", "Sensitivity", "Compare", "Open Questions"]) {
       await openTab(page, tab); await settled(page, pending, tab); await check(`Profile ${profile}: ${tab}`);
     }
   }
   for (const scenario of ["linear_market_size", ""]) {
-    await page.getByLabel("Scenario", { exact: true }).selectOption(scenario);
+    await openAdvanced(page); await page.getByLabel("Scenario", { exact: true }).selectOption(scenario);
     for (const tab of ["Results", "Sensitivity", "Compare", "Open Questions"]) {
       await openTab(page, tab); await settled(page, pending, tab); await check(`Scenario ${scenario || "Base"}: ${tab}`);
     }
   }
   await openTab(page, "Results");
   for (const method of ["mavt", "mavt_sorting", "smaa2", "promethee2"]) {
-    await page.getByLabel("Method", { exact: true }).selectOption(method);
+    await openAdvanced(page); await page.getByLabel("Method", { exact: true }).selectOption(method);
     const label = method === "smaa2" ? "Rank acceptability" : method === "promethee2" ? "Outranking flows" : "Screening summary";
     await expect(page.getByRole("table", { name: label, exact: true })).toBeVisible(); await check(`Results ${method}`);
     if (method === "mavt" || method === "mavt_sorting") {
@@ -165,7 +165,7 @@ test("clean worked study: every workspace view stays readable and read-only", as
     await expect(company.locator("li[data-claim-id]")).toHaveCount(2); await check(`Disputed ${name}`);
   }
   await openTab(page, "Results"); await settled(page, pending, "Results");
-  const partnerHeaderProfile = await page.getByLabel("Weight profile", { exact: true }).inputValue();
+  const partnerHeaderProfile = await page.getByLabel("Partner weighting", { exact: true }).inputValue();
   await page.getByRole("checkbox", { name: "Compare partners", exact: true }).check();
   const partners = page.getByRole("region", { name: "Partner comparison", exact: true });
   await expect(partners.getByRole("table", { name: "Partner rankings and movements", exact: true }).locator("tbody tr")).toHaveCount(8);
@@ -175,7 +175,7 @@ test("clean worked study: every workspace view stays readable and read-only", as
   const partnerDrawer = page.getByRole("dialog", { name: "Hnry", exact: true });
   await expect(partnerDrawer.getByRole("region", { name: "Company contributions", exact: true }).locator("li")).toHaveCount(16);
   await expect(partnerDrawer).toContainText("Commercial/traction-led");
-  await expect(page.getByLabel("Weight profile", { exact: true })).toHaveValue(partnerHeaderProfile);
+  await expect(page.getByLabel("Partner weighting", { exact: true })).toHaveValue(partnerHeaderProfile);
   await check("Partner endpoint drawer"); await page.keyboard.press("Escape"); await expect(partnerDrawer).toHaveCount(0);
   await partners.getByRole("button", { name: "Swap profiles", exact: true }).click();
   await expect(partners.getByLabel("Left profile", { exact: true })).toHaveValue("commercial_traction");
@@ -188,7 +188,7 @@ test("clean worked study: every workspace view stays readable and read-only", as
   await settled(page, pending, "Results");
   await expect(page.getByText("Open-question counts reflect the saved weights", { exact: true })).toBeVisible();
   const trialSummary = page.getByRole("table", { name: "Screening summary", exact: true });
-  await expect(trialSummary.getByRole("columnheader", { name: "Open questions", exact: true })).toHaveCount(0);
+  await expect(trialSummary.getByRole("columnheader", { name: "Open questions (model and evidence dossier)", exact: true })).toHaveCount(0);
   await expect(trialSummary.getByRole("button", { name: "Upstock", exact: true })).toBeDisabled();
   await expect(page.getByRole("region", { name: "Partner comparison", exact: true })).toHaveCount(0);
   await expect(page.getByText("Compare partners: Reset what-if to use this", { exact: true })).toBeVisible();
@@ -199,7 +199,7 @@ test("clean worked study: every workspace view stays readable and read-only", as
   await check("What-if blocks Sensitivity");
   await openTab(page, "Results"); await settled(page, pending, "Results");
   await page.getByRole("button", { name: "Reset", exact: true }).click(); await settled(page, pending, "Results");
-  await expect(trialSummary.getByRole("columnheader", { name: "Open questions", exact: true })).toBeVisible();
+  await expect(trialSummary.getByRole("columnheader", { name: "Open questions (model and evidence dossier)", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Download ranking SVG", exact: true })).toBeEnabled();
   await check("Reset saved screening"); await page.getByText("What-if weights", { exact: true }).click();
   await openTab(page, "Sensitivity"); await settled(page, pending, "Sensitivity");

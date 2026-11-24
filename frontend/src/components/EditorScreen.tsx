@@ -513,6 +513,7 @@ export function EditorScreen({ projectId, onClose, onOpenOther }: Props) {
           </nav>
           <ValidationPanel report={validation} onGo={goToIssue} />
         </div>
+        <main className="editor-main">
         <div className="tabpanel" id="tabpanel" role="tabpanel" aria-labelledby={`tab-${tab}`}>
           {trial.active && <p className="note">What-if, not saved. Other views use saved weights. Company details: {RESET_TRIAL}</p>}
           {coverageReturn && coverageCell && <p><button type="button" onClick={returnToCoverage}>Return to coverage</button></p>}
@@ -606,6 +607,7 @@ export function EditorScreen({ projectId, onClose, onOpenOther }: Props) {
             </details>
           </section>
         </div>
+        </main>
       </div>
 
       {functionEditor && selectedNode?.scale && (selectedNode.value_function || project.scenarios.find(s=>s.id===context.scenarioId)?.value_function_overrides[selectedNode.id]) && meta && <ValueFunctionEditor

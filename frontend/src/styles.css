@@ -716,3 +716,6 @@ table.grid.projects td:first-child .project-link, table.grid.projects td:first-c
 .rank-range { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .rank-cell.in-group { box-shadow: inset 3px 0 0 var(--accent); }
 .band-label { display: block; margin-top: 2px; max-width: 13ch; color: var(--accent); font-size: 11px; font-weight: 500; line-height: 1.25; white-space: normal; }
+/* The editor's content area is the page's main landmark; the tab panel scrolls inside it. */
+.editor-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.editor-main > .tabpanel { flex: 1; min-height: 0; }
