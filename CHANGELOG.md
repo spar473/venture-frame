@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+### Reference rating (deep dive 6)
+
+- A new opt-in sidecar, `rating-proposals` version 1: proposed labels for reference cases, each
+  with one dated public source, a locator and an excerpt of at most 25 words. "Not enough evidence"
+  is a proposal of its own and leaves a criterion unrated.
+- `mcda reference-cases packets` writes per-case packets without outcome information (context rows
+  only from a whitelist). `review-sheet` writes a UTF-8 CSV with a byte-order mark and a companion
+  page of labels, rubrics and sources. `import-reviews` writes only accepted and edited rows into a
+  new version 2 set as reviewed ratings: it is atomic and idempotent, re-checks the snapshot guard,
+  never changes an existing reviewed rating without `--replace`, and validates the result.
+- `examples/reference_rating`: the VEE pilot (a seeded sample over case ids; packets that withhold
+  VEE's commentary and every source dated after the snapshot). Design:
+  [reference rating](docs/design/reference-rating.md).
+
 ### Calibration on synthetic data (deep dive 5)
 
 - `src/mcda_studio/calibration/`: an offline, domain-neutral module. It fits a censoring-aware

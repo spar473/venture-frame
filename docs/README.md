@@ -44,6 +44,7 @@ verification records kept in the private development repository; those are not i
 - [Read-only previews](design/previews.md)
 - [PROMETHEE II: net outranking flows, with an explanation against MAVT](design/promethee-ii.md)
 - [Reference cases](design/reference-cases.md)
+- [Reference rating: reviewed ratings for reference cases](design/reference-rating.md)
 - [Results, dominance and reproducible exports](design/results-and-exports.md)
 - [Sampled weights in SMAA-2 (proposal)](design/sampled-weights-in-smaa.md)
 - [Scenarios and comparison](design/scenarios.md)
