@@ -16,7 +16,7 @@ The working tree is never modified. An unmodified baseline run must pass first.
                                       --study-only | --summary-only |
                                       --cleanup-only | --showcase-only |
                                       --reference_cases-only | --robustness-only |
-                                      --structured_judgement-only]
+                                      --structured_judgement-only | --calibration-only]
 
 Groups are named after the milestone that introduced them (B3 weighting, B4 sensitivity, B5
 scenarios, B6 results) or after the development itself (RETRY: analysis retry; COVERAGE:
@@ -4044,6 +4044,82 @@ REFERENCE_OUTCOMES_BACKEND = [
 OVERNIGHT["reference_outcomes"] = (
     REFERENCE_OUTCOMES_BACKEND,
     pytest_runner("Reference outcomes", "tests/unit/test_reference_outcomes.py"),
+)
+
+
+# Calibration on synthetic data (deep dive 5, 25 November 2026): the nested Dirichlet prior, the
+# censoring-aware likelihood, the sampler, the convergence gate and the weight-samples sidecar.
+# Design: docs/design/calibration.md. ``--calibration-only``.
+CAL_PRIOR = "src/mcda_studio/calibration/prior.py"
+CAL_LIKELIHOOD = "src/mcda_studio/calibration/likelihood.py"
+CAL_SAMPLER = "src/mcda_studio/calibration/sampler.py"
+CAL_DIAGNOSTICS = "src/mcda_studio/calibration/diagnostics.py"
+CAL_SERVICE = "src/mcda_studio/calibration/service.py"
+CAL_SIDECAR = "src/mcda_studio/calibration/weight_samples.py"
+CALIBRATION_BACKEND = [
+    Mutation("CALIBRATION the ALR Jacobian dropped from the prior density", CAL_PRIOR,
+             "            total = total + norm + (a * log_simplex(y)).sum(axis=-1)",
+             "            total = total + norm + ((a - 1.0) * log_simplex(y)).sum(axis=-1)"),
+    Mutation("CALIBRATION kappa ignored (every group Dirichlet(centre))", CAL_PRIOR,
+             "                kappa=float(kappa[parent]),", "                kappa=1.0,"),
+    Mutation("CALIBRATION listed held children varied", CAL_PRIOR,
+             "held_kids = tuple(k for k in kids if local[k] == 0.0 or k in listed)",
+             "held_kids = tuple(k for k in kids if local[k] == 0.0)"),
+    Mutation("CALIBRATION zero-weight branches varied", CAL_PRIOR,
+             "        if share_of_parent == 0.0:", "        if False:"),
+    Mutation("CALIBRATION censored treated as no event", CAL_LIKELIHOOD,
+             '            raise ValueError("censored needs the time it was watched to")\n        return Observation(0.0, _clip(time), 0.0)',
+             '            raise ValueError("censored needs the time it was watched to")\n        return Observation(0.0, 1.0, 0.0)'),
+    Mutation("CALIBRATION competing event treated as an event", CAL_LIKELIHOOD,
+             '            raise ValueError("a competing event needs its time")\n        return Observation(0.0, _clip(time), 0.0)',
+             '            raise ValueError("a competing event needs its time")\n        return Observation(1.0, _clip(time), 0.0)'),
+    Mutation("CALIBRATION a partial competing date censored at its last day", CAL_LIKELIHOOD,
+             "return Observation(0.0, _clip(interval[0]), 0.0)  # censored at the earliest day",
+             "return Observation(0.0, _clip(interval[1]), 0.0)  # censored at the earliest day"),
+    Mutation("CALIBRATION partial event dates lose their interval term", CAL_LIKELIHOOD,
+             "    if np.any(partial):", "    if False:"),
+    Mutation("CALIBRATION a missing leaf counted as zero", CAL_LIKELIHOOD,
+             "        den = den + data.rated[:, j : j + 1] * w[j]", "        den = den + w[j]"),
+    Mutation("CALIBRATION beta allowed negative in the likelihood", CAL_SAMPLER,
+             "log_likelihood(problem.data, weights, alpha, np.exp(log_beta))",
+             "log_likelihood(problem.data, weights, alpha, log_beta)"),
+    Mutation("CALIBRATION the centred intercept read back as alpha", CAL_SAMPLER,
+             "    out: Array = theta[:, 0] - np.exp(theta[:, 1]) * centre",
+             "    out: Array = theta[:, 0] + 0.0 * centre"),
+    Mutation("CALIBRATION thinning recycles draws", CAL_SAMPLER,
+             "    if not 1 <= samples <= total:\n        raise ValueError(\"cannot store more samples than kept draws; draws are never recycled\")",
+             "    if False:\n        raise ValueError(\"cannot store more samples than kept draws; draws are never recycled\")"),
+    Mutation("CALIBRATION R-hat threshold loosened", CAL_DIAGNOSTICS, "RHAT_MAX = 1.01", "RHAT_MAX = 1.1"),
+    Mutation("CALIBRATION ESS threshold loosened", CAL_DIAGNOSTICS, "ESS_MIN = 400.0", "ESS_MIN = 100.0"),
+    Mutation("CALIBRATION folded R-hat dropped", CAL_DIAGNOSTICS,
+             "    return max(bulk, folded)", "    return bulk"),
+    Mutation("CALIBRATION chains not split for R-hat", CAL_DIAGNOSTICS,
+             "    halves = split_chains(draws)\n    bulk", "    halves = draws\n    bulk"),
+    Mutation("CALIBRATION proposed ratings counted as reviewed", CAL_SERVICE,
+             '(r.review == "reviewed" or include_proposed)', '(True or include_proposed)'),
+    Mutation("CALIBRATION unknown outcomes enter", CAL_SERVICE,
+             '        elif found[0].status == "unknown":', "        elif False:"),
+    Mutation("CALIBRATION a case rating exactly half the leaves left out", CAL_SERVICE,
+             "Fraction(len(ratings), len(leaves)) < threshold", "Fraction(len(ratings), len(leaves)) <= threshold"),
+    Mutation("CALIBRATION insufficient data sampled anyway", CAL_SERVICE,
+             "    if insufficient and not include_proposed:\n        return FitOutcome(base, None)",
+             "    if False:\n        return FitOutcome(base, None)"),
+    Mutation("CALIBRATION a non-converged sidecar accepted", CAL_SIDECAR,
+             "        if not self.diagnostics.converged:", "        if False:"),
+    Mutation("CALIBRATION a diagnostic sidecar marked usable", CAL_SERVICE,
+             "        usable=not include_proposed and not insufficient,", "        usable=not insufficient,"),
+]  # fmt: skip
+OVERNIGHT["calibration"] = (
+    CALIBRATION_BACKEND,
+    pytest_runner(
+        "Calibration",
+        "tests/unit/test_calibration_prior.py",
+        "tests/unit/test_calibration_likelihood.py",
+        "tests/unit/test_calibration_diagnostics.py",
+        "tests/unit/test_calibration_sampler.py",
+        "tests/unit/test_calibration_service.py",
+        "tests/unit/test_calibration_boundaries.py",
+    ),
 )
 
 
