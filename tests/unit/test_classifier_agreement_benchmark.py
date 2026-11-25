@@ -497,17 +497,17 @@ def test_report_replays_byte_for_byte_and_refuses_overwrite(passing, tmp_path):
 def test_unknown_report_version_and_tampering_are_refused(passing, tmp_path):
     out = tmp_path / "report"
     bench.write_report(passing, out)
-    document = json.loads((out / "report.json").read_text())
+    document = json.loads((out / "report.json").read_text(encoding="utf-8"))
     for change in ({"version": 2}, {"algorithm": "classifier-agreement.v2"}):
         changed = {**document, **change}
         changed["digest"] = bench.digest({k: v for k, v in changed.items() if k != "digest"})
         path = tmp_path / f"changed-{len(change)}-{next(iter(change))}.json"
-        path.write_text(json.dumps(changed))
+        path.write_text(json.dumps(changed), encoding="utf-8")
         with pytest.raises(bench.BenchmarkError, match="Unsupported"):
             bench.verify_report(path)
     tampered = {**document, "status": "reference accepted (edited)"}
     path = tmp_path / "tampered.json"
-    path.write_text(json.dumps(tampered))
+    path.write_text(json.dumps(tampered), encoding="utf-8")
     with pytest.raises(bench.BenchmarkError, match="digest mismatch"):
         bench.verify_report(path)
 
@@ -515,12 +515,16 @@ def test_unknown_report_version_and_tampering_are_refused(passing, tmp_path):
 def test_manifest_with_unknown_version_or_changed_input_is_refused(tmp_path):
     for name in [p.name for p in FIXTURE.iterdir() if p.is_file()]:
         (tmp_path / name).write_bytes((FIXTURE / name).read_bytes())
-    manifest = json.loads(MANIFEST.read_text())
-    (tmp_path / "manifest.json").write_text(json.dumps({**manifest, "version": 2}))
+    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    (tmp_path / "manifest.json").write_text(
+        json.dumps({**manifest, "version": 2}), encoding="utf-8"
+    )
     with pytest.raises(bench.BenchmarkError):
         bench.evaluate(tmp_path / "manifest.json")
-    (tmp_path / "manifest.json").write_text(json.dumps(manifest))
-    (tmp_path / "items.json").write_text((FIXTURE / "items.json").read_text() + "\n")
+    (tmp_path / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    (tmp_path / "items.json").write_text(
+        (FIXTURE / "items.json").read_text(encoding="utf-8") + "\n", encoding="utf-8"
+    )
     with pytest.raises(bench.BenchmarkError, match="Input digest mismatch"):
         bench.evaluate(tmp_path / "manifest.json")
 
@@ -600,7 +604,7 @@ def conforms(value, schema, registry):
 @pytest.fixture(scope="module")
 def registry():
     return {
-        name: json.loads((SCHEMAS / name).read_text())
+        name: json.loads((SCHEMAS / name).read_text(encoding="utf-8"))
         for name in (
             "classifier-agreement-manifest-v1.schema.json",
             "classifier-agreement-report-v1.schema.json",
@@ -610,7 +614,7 @@ def registry():
 
 def test_committed_schemas_are_exactly_the_script_schemas(registry):
     for name, schema in bench.schemas().items():
-        assert (SCHEMAS / name).read_text() == bench.schema_text(schema)
+        assert (SCHEMAS / name).read_text(encoding="utf-8") == bench.schema_text(schema)
 
 
 def test_fixture_manifests_and_sealed_reports_round_trip_through_the_schemas(
@@ -619,18 +623,18 @@ def test_fixture_manifests_and_sealed_reports_round_trip_through_the_schemas(
     manifest_schema = registry["classifier-agreement-manifest-v1.schema.json"]
     report_schema = registry["classifier-agreement-report-v1.schema.json"]
     for path in (MANIFEST, REFUSED):
-        assert conforms(json.loads(path.read_text()), manifest_schema, registry)
+        assert conforms(json.loads(path.read_text(encoding="utf-8")), manifest_schema, registry)
     for name, report in (("pass", passing), ("refused", refused)):
         out = tmp_path / name
         bench.write_report(report, out)
-        reopened = json.loads((out / "report.json").read_text())
+        reopened = json.loads((out / "report.json").read_text(encoding="utf-8"))
         assert conforms(reopened, report_schema, registry)
         assert bench.verify_report(out / "report.json")["digest"] == report["digest"]
 
 
 def test_schemas_refuse_unknown_versions_fields_and_reserved_labels(registry):
     schema = registry["classifier-agreement-manifest-v1.schema.json"]
-    manifest = json.loads(MANIFEST.read_text())
+    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     assert not conforms({**manifest, "version": 2}, schema, registry)
     assert not conforms({**manifest, "version": True}, schema, registry)
     assert not conforms({**manifest, "unexpected": 1}, schema, registry)
@@ -646,10 +650,10 @@ def copy_fixture(tmp_path, change=None):
     for path in FIXTURE.iterdir():
         if path.is_file():
             (tmp_path / path.name).write_bytes(path.read_bytes())
-    manifest = json.loads(MANIFEST.read_text())
+    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     if change:
         change(manifest)
-    (tmp_path / "manifest.json").write_text(json.dumps(manifest))
+    (tmp_path / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     return tmp_path / "manifest.json"
 
 
@@ -682,11 +686,11 @@ def test_malformed_or_out_of_protocol_manifests_are_refused_truthfully(tmp_path,
     else:
         # A copy outside the checkout is allowed through the location rule, so prove the rule on
         # the in-checkout fixture itself by loading it as a declared public dataset.
-        manifest = json.loads(MANIFEST.read_text())
+        manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
         manifest["data_kind"] = "public"
         inside = FIXTURE / "public-refusal-probe.json"
         assert not inside.exists()
-        inside.write_text(json.dumps(manifest))
+        inside.write_text(json.dumps(manifest), encoding="utf-8")
         try:
             with pytest.raises(bench.BenchmarkError, match=reason):
                 bench.evaluate(inside)
@@ -743,12 +747,12 @@ def test_reference_coverage_and_refusal_reasons_are_exact(passing, refused, inpu
 
 def test_adjudication_before_the_gate_is_refused(tmp_path):
     path = copy_fixture(tmp_path)
-    rows = json.loads((tmp_path / "adjudications.json").read_text())
+    rows = json.loads((tmp_path / "adjudications.json").read_text(encoding="utf-8"))
     rows[0]["reviewed_at"] = "2026-10-01T00:00:00Z"
     data = json.dumps(rows, indent=2).encode()
     (tmp_path / "adjudications.json").write_bytes(data)
-    manifest = json.loads(path.read_text())
+    manifest = json.loads(path.read_text(encoding="utf-8"))
     manifest["files"]["adjudications"]["sha256"] = hashlib.sha256(data).hexdigest()
-    path.write_text(json.dumps(manifest))
+    path.write_text(json.dumps(manifest), encoding="utf-8")
     with pytest.raises(bench.BenchmarkError, match="Leaked or stale-gate adjudication"):
         bench.evaluate(path)

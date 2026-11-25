@@ -83,6 +83,7 @@ def test_the_oracles_import_nothing_from_mcda_studio(module: str) -> None:
         capture_output=True,
         text=True,
         check=True,
+        encoding="utf-8",
     )
     assert run.stdout.strip() == "[]"
 
@@ -230,7 +231,9 @@ def test_sampled_acceptability_agrees_with_an_independent_sampler(run: str) -> N
 
 def test_the_dossier_binds_and_supports_every_entered_measurement() -> None:
     project = _project()
-    dossier = EvidenceDossier.model_validate_json((EXAMPLE / "evidence.json").read_text())
+    dossier = EvidenceDossier.model_validate_json(
+        (EXAMPLE / "evidence.json").read_text(encoding="utf-8")
+    )
     assert dossier.project_fingerprint == project.fingerprint()
     preview = evidence.preview(project, dossier)
     assert preview.issues == [] and preview.missing_measurements == []
@@ -267,7 +270,9 @@ def test_market_cells_are_the_median_of_the_listed_estimates() -> None:
 
 
 def test_the_decision_record_verifies_and_is_marked_illustrative() -> None:
-    record = decisions.DecisionRecordV2.model_validate_json((EXAMPLE / "decision.json").read_text())
+    record = decisions.DecisionRecordV2.model_validate_json(
+        (EXAMPLE / "decision.json").read_text(encoding="utf-8")
+    )
     decisions.verify(record)
     assert record.project_fingerprint == _project().fingerprint()
     assert record.decision.selected_alternative_id == "upstock"
@@ -287,7 +292,7 @@ def test_the_decision_record_verifies_and_is_marked_illustrative() -> None:
 
 
 def test_the_starter_manifest_lists_hash_checked_files() -> None:
-    manifest = json.loads((STARTER / "manifest.json").read_text())
+    manifest = json.loads((STARTER / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["source_example"] == "examples/nz_venture_screening"
     assert [a["path"] for a in manifest["artifacts"]] == ["project.json", "evidence.json"]
 
@@ -296,7 +301,9 @@ def test_each_claim_records_its_kind_and_judgements_drive_the_stated_uncertainty
     """A judgement must never read as observed: the dossier, the build table and SMAA-2 agree."""
     build = _build_module()
     project = _project()
-    dossier = EvidenceDossier.model_validate_json((EXAMPLE / "evidence.json").read_text())
+    dossier = EvidenceDossier.model_validate_json(
+        (EXAMPLE / "evidence.json").read_text(encoding="utf-8")
+    )
     varied = {
         (c.alternative_id, c.criterion_id)
         for c in project.smaa.cells  # type: ignore[union-attr]

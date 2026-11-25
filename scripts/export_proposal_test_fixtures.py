@@ -14,11 +14,13 @@ ROOT = Path(__file__).resolve().parents[1]
 def texts():
     base = ROOT / "examples/external_proposals"
     project = JsonProjectRepository().load(base / "screening-project.json")
-    intake = ProposalIntake.model_validate_json((base / "screening-intake.json").read_text())
+    intake = ProposalIntake.model_validate_json(
+        (base / "screening-intake.json").read_text(encoding="utf-8")
+    )
     workspace = proposals.start(project, intake)
     events = [
         ProposalReview.model_validate_json(json.dumps(e))
-        for e in json.loads((base / "screening-reviews.json").read_text())
+        for e in json.loads((base / "screening-reviews.json").read_text(encoding="utf-8"))
         if e["proposal_id"] in {"readiness_b", "tag_b"}
     ]
     initial = proposals.inspect(project, workspace)
@@ -43,7 +45,7 @@ if __name__ == "__main__":
     for name, text in texts().items():
         file = ROOT / "frontend/tests/fixtures" / name
         if "--check" in sys.argv:
-            if file.read_text() != text:
+            if file.read_text(encoding="utf-8") != text:
                 raise SystemExit(f"Proposal test fixture stale: {name}")
         else:
-            file.write_text(text, newline="\n")
+            file.write_text(text, newline="\n", encoding="utf-8")

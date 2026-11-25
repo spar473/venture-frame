@@ -121,6 +121,7 @@ def main() -> None:
             cwd=source,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         assert result.returncode != 0 and "GUI assets missing" in result.stdout + result.stderr
     files = [sdists[0], *wheels]
@@ -128,7 +129,7 @@ def main() -> None:
         f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.relative_to(out).as_posix()}\n"
         for p in files
     )
-    (out / "MANIFEST.sha256").write_text(manifest, newline="\n")
+    (out / "MANIFEST.sha256").write_text(manifest, newline="\n", encoding="utf-8")
     print(manifest, end="")
 
 

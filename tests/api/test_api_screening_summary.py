@@ -35,7 +35,9 @@ def test_draft_and_stored_routes_equal_the_service(client: TestClient, tmp_path:
 
 def test_the_dossier_feeds_the_open_question_counts(client: TestClient) -> None:
     project = repo.load(STUDY / "project.json")
-    dossier = EvidenceDossier.model_validate_json((STUDY / "evidence.json").read_text())
+    dossier = EvidenceDossier.model_validate_json(
+        (STUDY / "evidence.json").read_text(encoding="utf-8")
+    )
     body = {"project": dump(project), "dossier": dossier.model_dump(mode="json")}
     with_dossier = client.post("/api/screening-summary", json=body).json()
     without = client.post("/api/screening-summary", json={"project": dump(project)}).json()

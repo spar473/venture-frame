@@ -15,7 +15,7 @@ from mcda_studio.storage.project_store import ProjectStore
 
 def frontend(path: Path, title: str) -> Path:
     path.mkdir(parents=True)
-    (path / "index.html").write_text(f"<!doctype html><title>{title}</title>")
+    (path / "index.html").write_text(f"<!doctype html><title>{title}</title>", encoding="utf-8")
     return path
 
 
@@ -70,11 +70,11 @@ def test_startup_errors_are_actionable_and_version_needs_no_server(tmp_path):
     assert result.exit_code == 1
     assert "Configured frontend path is missing" in " ".join(result.stderr.split())
     blocking_file = tmp_path / "not-a-directory"
-    blocking_file.write_text("keep me")
+    blocking_file.write_text("keep me", encoding="utf-8")
     result = runner.invoke(app, ["serve", "--store", str(blocking_file)])
     assert result.exit_code == 1
     assert "Cannot write project library" in " ".join(result.stderr.split())
-    assert blocking_file.read_text() == "keep me"
+    assert blocking_file.read_text(encoding="utf-8") == "keep me"
 
 
 def test_configured_missing_assets_do_not_silently_use_checkout(monkeypatch, tmp_path):

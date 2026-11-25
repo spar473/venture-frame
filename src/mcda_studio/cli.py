@@ -33,6 +33,7 @@ from typer.core import TyperGroup
 
 from mcda_studio.cli_models import model_app, starter_app
 from mcda_studio.cli_proxy import proxy_app
+from mcda_studio.console_streams import configure_streams
 from mcda_studio.domain.criteria import (
     ControlPoint,
     Direction,
@@ -187,6 +188,9 @@ def main(
     ] = False,
 ) -> None:
     """Local, transparent decision analysis."""
+    # Before any command prints: UTF-8 on pipes and files, no crash on a narrow console
+    # (``console_streams``).
+    configure_streams()
 
 
 FileArg = Annotated[Path, typer.Argument(help="Project JSON file.")]

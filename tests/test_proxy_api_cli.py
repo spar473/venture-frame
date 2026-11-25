@@ -31,11 +31,11 @@ def test_proxy_http_cli_and_full_export_replay_are_bit_identical(tmp_path):
         assert response.status_code == 412
         assert response.json()["error"]["code"] == "STALE_REVISION"
     source, output = tmp_path / "request.json", tmp_path / "pair.json"
-    source.write_text(req.model_dump_json())
+    source.write_text(req.model_dump_json(), encoding="utf-8")
     runner = CliRunner()
     result = runner.invoke(app, ["proxy", "run-pair", str(source), "--output", str(output)])
     assert result.exit_code == 0, result.output
-    assert json.loads(output.read_text()) == expected.model_dump(mode="json")
+    assert json.loads(output.read_text(encoding="utf-8")) == expected.model_dump(mode="json")
     result = runner.invoke(app, ["proxy", "verify", str(output)])
     assert result.exit_code == 0, result.output
     assert json.loads(result.output) == expected.model_dump(mode="json")
