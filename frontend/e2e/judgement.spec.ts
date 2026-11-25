@@ -43,7 +43,12 @@ test("rank, state conviction, compare decision confidence and apply a proposal",
   await page.getByRole("button", { name: "Compare decision confidence" }).click();
   const table = page.getByRole("table", { name: "Decision confidence by proposal" });
   await expect(table).toBeVisible({ timeout: 60_000 });
-  await expect(table.getByRole("row", { name: /Upstock/ }).getByRole("cell")).toHaveText(["93%", "97%", "82%", "83%", "40%", "48%"]);
+  // now, medium conviction bands, ranking only, and the true Dirichlet conviction (deep dive 7)
+  await expect(table.getByRole("row", { name: /Upstock/ }).getByRole("cell")).toHaveText(["93%", "97%", "82%", "83%", "40%", "48%", "82%", "83%"]);
+  const choice = page.getByRole("group", { name: "Weight uncertainty" });
+  await choice.getByRole("radio", { name: "True conviction (Dirichlet κ)" }).check();
+  await expect(page.getByLabel("Concentration used")).toContainText("κ used: the top level 136");
+  await expect(page.getByLabel("Chosen weight uncertainty")).toContainText("stored draws of the conviction prior");
   const { violations } = await new AxeBuilder({ page }).analyze();
   expect(violations.filter(v => v.impact === "serious" || v.impact === "critical").map(v => `${v.id}: ${v.help}`)).toEqual([]);
 

@@ -157,12 +157,31 @@ def test_preview_gives_decision_confidence_now_and_under_each_proposal() -> None
     project = recorded("medium")
     configuration = project.analysis.model_copy(update={"weight_profile_id": TECH})
     preview = es.elicitation_preview(project, configuration)
-    assert [p.mode for p in preview.previews] == ["current", "conviction", "ranking"]
+    assert [p.mode for p in preview.previews] == ["current", "conviction", "ranking", "dirichlet"]
     assert preview.previews[0].robustness == robustness.screening_robustness(project, configuration)
     ranking = preview.previews[2].robustness
     assert ranking.available and "keeps the order" in ranking.basis
     by = {r.alternative_id: r for r in ranking.rows}
     assert by["upstock"].first.share < 0.6  # far less settled than under the typed intervals
+
+
+def test_preview_adds_the_true_dirichlet_conviction_through_stored_samples() -> None:
+    project = recorded("medium")
+    configuration = project.analysis.model_copy(update={"weight_profile_id": TECH})
+    preview = es.elicitation_preview(project, configuration)
+    dirichlet = preview.previews[-1]
+    assert dirichlet.mode == "dirichlet" and dirichlet.robustness.available
+    assert dirichlet.label == "True conviction: Dirichlet around the ratings (medium)"
+    assert [(k.name, k.kappa) for k in dirichlet.kappas][0] == ("the top level", 136.0)
+    assert "stored draws of the conviction prior" in dirichlet.robustness.basis
+    assert "87 stated measurement ranges" in dirichlet.robustness.basis
+    conviction = {r.alternative_id: r.first.share for r in preview.previews[1].robustness.rows}
+    true = {r.alternative_id: r.first.share for r in dirichlet.robustness.rows}
+    assert abs(true["upstock"] - conviction["upstock"]) < 0.05  # moment-matched: close, not equal
+    # Without a conviction in the record there is nothing to match, so no Dirichlet preview.
+    plain = es.elicitation_preview(recorded(None), configuration)
+    assert "dirichlet" not in [p.mode for p in plain.previews]
+    assert preview.previews[0].kappas == [] and "kappas" not in preview.previews[0].model_dump()
 
 
 def test_looking_changes_nothing_and_unknown_profiles_are_refused() -> None:
