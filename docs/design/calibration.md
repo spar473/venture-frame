@@ -144,8 +144,9 @@ case `i` with the chosen definition:
 | `competing_event` at `t` | `−λ t`: censored at `t` (cause-specific hazard); on a partial date, censored at `a`, the earliest day it can mean (it uses no follow-up that may not have happened) |
 | `unknown`, not recorded | excluded (above) |
 
-An exact-day `event` at `t = 0` has density `λ`. `1 − e^{−x}` is evaluated as a short series below
-`x = 10⁻⁵` and as `1 − exp(−x)` above, both with the portable `exp`.
+An exact-day `event` at `t = 0` has density `λ`. `log(1 − e^{−x})` is evaluated as
+`log(−expm1(−x))` for `x ≤ log 2` and `log1p(−e^{−x})` above (Mächler, 2012), accurate at both
+ends.
 
 **Other priors.**
 
@@ -171,8 +172,12 @@ entering cases rate it and how far the posterior moved from the prior, so this i
 ## 5. Sampler
 
 Our own sampler, NumPy only: no PyMC, no SciPy at runtime (the engine's rule; SciPy serves the
-tests as an oracle). Logarithms and exponentials use `methods/portable.py`'s algorithms (through a
-thin array wrapper in the calibration module; the engine file is unchanged).
+tests as an oracle). The Dirichlet normalising constants use the engine's portable `lgamma`. The
+per-draw arithmetic uses NumPy's `exp`, `log`, `expm1` and `log1p`: the sampler's output is
+promised to repeat on one platform and NumPy version, not bit for bit across platforms (see
+*Chains and seeds*), and the gate below is statistical, so the portable functions would add cost
+without adding a guarantee. Normal scores for the diagnostics use the standard library's
+`statistics.NormalDist`.
 
 - **Blocks (Metropolis within Gibbs).** One block per varying Dirichlet group (its `y`), in tree
   order, then one block `(α, log β)`. Each iteration updates every block once with a random-walk

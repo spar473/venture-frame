@@ -614,6 +614,134 @@ def reference_outcomes_command(
     console.print_json(data=result.model_dump(mode="json"))
 
 
+calibrate_app = typer.Typer(
+    help="Calibration: weight samples that fit a reference set's recorded outcomes under a "
+    "stated model. Offline and opt-in; it changes no project. See docs/design/calibration.md.",
+    no_args_is_help=True,
+)
+app.add_typer(calibrate_app, name="calibrate")
+
+
+@calibrate_app.command("fit")
+def calibrate_fit(
+    file: FileArg,
+    reference_file: Annotated[
+        Path, typer.Option("--reference-cases", help="Reference-cases JSON (version 2).")
+    ],
+    profile: Annotated[
+        str | None, typer.Option(help="The weight profile the prior is centred on.")
+    ] = None,
+    definition: Annotated[
+        str | None, typer.Option(help="The outcome definition (default: the only one).")
+    ] = None,
+    base_rate: Annotated[
+        float, typer.Option(help="Stated base rate of the event over the window (never fitted).")
+    ] = 0.15,
+    conviction: Annotated[
+        str | None,
+        typer.Option(help="high, medium or low, when the profile has no elicitation record."),
+    ] = None,
+    include_proposed: Annotated[
+        bool,
+        typer.Option(
+            "--include-proposed",
+            help="Also count proposed ratings. Diagnostic only: the run is marked as such.",
+        ),
+    ] = False,
+    min_rated_fraction: Annotated[
+        str, typer.Option(help="Least share of compared criteria a case must rate, e.g. 1/2.")
+    ] = "1/2",
+    seed: Annotated[int, typer.Option(help="Seed for the PCG64 streams.")] = 0,
+    chains: Annotated[int, typer.Option(help="Number of chains.")] = 4,
+    warmup: Annotated[int, typer.Option(help="Warm-up iterations per chain.")] = 2000,
+    draws: Annotated[int, typer.Option(help="Kept iterations per chain.")] = 3000,
+    samples: Annotated[int, typer.Option(help="Stored weight vectors.")] = 4000,
+    out: Annotated[
+        Path | None,
+        typer.Option("--out", help="Write the weight-samples sidecar here if the run converges."),
+    ] = None,
+) -> None:
+    """Fit the outcome model and print the report as JSON.
+
+    Read-only. Exits 1 when the data are insufficient (unless --include-proposed), when the run
+    does not converge, or on invalid input. The sidecar is written only for a converged run, and
+    an existing file is never overwritten."""
+    from mcda_studio.calibration import sampler, service
+
+    project = _guard(lambda: repo.load(file))
+    if conviction not in (None, "high", "medium", "low"):
+        _fail("--conviction must be high, medium or low")
+    if out is not None and out.exists():
+        _fail(f"Refusing to overwrite {out}")
+    try:
+        raw = reference_file.read_bytes()
+    except OSError as exc:
+        _fail(f"Cannot load the reference set: {exc}")
+    try:
+        settings = sampler.SamplerSettings(
+            chains=chains, warmup=warmup, draws=draws, samples=samples, seed=seed
+        )
+        settings.check()
+    except ValueError as exc:
+        _fail(str(exc))
+
+    def run() -> service.FitOutcome:
+        try:
+            return service.fit(
+                project,
+                profile,
+                raw,
+                definition=definition,
+                base_rate=base_rate,
+                conviction=conviction,  # type: ignore[arg-type]
+                include_proposed=include_proposed,
+                min_rated_fraction=min_rated_fraction,
+                settings=settings,
+            )
+        except ValidationError as exc:
+            raise McdaError(f"Cannot load the reference set: {exc}") from exc
+        except ValueError as exc:
+            raise McdaError(str(exc)) from exc
+
+    outcome = _guard(run)
+    # ASCII-escaped, so a console on any code page can print it.
+    typer.echo(json.dumps(outcome.report.model_dump(mode="json"), indent=2))
+    if outcome.report.status == "insufficient":
+        _fail("insufficient: " + "; ".join(outcome.report.insufficient))
+    if outcome.samples is None:
+        _fail("not converged: no samples were written")
+    if out is not None:
+        try:
+            with out.open("x", encoding="utf-8", newline="\n") as handle:
+                handle.write(outcome.samples.model_dump_json())
+        except OSError as exc:
+            _fail(f"Cannot write {out}: {exc}")
+        err_console.print(f"wrote {out}")
+
+
+@calibrate_app.command("synthetic-check")
+def calibrate_synthetic_check(
+    cases: Annotated[int, typer.Option(help="Simulated cases.")] = 500,
+    seed: Annotated[int, typer.Option(help="Seed for the simulation and the sampler.")] = 0,
+    censoring: Annotated[
+        str, typer.Option(help="none, independent or score (shorter follow-up for higher scores).")
+    ] = "independent",
+) -> None:
+    """Plant weights on a two-objective, five-leaf synthetic tree, fit, and print the recovery.
+
+    Synthetic data only; it says nothing about any real outcome. Exits 1 if not converged."""
+    from mcda_studio.calibration import synthetic
+
+    if censoring not in ("none", "independent", "score"):
+        _fail("--censoring must be none, independent or score")
+    if cases < 1:
+        _fail("--cases must be at least 1")
+    result = synthetic.synthetic_check(cases, seed, censoring)  # type: ignore[arg-type]
+    typer.echo(json.dumps(result.model_dump(mode="json"), indent=2))
+    if not result.diagnostics.converged:
+        _fail("not converged")
+
+
 report_app = typer.Typer(help="Self-contained reports from a project.", no_args_is_help=True)
 app.add_typer(report_app, name="report")
 
