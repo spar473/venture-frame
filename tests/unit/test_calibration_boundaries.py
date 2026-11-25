@@ -54,7 +54,12 @@ def test_the_api_never_loads_calibration() -> None:
         "print(sorted(m for m in sys.modules if m.startswith('mcda_studio.calibration')))"
     )
     result = subprocess.run(
-        [sys.executable, "-c", code], capture_output=True, text=True, check=True, cwd=ROOT
+        [sys.executable, "-c", code],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=True,
+        cwd=ROOT,
     )
     assert result.stdout.strip() == "[]"
 
