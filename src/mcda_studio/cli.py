@@ -66,6 +66,7 @@ from mcda_studio.domain.pairwise import (
 from mcda_studio.domain.preferences import AnalysisConfiguration
 from mcda_studio.domain.project import Project
 from mcda_studio.domain.reference_cases import ReferenceCases
+from mcda_studio.domain.reference_cases_v2 import ReferenceCasesV2
 from mcda_studio.domain.requirements import AnyRequirement, BoundRequirement, LabelsRequirement
 from mcda_studio.domain.results import (
     AcceptabilityEstimate,
@@ -561,20 +562,56 @@ def reference_cases_command(
     console.print_json(data=result.model_dump(mode="json"))
 
 
+def _reference_set_version(path: Path) -> object:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, ValueError) as exc:
+        _fail(f"Cannot load the reference set: {exc}")
+    return value.get("version") if isinstance(value, dict) else None
+
+
+def _load_reference_set_v2(path: Path) -> ReferenceCasesV2:
+    try:
+        return ReferenceCasesV2.model_validate_json(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, ValidationError) as exc:
+        _fail(f"Cannot load the reference set: {exc}")
+
+
 @reference_app.command("validate")
 def reference_cases_validate(
-    reference_file: Annotated[Path, typer.Argument(help="Reference-cases JSON (version 1).")],
+    reference_file: Annotated[
+        Path, typer.Argument(help="Reference-cases JSON (version 1 or version 2).")
+    ],
     project_file: Annotated[Path, typer.Option("--project", help="Project JSON file.")],
 ) -> None:
     """Check a reference set against a project, including the snapshot guard. Exits 1 if invalid."""
-    from mcda_studio.services import reference_case_service
+    from mcda_studio.services import reference_case_service, reference_outcome_service
 
     project = _guard(lambda: repo.load(project_file))
-    reference_set = _load_reference_set(reference_file)
-    report = reference_case_service.validate(project, reference_set)
+    if _reference_set_version(reference_file) == 2:
+        report = reference_outcome_service.validate(project, _load_reference_set_v2(reference_file))
+    else:
+        reference_set = _load_reference_set(reference_file)
+        report = reference_case_service.validate(project, reference_set)
     console.print_json(data=report.model_dump(mode="json"))
     if not report.valid:
         raise typer.Exit(1)
+
+
+@reference_app.command("outcomes")
+def reference_outcomes_command(
+    reference_file: Annotated[Path, typer.Argument(help="Reference-cases JSON (version 2).")],
+    project_file: Annotated[Path, typer.Option("--project", help="Project JSON file.")],
+) -> None:
+    """Count recorded outcomes, keeping censored and unknown cases apart, and rating coverage.
+
+    Read-only bookkeeping on a version 2 reference set. It predicts nothing for any alternative."""
+    from mcda_studio.services import reference_outcome_service
+
+    project = _guard(lambda: repo.load(project_file))
+    reference_set = _load_reference_set_v2(reference_file)
+    result = _guard(lambda: reference_outcome_service.reference_outcomes(project, reference_set))
+    console.print_json(data=result.model_dump(mode="json"))
 
 
 report_app = typer.Typer(help="Self-contained reports from a project.", no_args_is_help=True)

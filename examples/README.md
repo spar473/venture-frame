@@ -9,6 +9,10 @@ The venture cases are presented in [`cases/`](../cases/README.md). Their project
 | [`nz_first_round_retrospective`](nz_first_round_retrospective/README.md) | 3. First-round retrospective |
 | [`external_proposals`](external_proposals/README.md) | 4. Model suggestions, reviewed by a person |
 
+[`vee_bridge`](vee_bridge/README.md) is not a case: it converts a Venture Evidence Explorer cohort
+audit into a version 2 reference set (proposed format) and writes it to `$MCDA_DATA`, outside the
+repository.
+
 The other folders are small invented or synthetic projects used by the engine's test suite and
 the application's starter gallery: supplier selection and qualification, infrastructure
 procurement, evidence compilation, calculated measurements, formula models and the classifier

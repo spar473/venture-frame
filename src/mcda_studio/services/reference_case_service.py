@@ -10,9 +10,10 @@ Read-only and opt-in: nothing here changes a score, rank, class or stored projec
 result predicts nothing. Outcomes appear only when they are asked for.
 """
 
-from collections.abc import Sequence
+import datetime as dt
+from collections.abc import Callable, Mapping, Sequence
 from fractions import Fraction
-from typing import Literal
+from typing import Any, Literal
 
 from mcda_studio.domain.common import DomainModel, Id, Issue, Severity
 from mcda_studio.domain.criteria import CriterionTree
@@ -138,6 +139,132 @@ def _issue(code: str, message: str, path: str) -> Issue:
     return Issue(severity=Severity.ERROR, code=code, message=message, path=path)
 
 
+def _v1_source_date(source: Any) -> tuple[dt.date, str] | None:
+    return None if source.date is None else (source.date, source.date.isoformat())
+
+
+def check_claims_and_ratings(
+    tree: CriterionTree,
+    known: set[str],
+    sources: Mapping[str, Any],
+    case: Any,
+    at: str,
+    issues: list[Issue],
+    source_date: Callable[[Any], tuple[dt.date, str] | None],
+    scope: str = "version 1 of the reference set",
+) -> dict[str, ReferenceClaim]:
+    """The claim and rating checks shared by every version of the reference set.
+
+    ``source_date`` gives the latest day a source can be dated and the date as written, or None
+    for an undated source. The snapshot guard compares that latest day with the snapshot, so a
+    coarse date counts as late as it can be. Returns the case's claims by id (first one stands).
+    """
+    claims: dict[str, ReferenceClaim] = {}
+    for j, claim in enumerate(case.claims):
+        if claim.id in claims:
+            issues.append(
+                _issue(
+                    "REFERENCE_DUPLICATE_CLAIM",
+                    f"claim id {claim.id!r} is repeated in this case",
+                    f"{at}.claims[{j}].id",
+                )
+            )
+        claims.setdefault(claim.id, claim)  # a repeated id is reported; the first one stands
+        if claim.source not in sources:
+            issues.append(
+                _issue(
+                    "REFERENCE_UNKNOWN_SOURCE",
+                    f"source {claim.source!r} is not in the reference set's sources",
+                    f"{at}.claims[{j}].source",
+                )
+            )
+    rated: set[str] = set()
+    for r, rating in enumerate(case.ratings):
+        where = f"{at}.ratings[{r}]"
+        leaf = rating.criterion_id
+        if leaf not in known:
+            issues.append(
+                _issue(
+                    "REFERENCE_UNKNOWN_CRITERION",
+                    f"criterion {leaf!r} is not in the project",
+                    f"{where}.criterion_id",
+                )
+            )
+        elif not tree.is_leaf(leaf):
+            issues.append(
+                _issue(
+                    "REFERENCE_UNKNOWN_CRITERION",
+                    f"criterion {leaf!r} is not a leaf criterion; only leaves are rated",
+                    f"{where}.criterion_id",
+                )
+            )
+        else:
+            scale = tree.node(leaf).scale
+            if scale is None or not scale.is_labelled:
+                issues.append(
+                    _issue(
+                        "REFERENCE_NUMERIC_CRITERION",
+                        f"criterion {leaf!r} is numeric; {scope} "
+                        "rates only labelled (ordinal or categorical) criteria",
+                        f"{where}.criterion_id",
+                    )
+                )
+            elif rating.label not in scale.labels:
+                issues.append(
+                    _issue(
+                        "REFERENCE_UNKNOWN_LABEL",
+                        f"{rating.label!r} is not a label of criterion {leaf!r}",
+                        f"{where}.label",
+                    )
+                )
+        if leaf in rated:
+            issues.append(
+                _issue(
+                    "REFERENCE_DUPLICATE_RATING",
+                    f"criterion {leaf!r} is rated more than once in this case",
+                    f"{where}.criterion_id",
+                )
+            )
+        rated.add(leaf)
+        for k, claim_id in enumerate(rating.claim_ids):
+            path = f"{where}.claim_ids[{k}]"
+            cited = claims.get(claim_id)
+            if cited is None:
+                issues.append(
+                    _issue(
+                        "REFERENCE_UNKNOWN_CLAIM",
+                        f"claim {claim_id!r} is not among this case's claims",
+                        path,
+                    )
+                )
+                continue
+            source = sources.get(cited.source)
+            if source is None:
+                continue  # reported once, at the claim
+            # The snapshot guard: a rating may rest only on what was published by the snapshot.
+            dated = source_date(source)
+            if dated is None:
+                issues.append(
+                    _issue(
+                        "REFERENCE_UNDATED_SOURCE",
+                        f"claim {claim_id!r} rests on undated source {cited.source!r}; a "
+                        "rating needs a source dated on or before the snapshot",
+                        path,
+                    )
+                )
+            elif dated[0] > case.snapshot_date:
+                issues.append(
+                    _issue(
+                        "REFERENCE_SOURCE_AFTER_SNAPSHOT",
+                        f"claim {claim_id!r} rests on source {cited.source!r} dated "
+                        f"{dated[1]}, after the snapshot "
+                        f"{case.snapshot_date.isoformat()}",
+                        path,
+                    )
+                )
+    return claims
+
+
 def validate(project: Project, reference_set: ReferenceCases) -> ReferenceCasesValidation:
     """Check the reference set against the project and apply the snapshot guard. Read-only."""
     issues: list[Issue] = []
@@ -160,108 +287,9 @@ def validate(project: Project, reference_set: ReferenceCases) -> ReferenceCasesV
                 _issue("REFERENCE_DUPLICATE_CASE", f"case id {case.id!r} is repeated", f"{at}.id")
             )
         seen_cases.add(case.id)
-        claims: dict[str, ReferenceClaim] = {}
-        for j, claim in enumerate(case.claims):
-            if claim.id in claims:
-                issues.append(
-                    _issue(
-                        "REFERENCE_DUPLICATE_CLAIM",
-                        f"claim id {claim.id!r} is repeated in this case",
-                        f"{at}.claims[{j}].id",
-                    )
-                )
-            claims.setdefault(claim.id, claim)  # a repeated id is reported; the first one stands
-            if claim.source not in reference_set.sources:
-                issues.append(
-                    _issue(
-                        "REFERENCE_UNKNOWN_SOURCE",
-                        f"source {claim.source!r} is not in the reference set's sources",
-                        f"{at}.claims[{j}].source",
-                    )
-                )
-        rated: set[str] = set()
-        for r, rating in enumerate(case.ratings):
-            where = f"{at}.ratings[{r}]"
-            leaf = rating.criterion_id
-            if leaf not in known:
-                issues.append(
-                    _issue(
-                        "REFERENCE_UNKNOWN_CRITERION",
-                        f"criterion {leaf!r} is not in the project",
-                        f"{where}.criterion_id",
-                    )
-                )
-            elif not tree.is_leaf(leaf):
-                issues.append(
-                    _issue(
-                        "REFERENCE_UNKNOWN_CRITERION",
-                        f"criterion {leaf!r} is not a leaf criterion; only leaves are rated",
-                        f"{where}.criterion_id",
-                    )
-                )
-            else:
-                scale = tree.node(leaf).scale
-                if scale is None or not scale.is_labelled:
-                    issues.append(
-                        _issue(
-                            "REFERENCE_NUMERIC_CRITERION",
-                            f"criterion {leaf!r} is numeric; version 1 of the reference set "
-                            "rates only labelled (ordinal or categorical) criteria",
-                            f"{where}.criterion_id",
-                        )
-                    )
-                elif rating.label not in scale.labels:
-                    issues.append(
-                        _issue(
-                            "REFERENCE_UNKNOWN_LABEL",
-                            f"{rating.label!r} is not a label of criterion {leaf!r}",
-                            f"{where}.label",
-                        )
-                    )
-            if leaf in rated:
-                issues.append(
-                    _issue(
-                        "REFERENCE_DUPLICATE_RATING",
-                        f"criterion {leaf!r} is rated more than once in this case",
-                        f"{where}.criterion_id",
-                    )
-                )
-            rated.add(leaf)
-            for k, claim_id in enumerate(rating.claim_ids):
-                path = f"{where}.claim_ids[{k}]"
-                cited = claims.get(claim_id)
-                if cited is None:
-                    issues.append(
-                        _issue(
-                            "REFERENCE_UNKNOWN_CLAIM",
-                            f"claim {claim_id!r} is not among this case's claims",
-                            path,
-                        )
-                    )
-                    continue
-                source = reference_set.sources.get(cited.source)
-                if source is None:
-                    continue  # reported once, at the claim
-                # The snapshot guard: a rating may rest only on what was published by the snapshot.
-                if source.date is None:
-                    issues.append(
-                        _issue(
-                            "REFERENCE_UNDATED_SOURCE",
-                            f"claim {claim_id!r} rests on undated source {cited.source!r}; a "
-                            "rating needs a source dated on or before the snapshot",
-                            path,
-                        )
-                    )
-                elif source.date > case.snapshot_date:
-                    issues.append(
-                        _issue(
-                            "REFERENCE_SOURCE_AFTER_SNAPSHOT",
-                            f"claim {claim_id!r} rests on source {cited.source!r} dated "
-                            f"{source.date.isoformat()}, after the snapshot "
-                            f"{case.snapshot_date.isoformat()}",
-                            path,
-                        )
-                    )
+        claims = check_claims_and_ratings(
+            tree, known, reference_set.sources, case, at, issues, _v1_source_date
+        )
         if case.outcome.as_of < case.snapshot_date:
             issues.append(
                 _issue(

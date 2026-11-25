@@ -1,0 +1,30 @@
+{
+  "kind": "vee-rubric-map",
+  "version": 1,
+  "criteria_from": "nz_venture_screening_study",
+  "note": "Maps Venture Evidence Explorer (VEE) backtest features to labels of this project's criteria. Only exact equivalences are used by default. An approximate entry is a lower bound in VEE's vocabulary (for example prototype = yes means at least a prototype) and is used only with --include-approximate. A VEE value with no entry is left unrated: missing, never zero.",
+  "cohort": [
+    {
+      "criterion_id": "hq_country",
+      "label": "New Zealand",
+      "exact": true,
+      "rationale": "Every case is in VEE's New Zealand first institutional seed cohort; the cohort rule requires the company to be founded or headquartered in New Zealand, as reported by the entry source."
+    }
+  ],
+  "features": [
+    {"feature": "sector_normalised", "value": "enterprise_software", "criterion_id": "sector", "label": "Fintech and B2B software", "exact": true, "rationale": "VEE's enterprise software grouping is B2B software."},
+    {"feature": "sector_normalised", "value": "fintech", "criterion_id": "sector", "label": "Fintech and B2B software", "exact": true, "rationale": "Same grouping."},
+    {"feature": "sector_normalised", "value": "healthtech", "criterion_id": "sector", "label": "Health and medtech", "exact": true, "rationale": "Same grouping."},
+    {"feature": "sector_normalised", "value": "retail_ecommerce", "criterion_id": "sector", "label": "Consumer and marketplaces", "exact": true, "rationale": "Consumer retail and e-commerce sit in the consumer grouping."},
+    {"feature": "prototype", "value": "yes", "criterion_id": "readiness", "label": "Prototype", "exact": false, "rationale": "VEE records only that a prototype existed; the company may have been pilot-ready or commercial."},
+    {"feature": "paid_pilot_or_revenue", "value": "yes", "criterion_id": "customer_validation", "label": "Paid pilot", "exact": false, "rationale": "VEE records a paid pilot or revenue; production customers are not distinguished."}
+  ],
+  "unmapped": {
+    "sector_normalised": ["manufacturing", "advanced_materials"],
+    "product_type": "VEE product types have no criterion in this project.",
+    "buyer": "No criterion records the buyer.",
+    "market_focus": "International focus is not the same as an offshore route to market.",
+    "business_model": "No criterion records the business model.",
+    "round_size_band": "No criterion records the round size."
+  }
+}

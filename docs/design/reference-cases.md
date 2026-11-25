@@ -160,3 +160,89 @@ set in the application.
   sets.
 - API and CLI tests like decision impact's.
 - A new mutant group, `reference_cases`, in `scripts/mutation_check.py`.
+
+## Version 2: observation-aware outcomes (proposed)
+
+**Proposed on 25 November 2026 (deep dive 4 of the evidence-backed weighting plan); awaiting the
+owner's approval under rule 3 before it merges.** Version 2 is a second stored format next to
+version 1. It changes nothing in version 1: version 1 files are read, validated and compared exactly
+as before, with the same messages, and the similarity analysis reads version 1 only.
+
+### Why
+
+An outcome model (deep dive 5) must keep three things apart that version 1's free-text outcome
+cannot: the event happened, the case was watched long enough to know it did not, and the case was
+not watched long enough to know. Treating an unwatched case as a failure biases every rate down, and
+dropping it biases toward cases that were followed. Public dates are also often a month or a year,
+and a tool-proposed rating must not be mistaken for a reviewed one.
+
+### What version 2 adds
+
+- **Envelope:** `version: 2`, `observed_through` (the day the follow-up was compiled) and
+  `outcome_definitions`, a map from a key to `{label, window_months (1 to 240), description}`. At
+  least one definition.
+- **Partial dates** for source dates and event dates: `YYYY`, `YYYY-Qn`, `YYYY-MM` or `YYYY-MM-DD`.
+  The snapshot date and `observed_through` stay exact days.
+- **Rating:** version 1's rating plus a required `review`, `proposed` or `reviewed`.
+- **Case:** version 1's case with `outcomes` (a list of observations, at most one per definition)
+  in place of `outcome`.
+- **Observation:** `definition`, `status`, `event_date`, `observed_through`, `claim_ids`, `note`.
+
+| Status | Meaning | Required | Refused |
+| --- | --- | --- | --- |
+| `event` | the event happened inside the window | `event_date`, a claim | `observed_through` |
+| `competing_event` | another terminal event ended the case inside the window first | `event_date`, a claim | `observed_through` |
+| `no_event` | watched to the end of the window, no event seen | `observed_through` | `event_date` |
+| `censored` | watched to a day before the window ended, no event seen | `observed_through` | `event_date` |
+| `unknown` | no follow-up | | `event_date`, `observed_through` |
+
+The window opens on the snapshot day and ends `window_months` calendar months later (a day past the
+end of the target month moves to its last day).
+
+### Validation, in addition to every version 1 rating rule
+
+| Code | Rule |
+| --- | --- |
+| `OUTCOME_UNKNOWN_DEFINITION`, `OUTCOME_DUPLICATE_DEFINITION` | a known definition, once per case |
+| `OUTCOME_EVENT_DATE_REQUIRED`, `OUTCOME_EVENT_UNSUPPORTED` | an event or competing event has a date and a claim |
+| `OUTCOME_UNEXPECTED_EVENT_DATE`, `OUTCOME_UNEXPECTED_OBSERVED_THROUGH`, `OUTCOME_OBSERVED_THROUGH_REQUIRED` | the table above |
+| `OUTCOME_EVENT_BEFORE_SNAPSHOT` | the event date cannot be after the snapshot |
+| `OUTCOME_EVENT_AFTER_WINDOW` | the event date is certainly after the window (record `no_event`) |
+| `OUTCOME_EVENT_DATE_TOO_COARSE` | the partial date could fall outside the window (record a finer date or `censored`) |
+| `OUTCOME_OBSERVED_BEFORE_SNAPSHOT` | watched to before the snapshot (record `unknown`) |
+| `OUTCOME_WINDOW_NOT_COMPLETE` | `no_event` watched to before the window end (record `censored`) |
+| `OUTCOME_CENSORED_AFTER_WINDOW` | `censored` watched through the window end (record `no_event`) |
+| `OUTCOME_AFTER_FOLLOW_UP`, `REFERENCE_SNAPSHOT_AFTER_FOLLOW_UP`, `REFERENCE_SOURCE_AFTER_FOLLOW_UP` | nothing is seen after `observed_through` |
+
+**The snapshot guard on partial dates:** a source supports a rating only if the *last* day its date
+can mean is on or before the snapshot. `2021-10` cannot support a rating at a 27 October 2021
+snapshot; `2021-09` can.
+
+### The summary (bookkeeping, not a model)
+
+`mcda reference-cases outcomes FILE --project PROJECT` validates the set, then gives, per
+definition: the count of each status and of cases with nothing recorded; the share of events among
+fully observed cases (event, no event, competing event), as an exact fraction with a 95%
+Clopper–Pearson interval from the engine's own `clopper_pearson`; and the **range** the share over
+every case could take, from every unresolved case ending without the event (lowest) to every one
+ending with it (highest). It also gives **coverage**: for every labelled leaf, how many cases rate it,
+reviewed and proposed, and how many do not. A fixed label says the counts are not a chance of success
+for any alternative and that censored and unknown cases are never counted as no event; the
+limitations name the follow-up-time bias a time-to-event model would have to correct.
+
+`mcda reference-cases validate` reads either version by its `version` field.
+
+### Not in version 2
+
+The similarity analysis on version 2 sets; numeric leaves; storing a set inside a project; any use of
+outcomes in a score, weight, rank or class. Learning from outcomes is deep dive 5, behind its own
+synthetic validation and gate.
+
+### Verification
+
+`tests/unit/test_reference_outcomes.py`: partial dates and calendar months against a walk over
+every day of the calendar, every outcome code, inclusive window boundaries, the snapshot guard on
+each partial form, version 1 messages unchanged, the summary against hand counts with SciPy's beta
+quantiles as the interval oracle, coverage by review state, read-only behaviour, and the commands.
+The mutant group `reference_outcomes` (15 mutants) in `scripts/mutation_check.py`. The VEE bridge
+in `examples/vee_bridge` has its own test on a synthetic audit.

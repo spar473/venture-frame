@@ -4005,6 +4005,48 @@ OVERNIGHT["structured_judgement"] = (
 )
 
 
+# Reference sets version 2 (deep dive 4, 25 November 2026): partial dates, the observation window,
+# outcome statuses and the observation-aware summary. Design: docs/design/reference-cases.md.
+OUTCOMES_DOMAIN = "src/mcda_studio/domain/reference_cases_v2.py"
+OUTCOMES_SERVICE = "src/mcda_studio/services/reference_outcome_service.py"
+REFERENCE_OUTCOMES_BACKEND = [
+    Mutation("OUTCOMES a coarse source counts as early as it can be", OUTCOMES_SERVICE,
+             "    return date_bounds(source.date)[1], source.date", "    return date_bounds(source.date)[0], source.date"),
+    Mutation("OUTCOMES window one month short", OUTCOMES_SERVICE,
+             "    return add_months(snapshot, window_months)", "    return add_months(snapshot, window_months - 1)"),
+    Mutation("OUTCOMES month ends not clamped", OUTCOMES_DOMAIN,
+             "min(day.day, calendar.monthrange(year, month)[1])", "day.day"),
+    Mutation("OUTCOMES a quarter runs four months", OUTCOMES_DOMAIN,
+             "        last = first + 2", "        last = first + 3"),
+    Mutation("OUTCOMES an event straddling the window accepted", OUTCOMES_SERVICE,
+             "        elif first < snapshot or last > end:", "        elif first < snapshot:"),
+    Mutation("OUTCOMES an event straddling the snapshot called before it", OUTCOMES_SERVICE,
+             "        if last < snapshot:", "        if first < snapshot:"),
+    Mutation("OUTCOMES no_event allowed on the last day short", OUTCOMES_SERVICE,
+             'elif status == "no_event" and seen_to < end:', 'elif status == "no_event" and seen_to < end - dt.timedelta(days=1):'),
+    Mutation("OUTCOMES censored allowed through the window end", OUTCOMES_SERVICE,
+             'elif status == "censored" and seen_to >= end:', 'elif status == "censored" and seen_to > end:'),
+    Mutation("OUTCOMES unknown may carry an observation date", OUTCOMES_SERVICE,
+             'if status == "unknown" and outcome.observed_through is not None:', 'if False and outcome.observed_through is not None:'),
+    Mutation("OUTCOMES censored counted as resolved in the range", OUTCOMES_SERVICE,
+             '    resolved_without = tally["no_event"] + tally["competing_event"]', '    resolved_without = tally["no_event"] + tally["competing_event"] + tally["censored"]'),
+    Mutation("OUTCOMES a competing event left unresolved", OUTCOMES_SERVICE,
+             '    resolved_without = tally["no_event"] + tally["competing_event"]', '    resolved_without = tally["no_event"]'),
+    Mutation("OUTCOMES a competing event needs no date", OUTCOMES_SERVICE,
+             '    dated = status in ("event", "competing_event")', '    dated = status == "event"'),
+    Mutation("OUTCOMES lowest share over fully observed cases", OUTCOMES_SERVICE,
+             '        lowest_share=_share(tally["event"], n),', '        lowest_share=_share(tally["event"], complete),'),
+    Mutation("OUTCOMES interval over every case", OUTCOMES_SERVICE,
+             'clopper_pearson(tally["event"], complete, CONFIDENCE)', 'clopper_pearson(tally["event"], n, CONFIDENCE)'),
+    Mutation("OUTCOMES proposed ratings counted as reviewed", OUTCOMES_SERVICE,
+             'if states and states[0] == "reviewed":', "if states:"),
+]  # fmt: skip
+OVERNIGHT["reference_outcomes"] = (
+    REFERENCE_OUTCOMES_BACKEND,
+    pytest_runner("Reference outcomes", "tests/unit/test_reference_outcomes.py"),
+)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--backend-only", action="store_true")
