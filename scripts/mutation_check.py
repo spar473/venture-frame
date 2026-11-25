@@ -16,7 +16,8 @@ The working tree is never modified. An unmodified baseline run must pass first.
                                       --study-only | --summary-only |
                                       --cleanup-only | --showcase-only |
                                       --reference_cases-only | --robustness-only |
-                                      --structured_judgement-only | --calibration-only]
+                                      --structured_judgement-only | --calibration-only |
+                                      --reference_rating-only]
 
 Groups are named after the milestone that introduced them (B3 weighting, B4 sensitivity, B5
 scenarios, B6 results) or after the development itself (RETRY: analysis retry; COVERAGE:
@@ -4119,6 +4120,66 @@ OVERNIGHT["calibration"] = (
         "tests/unit/test_calibration_sampler.py",
         "tests/unit/test_calibration_service.py",
         "tests/unit/test_calibration_boundaries.py",
+    ),
+)
+
+
+# Reference rating (deep dive 6, 26 November 2026): rating proposals, the review sheet, the importer
+# and the VEE pilot packets. Design: docs/design/reference-rating.md. ``--reference_rating-only``.
+RR_SERVICE = "src/mcda_studio/services/reference_rating_service.py"
+RR_DOMAIN = "src/mcda_studio/domain/rating_proposals.py"
+RR_PILOT = "examples/reference_rating/pilot.py"
+REFERENCE_RATING_BACKEND = [
+    Mutation("RATING a rejected row imported as reviewed", RR_SERVICE,
+             '        if decision in ("reject", "skip"):\n            continue',
+             '        if decision == "skip":\n            continue'),
+    Mutation("RATING a skipped row imported", RR_SERVICE,
+             '        if decision in ("reject", "skip"):\n            continue',
+             '        if decision == "reject":\n            continue'),
+    Mutation("RATING an edited label not checked", RR_SERVICE,
+             "            if label not in allowed:", "            if False:"),
+    Mutation("RATING the importer's snapshot guard skipped", RR_SERVICE,
+             "        if case is not None and not supports_rating(proposal.source_date, case.snapshot_date):",
+             "        if False:"),
+    Mutation("RATING the snapshot guard reads the first day of a partial date", RR_SERVICE,
+             "    return source_date is not None and date_bounds(source_date)[1] <= snapshot",
+             "    return source_date is not None and date_bounds(source_date)[0] <= snapshot"),
+    Mutation("RATING --replace ignored", RR_SERVICE,
+             "            if not replace:\n                issues.append(\n                    _issue(\n                        \"RATING_REVIEWED_EXISTS\",",
+             "            if False:\n                issues.append(\n                    _issue(\n                        \"RATING_REVIEWED_EXISTS\","),
+    Mutation("RATING imported ratings marked proposed", RR_SERVICE,
+             '            "review": "reviewed",', '            "review": "proposed",'),
+    Mutation("RATING accepted not-enough-evidence becomes a rating", RR_SERVICE,
+             "            if proposal.not_enough_evidence:\n                nee.append(pid)\n                continue",
+             "            if proposal.not_enough_evidence:\n                nee.append(pid)"),
+    Mutation("RATING a row without a source imported", RR_SERVICE,
+             "        if not (proposal.source_url and proposal.source_date and proposal.excerpt.strip()):",
+             "        if False:"),
+    Mutation("RATING the sheet digest not checked", RR_SERVICE,
+             '        if row["proposal_sha256"].strip() != proposal_digest(proposal):',
+             "        if False:"),
+    Mutation("RATING the context whitelist ignored (outcome text leaks into packets)", RR_SERVICE,
+             "                if row.label in allowed", "                if True"),
+    Mutation("RATING the excerpt word limit loosened", RR_DOMAIN,
+             "EXCERPT_WORDS_MAX = 25", "EXCERPT_WORDS_MAX = 250"),
+    Mutation("RATING a label without a locator accepted", RR_DOMAIN,
+             '                    ("locator", self.locator.strip()),\n', ""),
+    Mutation("RATING cells not made spreadsheet-safe", RR_SERVICE,
+             "    return \"'\" + value if value.startswith(_FORMULA) else value", "    return value"),
+    Mutation("RATING VEE packets keep a source dated after the snapshot", RR_PILOT,
+             "    if not usable:\n", "    if False:\n"),
+    Mutation("RATING VEE packets carry VEE's hindsight commentary", RR_PILOT,
+             'ENTRY_FIELDS = ["label", "date", "sector", "institutional_investor", "locator"]',
+             'ENTRY_FIELDS = ["label", "date", "sector", "institutional_investor", "locator", "passage"]'),
+    Mutation("RATING the pilot sample depends on input order", RR_PILOT,
+             "    ordered = sorted(case_ids)", "    ordered = list(case_ids)"),
+]  # fmt: skip
+OVERNIGHT["reference_rating"] = (
+    REFERENCE_RATING_BACKEND,
+    pytest_runner(
+        "Reference rating",
+        "tests/unit/test_reference_rating.py",
+        "tests/unit/test_reference_rating_pilot.py",
     ),
 )
 
