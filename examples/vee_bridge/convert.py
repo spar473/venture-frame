@@ -276,7 +276,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     ReferenceCasesV2.model_validate_json(json.dumps(reference_set))  # the format, before writing
     args.out.write_text(
-        json.dumps(reference_set, indent=2, ensure_ascii=False) + "\n", newline="\n"
+        json.dumps(reference_set, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+        newline="\n",
     )
     for key, count in sorted(tally.items()):
         print(f"{count:4d}  {key}")
