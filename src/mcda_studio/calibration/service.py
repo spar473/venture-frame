@@ -288,7 +288,10 @@ def fit(
         definition = next(iter(rs.outcome_definitions))
     elif definition not in rs.outcome_definitions:
         raise UnknownReferenceError(f"unknown outcome definition {definition!r}")
-    threshold = parse_fraction(min_rated_fraction)
+    try:
+        threshold = parse_fraction(min_rated_fraction)
+    except McdaError:
+        threshold = Fraction(0)
     if not 0 < threshold <= 1:
         raise McdaError("the minimum rated fraction must be greater than 0 and at most 1")
     cases = _cases(project, rs, definition, leaves, include_proposed, threshold)

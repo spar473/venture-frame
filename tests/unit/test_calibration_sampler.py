@@ -1,6 +1,6 @@
-"""Calibration sampler: with no data it returns the prior (KS against the exact Beta marginals, means
-within six standard errors), it repeats for a seed, it never recycles draws, and a short run fails
-the convergence gate.
+"""Calibration sampler: with no data it returns the prior (KS against the exact Beta marginals,
+means within six standard errors), it repeats for a seed, it never recycles draws, and a short
+run fails the convergence gate.
 """
 
 import math
@@ -133,3 +133,37 @@ def test_beta_is_always_positive_and_weights_sum_to_one() -> None:
     chains = run(problem, SamplerSettings(warmup=200, draws=200, samples=400, seed=1))
     assert np.all(chains.beta > 0)
     assert np.allclose(chains.weights.sum(axis=2), 1.0, atol=1e-12)
+
+
+def test_log_posterior_is_the_sum_of_its_parts_with_a_positive_beta() -> None:
+    from mcda_studio.calibration.likelihood import log_likelihood
+    from mcda_studio.calibration.sampler import log_posterior
+
+    prior, problem = small()
+    rng = np.random.Generator(np.random.PCG64(4))
+    ys = [rng.normal(size=(3, g.dim)) for g in prior.groups]
+    theta = np.array([[-1.0, -0.7], [0.3, 0.2], [-2.0, 1.1]])  # log beta < 0 means beta < 1
+    weights = prior.global_weights(ys)
+    expected = (
+        prior.log_density(ys)
+        + stats.norm(problem.alpha_mean, 1.5).logpdf(theta[:, 0])
+        + stats.norm(0.0, 1.0).logpdf(theta[:, 1])
+        + log_likelihood(problem.data, weights, theta[:, 0], np.exp(theta[:, 1]))
+    )
+    assert np.allclose(log_posterior(problem, ys, theta), expected, rtol=0, atol=1e-9)
+
+
+def test_centring_the_intercept_does_not_change_the_posterior() -> None:
+    from mcda_studio.calibration.sampler import alpha_of, log_posterior
+
+    prior, problem = small()
+    centre = problem.score_centre()
+    assert 0.0 < centre < 1.0
+    rng = np.random.Generator(np.random.PCG64(8))
+    ys = [rng.normal(size=(4, g.dim)) for g in prior.groups]
+    plain = np.array([[-1.0, -0.7], [0.3, 0.2], [-2.0, 1.1], [0.0, 0.0]])
+    centred = np.stack([plain[:, 0] + np.exp(plain[:, 1]) * centre, plain[:, 1]], axis=1)
+    assert np.allclose(alpha_of(centred, centre), plain[:, 0])
+    assert np.allclose(
+        log_posterior(problem, ys, centred, centre), log_posterior(problem, ys, plain), atol=1e-9
+    )

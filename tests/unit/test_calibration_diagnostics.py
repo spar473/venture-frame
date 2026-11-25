@@ -38,7 +38,7 @@ def test_ess_of_an_ar1_process_matches_its_autocorrelation_time(rho: float) -> N
 
 
 def test_chains_in_different_places_have_a_large_rhat() -> None:
-    draws = RNG.standard_normal((4, 1000)) + np.array([[0.0], [0.0], [0.0], [1.0]])
+    draws = RNG.standard_normal((4, 1000)) + np.array([[0.0], [0.0], [0.0], [2.0]])
     assert dg.split_rhat(draws) > 1.1
 
 

@@ -174,5 +174,7 @@ def test_the_centre_is_the_stated_global_weights_and_the_prior_mean() -> None:
 def test_prior_log_density_is_the_sum_of_independent_group_densities() -> None:
     prior = sy.bench_prior({None: 5.0, "obj_a": 7.0, "obj_b": 11.0})
     ys = [RNG.normal(size=(6, g.dim)) for g in prior.groups]
-    total = sum(pr.group_log_density(y, g.centre, g.kappa) for g, y in zip(prior.groups, ys))
+    total = sum(
+        pr.group_log_density(y, g.centre, g.kappa) for g, y in zip(prior.groups, ys, strict=True)
+    )
     assert np.allclose(prior.log_density(ys), total)

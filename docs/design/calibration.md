@@ -180,8 +180,15 @@ without adding a guarantee. Normal scores for the diagnostics use the standard l
 `statistics.NormalDist`.
 
 - **Blocks (Metropolis within Gibbs).** One block per varying Dirichlet group (its `y`), in tree
-  order, then one block `(α, log β)`. Each iteration updates every block once with a random-walk
-  Metropolis step on the full log posterior.
+  order, then one block for the outcome parameters. Each iteration gives every block `d`
+  random-walk Metropolis steps on the full log posterior, `d` being the block's dimension. A
+  random-walk step's efficiency falls roughly as `1/d`, so this keeps the mixing per iteration
+  about the same for large and small groups.
+- **Centred intercept.** The outcome block moves `(a, log β)` with `a = α + β·s̄`, where `s̄` is the
+  mean score of the entering cases at the prior's centre weights (0 without data). The map
+  `(a, log β) → (α, log β)` is triangular with unit diagonal (Jacobian 1), so the posterior is
+  unchanged. It removes most of the correlation between intercept and slope, which otherwise held
+  `α` and `β` near the ESS bar on small synthetic sets.
 - **Adaptation.** During warm-up only: each block's proposal is `N(0, σ² Σ)`. `Σ` starts as the
   identity times 0.1 and is replaced at warm-up iterations 200, 400, 800, … by the block's
   empirical covariance over the second half of warm-up so far (plus `10⁻⁶ I`); `log σ` follows a

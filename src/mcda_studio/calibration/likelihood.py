@@ -143,11 +143,14 @@ def case_log_likelihood(
 ) -> Array:
     """Each case's contribution, ``(cases, chains)``."""
     eta = alpha[None, :] + beta[None, :] * scores(data, global_weights)
-    lam = np.exp(eta)
-    out = data.density[:, None] * eta - lam * data.exposure[:, None]
-    partial = data.width > 0.0
-    if np.any(partial):
-        out[partial] = out[partial] + log1mexp(lam[partial] * data.width[partial, None])
+    # An extreme proposal can overflow: lambda is then inf and the contribution -inf or nan, which
+    # the sampler treats as -inf and rejects.
+    with np.errstate(over="ignore", invalid="ignore"):
+        lam = np.exp(eta)
+        out = data.density[:, None] * eta - lam * data.exposure[:, None]
+        partial = data.width > 0.0
+        if np.any(partial):
+            out[partial] = out[partial] + log1mexp(lam[partial] * data.width[partial, None])
     result: Array = out
     return result
 

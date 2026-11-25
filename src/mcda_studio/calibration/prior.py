@@ -188,10 +188,8 @@ class NestedDirichletPrior:
         self._normalisers = [
             dirichlet_log_normaliser([g.kappa * c for c in g.centre]) for g in self.groups
         ]
-        varying = {c for g in self.groups for c in g.children}
-        self.varying_leaves = tuple(
-            leaf for leaf in self.leaf_ids if varying.intersection(self.paths[leaf])
-        )
+        _mean, sd = self.moments()
+        self.varying_leaves = tuple(leaf for leaf in self.leaf_ids if sd[leaf] > 0.0)
 
     @property
     def dims(self) -> list[int]:

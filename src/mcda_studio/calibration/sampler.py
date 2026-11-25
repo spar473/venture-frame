@@ -1,15 +1,17 @@
 """Adaptive random-walk Metropolis within Gibbs blocks, several chains at once (NumPy only).
 
 Blocks: one per varying Dirichlet group (its ALR coordinates), in the prior's order, then
-``(alpha, log beta)``. Each iteration updates every block once. During warm-up each block's
-proposal covariance is re-estimated at iterations 200, 400, 800, ... from the second half of the
-warm-up so far, and its scale follows a Robbins-Monro step toward a target acceptance rate. After
-warm-up the kernel is fixed, so kept draws come from a Markov chain whose stationary distribution
-is the posterior.
+``(a, log beta)`` with ``a = alpha + beta * centre`` (the mean score at the prior centre), which
+removes most of the intercept-slope correlation (Jacobian 1). Each iteration updates every block
+d times, d being its dimension, so mixing per iteration does not fall with group size. During
+warm-up each block's proposal covariance is re-estimated at iterations 200, 400, 800, ... from the
+second half of the warm-up so far, and its scale follows a Robbins-Monro step toward a target
+acceptance rate. After warm-up the kernel is fixed, so kept draws come from a Markov chain whose
+stationary distribution is the posterior.
 
 Chains are evaluated together as columns; chain ``c`` draws from ``PCG64(seed).jumped(c)``. Per
-iteration and chain the stream gives, in order, the standard normals for every block and then one
-uniform per block. Design: ``docs/design/calibration.md`` section 5.
+iteration and chain the stream gives, in order, the standard normals for every step of every block
+and then one uniform per step. Design: ``docs/design/calibration.md`` section 5.
 """
 
 from __future__ import annotations
@@ -20,7 +22,7 @@ from dataclasses import dataclass, field
 import numpy as np
 from numpy.typing import NDArray
 
-from mcda_studio.calibration.likelihood import OutcomeData, log_likelihood
+from mcda_studio.calibration.likelihood import OutcomeData, log_likelihood, scores
 from mcda_studio.calibration.prior import NestedDirichletPrior
 
 Array = NDArray[np.float64]
@@ -70,6 +72,19 @@ class Problem:
     alpha_sd: float = ALPHA_PRIOR_SD
     log_beta_sd: float = LOG_BETA_PRIOR_SD
 
+    def score_centre(self) -> float:
+        """The mean score of the entering cases at the prior's centre weights (0 without data).
+
+        The sampler moves ``a = alpha + beta * centre`` instead of ``alpha``. The map
+        ``(a, log beta) -> (alpha, log beta)`` has Jacobian 1, so the posterior is unchanged; it
+        only removes most of the correlation between the intercept and the slope.
+        """
+        if self.data is None or self.data.cases == 0:
+            return 0.0
+        centre = self.prior.centre_global()
+        weights = np.array([[centre[leaf]] for leaf in self.prior.leaf_ids])
+        return float(scores(self.data, weights).mean())
+
 
 @dataclass
 class Chains:
@@ -87,9 +102,19 @@ def _normal_logpdf(x: Array, mean: float, sd: float) -> Array:
     return out
 
 
-def log_posterior(problem: Problem, ys: list[Array], theta: Array) -> Array:
-    """``(chains,)`` log posterior; ``ys[g]`` is ``(chains, dim_g)``, ``theta`` ``(chains, 2)``."""
-    alpha, log_beta = theta[:, 0], theta[:, 1]
+def alpha_of(theta: Array, centre: float) -> Array:
+    """``alpha = a - beta * centre`` from the sampled ``(a, log beta)``."""
+    out: Array = theta[:, 0] - np.exp(theta[:, 1]) * centre
+    return out
+
+
+def log_posterior(
+    problem: Problem, ys: list[Array], theta: Array, centre: float | None = None
+) -> Array:
+    """``(chains,)`` log posterior; ``ys[g]`` is ``(chains, dim_g)``; ``theta`` is ``(chains, 2)``
+    holding ``(a, log beta)`` with ``a = alpha + beta * centre`` (``centre`` 0: plain alpha)."""
+    log_beta = theta[:, 1]
+    alpha = alpha_of(theta, 0.0 if centre is None else centre)
     chains = theta.shape[0]
     weights = problem.prior.global_weights(ys, chains)
     total = (
@@ -113,12 +138,15 @@ def run(problem: Problem, settings: SamplerSettings) -> Chains:
     chains = settings.chains
     dims = [*prior.dims, 2]
     n_blocks = len(dims)
-    total_normals = sum(dims)
+    steps = list(dims)  # a d-dimensional block takes d Metropolis steps per iteration
+    total_normals = sum(d * s for d, s in zip(dims, steps, strict=True))
+    total_uniforms = sum(steps)
     streams = [np.random.Generator(np.random.PCG64(settings.seed).jumped(c)) for c in range(chains)]
     # Starting points: ALR coordinates around the centre, alpha and log beta from their priors.
     starts = [prior.initial_ys(rng) for rng in streams]
     ys = [np.stack([s[g] for s in starts]) for g in range(len(prior.groups))]
-    theta = np.stack(
+    centre = problem.score_centre()
+    starts_ab = np.array(
         [
             [
                 problem.alpha_mean + problem.alpha_sd * rng.standard_normal(),
@@ -127,7 +155,9 @@ def run(problem: Problem, settings: SamplerSettings) -> Chains:
             for rng in streams
         ]
     )
-    current = log_posterior(problem, ys, theta)
+    # Sample (a, log beta) with a = alpha + beta * centre.
+    theta = np.stack([starts_ab[:, 0] + np.exp(starts_ab[:, 1]) * centre, starts_ab[:, 1]], axis=1)
+    current = log_posterior(problem, ys, theta, centre)
     # Proposal state per block and chain.
     chol = [np.stack([np.eye(d) * math.sqrt(0.1)] * chains) for d in dims]
     log_scale = [np.full(chains, math.log(2.38 / math.sqrt(d))) for d in dims]
@@ -145,33 +175,37 @@ def run(problem: Problem, settings: SamplerSettings) -> Chains:
     for it in range(total_iterations):
         warm = it < settings.warmup
         normals = np.stack([rng.standard_normal(total_normals) for rng in streams])
-        uniforms = np.stack([rng.random(n_blocks) for rng in streams])
+        uniforms = np.stack([rng.random(total_uniforms) for rng in streams])
         offset = 0
+        u_index = 0
         for b, d in enumerate(dims):
-            z = normals[:, offset : offset + d]
-            offset += d
-            step = np.einsum("cij,cj->ci", chol[b], z) * np.exp(log_scale[b])[:, None]
-            proposal_ys = list(ys)
-            proposal_theta = theta
-            if b < len(ys):
-                proposal_ys[b] = ys[b] + step
-            else:
-                proposal_theta = theta + step
-            proposed = log_posterior(problem, proposal_ys, proposal_theta)
-            with np.errstate(invalid="ignore"):
-                accept = np.log(uniforms[:, b]) < proposed - current
-            accept &= np.isfinite(proposed)
-            if b < len(ys):
-                ys[b] = np.where(accept[:, None], proposal_ys[b], ys[b])
-            else:
-                theta = np.where(accept[:, None], proposal_theta, theta)
-            current = np.where(accept, proposed, current)
+            for _ in range(steps[b]):
+                z = normals[:, offset : offset + d]
+                offset += d
+                step = np.einsum("cij,cj->ci", chol[b], z) * np.exp(log_scale[b])[:, None]
+                proposal_ys = list(ys)
+                proposal_theta = theta
+                if b < len(ys):
+                    proposal_ys[b] = ys[b] + step
+                else:
+                    proposal_theta = theta + step
+                proposed = log_posterior(problem, proposal_ys, proposal_theta, centre)
+                with np.errstate(invalid="ignore"):
+                    accept = np.log(uniforms[:, u_index]) < proposed - current
+                u_index += 1
+                accept &= np.isfinite(proposed)
+                if b < len(ys):
+                    ys[b] = np.where(accept[:, None], proposal_ys[b], ys[b])
+                else:
+                    theta = np.where(accept[:, None], proposal_theta, theta)
+                current = np.where(accept, proposed, current)
+                if warm:
+                    rate = 1.0 / (it + 1.0) ** _RM_EXPONENT
+                    log_scale[b] = log_scale[b] + rate * (accept.astype(float) - _target(d))
+                else:
+                    accepted[b] += accept
             if warm:
-                rate = 1.0 / (it + 1.0) ** _RM_EXPONENT
-                log_scale[b] = log_scale[b] + rate * (accept.astype(float) - _target(d))
                 history[b].append(block_state(b).copy())
-            else:
-                accepted[b] += accept
         if warm and it + 1 == checkpoint and checkpoint < settings.warmup:
             for b, d in enumerate(dims):
                 recent = np.stack(history[b][checkpoint // 2 :], axis=1)  # (chains, n, d)
@@ -186,7 +220,7 @@ def run(problem: Problem, settings: SamplerSettings) -> Chains:
         if not warm:
             k = it - settings.warmup
             kept_w[:, k, :] = prior.global_weights(ys, chains).T
-            kept_a[:, k] = theta[:, 0]
+            kept_a[:, k] = alpha_of(theta, centre)
             kept_b[:, k] = np.exp(theta[:, 1])
     names = [
         "top level" if g.parent_id is None else f"group {g.parent_id}" for g in prior.groups
@@ -195,7 +229,7 @@ def run(problem: Problem, settings: SamplerSettings) -> Chains:
         weights=kept_w,
         alpha=kept_a,
         beta=kept_b,
-        acceptance=accepted / max(1, settings.draws),
+        acceptance=accepted / (max(1, settings.draws) * np.array(steps, dtype=float)[:, None]),
         block_names=names,
     )
 

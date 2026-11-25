@@ -58,6 +58,8 @@ def _rhat(chains: Array) -> float:
     """The classic potential scale reduction on ``(chains, n)`` draws."""
     n = chains.shape[1]
     means = chains.mean(axis=1)
+    if bool(np.all(chains == chains[:, :1])):  # every chain constant: no within-chain spread
+        return math.inf if bool(np.any(chains[:, 0] != chains[0, 0])) else math.nan
     within = float(chains.var(axis=1, ddof=1).mean())
     between = n * float(means.var(ddof=1))
     if within == 0.0:
