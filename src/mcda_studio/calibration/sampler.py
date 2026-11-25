@@ -23,7 +23,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from mcda_studio.calibration.likelihood import OutcomeData, log_likelihood, scores
-from mcda_studio.calibration.prior import NestedDirichletPrior
+from mcda_studio.methods.nested_dirichlet import NestedDirichletPrior
 
 Array = NDArray[np.float64]
 

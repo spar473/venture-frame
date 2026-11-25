@@ -4050,12 +4050,12 @@ OVERNIGHT["reference_outcomes"] = (
 # Calibration on synthetic data (deep dive 5, 25 November 2026): the nested Dirichlet prior, the
 # censoring-aware likelihood, the sampler, the convergence gate and the weight-samples sidecar.
 # Design: docs/design/calibration.md. ``--calibration-only``.
-CAL_PRIOR = "src/mcda_studio/calibration/prior.py"
+CAL_PRIOR = "src/mcda_studio/methods/nested_dirichlet.py"
 CAL_LIKELIHOOD = "src/mcda_studio/calibration/likelihood.py"
 CAL_SAMPLER = "src/mcda_studio/calibration/sampler.py"
 CAL_DIAGNOSTICS = "src/mcda_studio/calibration/diagnostics.py"
 CAL_SERVICE = "src/mcda_studio/calibration/service.py"
-CAL_SIDECAR = "src/mcda_studio/calibration/weight_samples.py"
+CAL_SIDECAR = "src/mcda_studio/domain/weight_samples.py"
 CALIBRATION_BACKEND = [
     Mutation("CALIBRATION the ALR Jacobian dropped from the prior density", CAL_PRIOR,
              "            total = total + norm + (a * log_simplex(y)).sum(axis=-1)",

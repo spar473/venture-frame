@@ -719,6 +719,69 @@ def calibrate_fit(
         err_console.print(f"wrote {out}")
 
 
+@calibrate_app.command("prior")
+def calibrate_prior(
+    file: FileArg,
+    out: Annotated[Path, typer.Option("--out", help="Write the weight-samples sidecar here.")],
+    profile: Annotated[
+        str | None, typer.Option(help="The weight profile to centre the prior on.")
+    ] = None,
+    conviction: Annotated[
+        str | None,
+        typer.Option(help="high, medium or low (default: the profile's elicitation record)."),
+    ] = None,
+    kappa: Annotated[
+        float | None,
+        typer.Option("--kappa", help="A concentration for every varying group, instead."),
+    ] = None,
+    draws: Annotated[int, typer.Option(help="Stored weight vectors (1 to 100000).")] = 10_000,
+    seed: Annotated[int, typer.Option(help="Seed for the PCG64 stream.")] = 0,
+) -> None:
+    """Draw a profile's weights from the conviction prior, Dirichlet(kappa * w0) per sibling
+    group, and write them as a weight-samples sidecar (basis "prior") that SMAA-2 can read.
+
+    Uses no outcome data and changes no project. Prints the sidecar's digest for the SMAA-2
+    parameter weight_samples_sha256. An existing file is never overwritten."""
+    from mcda_studio.services import conviction_prior_service as cps
+
+    if conviction not in (None, "high", "medium", "low"):
+        _fail("--conviction must be high, medium or low")
+    if out.exists():
+        _fail(f"Refusing to overwrite {out}")
+    project = _guard(lambda: repo.load(file))
+    samples = _guard(
+        lambda: cps.conviction_prior(
+            project,
+            profile,
+            conviction=conviction,  # type: ignore[arg-type]
+            kappa=kappa,
+            draws=draws,
+            seed=seed,
+        )
+    )
+    try:
+        with out.open("x", encoding="utf-8", newline="\n") as handle:
+            handle.write(samples.model_dump_json())
+    except OSError as exc:
+        _fail(f"Cannot write {out}: {exc}")
+    summary = {
+        "weight_samples_sha256": cps.sidecar_digest(samples),
+        "basis": samples.basis,
+        "weight_profile_id": samples.weight_profile_id,
+        "project_fingerprint": samples.project_fingerprint,
+        "conviction": samples.prior.conviction,
+        "conviction_source": samples.prior.conviction_source,
+        "groups": [
+            {"parent_id": g.parent_id, "kappa": g.kappa, "kappa_method": g.kappa_method}
+            for g in samples.prior.groups
+        ],
+        "draws": samples.sampler.samples,
+        "seed": samples.seed,
+    }
+    typer.echo(json.dumps(summary, indent=2))
+    err_console.print(f"wrote {out}")
+
+
 @calibrate_app.command("synthetic-check")
 def calibrate_synthetic_check(
     cases: Annotated[int, typer.Option(help="Simulated cases.")] = 500,

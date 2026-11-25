@@ -302,6 +302,13 @@ def _sidecar(converged) -> dict[str, Any]:
     return json.loads(converged[2].samples.model_dump_json())
 
 
+def test_a_calibrated_sidecar_written_before_basis_existed_reads_as_calibrated(converged) -> None:
+    raw = _sidecar(converged)
+    assert raw["basis"] == "calibrated"
+    del raw["basis"]
+    assert ws.WeightSamples.model_validate_json(json.dumps(raw)).basis == "calibrated"
+
+
 def test_the_sidecar_round_trips(converged) -> None:
     samples = converged[2].samples
     again = ws.WeightSamples.model_validate_json(samples.model_dump_json())
