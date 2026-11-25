@@ -24,10 +24,13 @@ from mcda_studio.domain.uncertainty import SmaaModel
 #: The newest schema this program reads and writes. A file is written with the *lowest* version
 #: that can represent it (``Project.required_schema_version``), so a project that uses no newer
 #: section keeps its bytes, its fingerprint and older installations' ability to open it.
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 
 #: The first schema version of each optional method section.
 SECTION_VERSIONS = {"sorting": 2, "smaa": 3, "promethee": 4, "ahp": 5, "requirements": 6}
+#: Version 7 adds fields inside existing sections, not a section: a weight profile's
+#: ``elicitation`` and the SMAA-2 ``ranking`` kind and ``held`` children.
+STRUCTURED_JUDGEMENT_VERSION = 7
 
 
 class Project(DomainModel):
@@ -59,7 +62,16 @@ class Project(DomainModel):
     def required_schema_version(self) -> int:
         """The lowest schema version that can represent this project."""
         used = [v for name, v in SECTION_VERSIONS.items() if getattr(self, name) is not None]
+        if self.uses_structured_judgement():
+            used.append(STRUCTURED_JUDGEMENT_VERSION)
         return max([1, *used])
+
+    def uses_structured_judgement(self) -> bool:
+        """Whether any schema-7 field is in use: an elicitation record, a ranking group or held
+        children."""
+        if any(p.elicitation is not None for p in self.weight_profiles):
+            return True
+        return self.smaa is not None and any(g.uses_schema_7() for g in self.smaa.groups)
 
     # ---- read-only helpers (never mutate) -------------------------------------------------
     def tree(self) -> CriterionTree:

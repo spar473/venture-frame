@@ -2,6 +2,7 @@
 
 import math
 import re
+from collections.abc import Callable
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, ValidationError
@@ -15,6 +16,7 @@ from mcda_studio.domain.project import Project
 from mcda_studio.domain.uncertainty import (
     CategoricalDistribution,
     DiscreteDistribution,
+    GroupUncertainty,
     TriangularDistribution,
     UniformDistribution,
 )
@@ -211,15 +213,35 @@ def check_smaa(
                 where,
             )
             continue
-        if group.kind == "unknown":
+        held = _held_children(group, children, where, add)
+        varying = [c for c in children if c not in held]
+        if len(varying) < 2:
+            add(
+                "INVALID_GROUP_UNCERTAINTY",
+                "fewer than two children vary once the held children are kept at the profile's "
+                "weight",
+                f"{where}.held",
+            )
+            continue
+        if held:
+            _check_held_share(project, configuration, children, held, where, add)
+        if group.kind != "ranking" and group.order:
+            add(
+                "UNEXPECTED_ORDER",
+                f"an {group.kind} group takes no order; only a ranking group does",
+                f"{where}.order",
+            )
+        if group.kind in {"unknown", "ranking"}:
             if group.intervals:
                 add(
                     "UNEXPECTED_RATING_INTERVALS",
-                    "an unknown group draws uniform local weights; it takes no rating intervals",
+                    f"an {group.kind} group draws local weights; it takes no rating intervals",
                     where,
                 )
+            if group.kind == "ranking":
+                _check_order(group, varying, held, where, add)
             continue
-        for child in children:
+        for child in varying:
             interval = group.intervals.get(child)
             if interval is None:
                 add("MISSING_RATING_INTERVAL", f"no rating interval for {child!r}", where)
@@ -235,7 +257,14 @@ def check_smaa(
                 f"{extra!r} is not a child of this group",
                 f"{where}.intervals.{extra}",
             )
-        if group.intervals and all(hi == 0.0 for _, hi in group.intervals.values()):
+        for child in sorted(set(group.intervals) & set(held)):
+            add(
+                "UNEXPECTED_RATING_INTERVALS",
+                f"{child!r} is held at the profile's weight; it takes no rating interval",
+                f"{where}.intervals.{child}",
+            )
+        stated = [group.intervals[c] for c in varying if c in group.intervals]
+        if stated and all(hi == 0.0 for _, hi in stated):
             add(
                 "ZERO_RATING_INTERVALS",
                 "every rating interval is zero, so every draw of this group sums to zero",
@@ -274,3 +303,76 @@ def check_smaa(
     if project.sorting is not None:  # class acceptability needs valid classes
         issues.extend(i for i in check_sorting(project, []) if i.code != "SORTING_LOCAL_ANCHORS")
     return issues
+
+
+def _held_children(
+    group: GroupUncertainty, children: list[str], where: str, add: Callable[[str, str, str], None]
+) -> list[str]:
+    """The held children that are children of this group, each once; the rest are refused."""
+    seen: list[str] = []
+    for child in group.held:
+        if child not in children:
+            add("UNKNOWN_HELD_CHILD", f"{child!r} is not a child of this group", f"{where}.held")
+        elif child in seen:
+            add("DUPLICATE_HELD_CHILD", f"{child!r} is held twice", f"{where}.held")
+        else:
+            seen.append(child)
+    return seen
+
+
+def _check_order(
+    group: GroupUncertainty,
+    varying: list[str],
+    held: list[str],
+    where: str,
+    add: Callable[[str, str, str], None],
+) -> None:
+    """A ranking names every varying child exactly once, best first, and no held child."""
+    path = f"{where}.order"
+    if not group.order:
+        add("MISSING_ORDER", "a ranking group needs its children in order, best first", path)
+        return
+    for child in group.order:
+        if child in held:
+            add("INVALID_ORDER", f"{child!r} is held, so it takes no place in the order", path)
+        elif child not in varying:
+            add("INVALID_ORDER", f"{child!r} is not a child of this group", path)
+    repeated = sorted({c for c in group.order if group.order.count(c) > 1})
+    if repeated:
+        add(
+            "INVALID_ORDER",
+            f"the order names {repeated} more than once; ties are not allowed",
+            path,
+        )
+    missing = [c for c in varying if c not in group.order]
+    if missing:
+        add("INVALID_ORDER", f"the order leaves out {missing}", path)
+
+
+def _check_held_share(
+    project: Project,
+    configuration: AnalysisConfiguration,
+    children: list[str],
+    held: list[str],
+    where: str,
+    add: Callable[[str, str, str], None],
+) -> None:
+    """Held children keep the profile's local weight, so they must leave some weight to share."""
+    try:
+        profile = project.resolve_profile(configuration)
+    except McdaError:
+        return  # MAVT's own checks already refuse an unknown profile
+    if profile is None:
+        return  # MAVT's own checks already refuse a missing profile
+    ratings = [profile.judgements.get(c) for c in children]
+    if any(r is None for r in ratings):
+        return  # MAVT's own checks already refuse an incomplete group
+    total = math.fsum(r for r in ratings if r is not None)
+    kept = math.fsum(profile.judgements[c] for c in held)
+    if total > 0.0 and kept >= total:
+        add(
+            "HELD_TAKES_ALL_WEIGHT",
+            "the held children have all of this group's weight in the profile, so nothing is "
+            "left to vary",
+            f"{where}.held",
+        )

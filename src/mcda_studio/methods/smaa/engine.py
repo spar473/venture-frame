@@ -87,6 +87,13 @@ class _Group:
     label: str
     children: list[str]
     spec: GroupUncertainty
+    varying: list[str]  # the children that vary, in tree order; each takes one uniform column
+    held: list[str]  # children held at the profile's local weight
+
+    @property
+    def judged_by_local_weight(self) -> bool:
+        """``unknown`` and ``ranking`` draw local weights; a rating interval draws a rating."""
+        return self.spec.kind in {"unknown", "ranking"}
 
 
 def _normalised(probabilities: list[float]) -> list[Fraction]:
@@ -191,7 +198,11 @@ def _plan(project: Project, configuration: AnalysisConfiguration, run: str) -> _
         for parent in order:
             if parent in by_parent:
                 label = "the top level" if parent is None else prep.tree.node(parent).name
-                groups.append(_Group(parent, label, prep.tree.child_ids(parent), by_parent[parent]))
+                spec = by_parent[parent]
+                children = prep.tree.child_ids(parent)
+                varying = [c for c in children if c not in spec.held]
+                held = [c for c in children if c in spec.held]
+                groups.append(_Group(parent, label, children, spec, varying, held))
     index = {c.path: i for i, c in enumerate(cells)}
     shared = [
         (s.id, [index[f"smaa.cells[{r.alternative_id},{r.criterion_id}]"] for r in s.cells])
@@ -286,14 +297,15 @@ def _group_locals(
     """Local weights of every varying group from its uniform columns; returns columns used."""
     local: dict[str, NDArray[np.float64]] = {}
     column = 0
+    n = uniforms.shape[0]
     for group in plan.groups:
-        u = uniforms[:, column : column + len(group.children)]
-        column += len(group.children)
-        if group.spec.kind == "unknown":
+        u = uniforms[:, column : column + len(group.varying)]
+        column += len(group.varying)
+        if group.spec.kind in {"unknown", "ranking"}:
             raw = -portable.log1p_array(-u)  # exponential draws; normalised: Dirichlet(1, ..., 1)
         else:
-            lo = np.array([group.spec.intervals[c][0] for c in group.children])
-            hi = np.array([group.spec.intervals[c][1] for c in group.children])
+            lo = np.array([group.spec.intervals[c][0] for c in group.varying])
+            hi = np.array([group.spec.intervals[c][1] for c in group.varying])
             raw = lo[None, :] + u * (hi - lo)[None, :]
         total = _columns_sum([raw[:, k] for k in range(raw.shape[1])])
         if np.any(total <= 0.0):
@@ -301,8 +313,24 @@ def _group_locals(
                 f"a draw of the weights under {group.label} summed to zero; it is refused, "
                 "not skipped"
             )
-        for k, child in enumerate(group.children):
-            local[child] = raw[:, k] / total
+        shares = raw / total[:, None]
+        if group.spec.kind == "ranking":
+            # Sorting a uniform draw on the simplex and handing the largest share to the first
+            # child, the next to the second and so on is uniform on the ordered region.
+            shares = -np.sort(-shares, axis=1)
+            names = list(group.spec.order)
+        else:
+            names = group.varying
+        if group.held:
+            held = {c: plan.prep.local[c] for c in group.held}
+            rest = 1.0 - math.fsum(held.values())
+            for child, weight in held.items():
+                local[child] = np.full(n, weight)
+            for k, child in enumerate(names):
+                local[child] = shares[:, k] * rest
+        else:
+            for k, child in enumerate(names):
+                local[child] = shares[:, k]
     return local, column
 
 
@@ -311,7 +339,7 @@ def _sample(
 ) -> tuple[_Counts, NDArray[np.bool_], list[tuple[str, str, NDArray[np.bool_]]]]:
     prep = plan.prep
     alternatives, leaves = len(prep.alt_ids), len(prep.leaf_ids)
-    group_columns = sum(len(g.children) for g in plan.groups)
+    group_columns = sum(len(g.varying) for g in plan.groups)
     independent = plan.independent
     width = group_columns + len(independent) + len(plan.shared)
     rng = np.random.Generator(np.random.PCG64(seed))
@@ -353,14 +381,15 @@ def _sample(
         sole += (first & ~shared_first[:, None]).sum(axis=0)
         tied += (first & shared_first[:, None]).sum(axis=0)
         first_parts.append(first)
-        # An unknown group's child is judged by its local weight; a rating interval's by its
-        # uniform, which orders the rating; a measurement or shared draw by its uniform.
+        # An unknown or ranking group's child is judged by its local weight; a rating interval's
+        # by its uniform, which orders the rating; a measurement or shared draw by its uniform.
+        # Held children never vary, so they are not inputs.
         group_inputs: list[NDArray[np.float64]] = []
         k = 0
         for group in plan.groups:
-            for child in group.children:
-                unknown = group.spec.kind == "unknown"
-                group_inputs.append(local[child] if unknown else uniforms[:, k])
+            for child in group.varying:
+                by_weight = group.judged_by_local_weight
+                group_inputs.append(local[child] if by_weight else uniforms[:, k])
                 k += 1
         input_parts.append(group_inputs + draws)
         done += n
@@ -376,11 +405,12 @@ def _sample(
 
 
 def _is_unknown_column(plan: _Plan, k: int) -> bool:
-    """Whether group column ``k`` belongs to an ``unknown`` group (judged by local weight)."""
+    """Whether group column ``k`` belongs to a group judged by local weight (``unknown`` or
+    ``ranking``)."""
     for group in plan.groups:
-        if k < len(group.children):
-            return group.spec.kind == "unknown"
-        k -= len(group.children)
+        if k < len(group.varying):
+            return group.judged_by_local_weight
+        k -= len(group.varying)
     return False
 
 
@@ -389,8 +419,8 @@ def _input_labels(plan: _Plan) -> list[tuple[str, str]]:
     out: list[tuple[str, str]] = []
     for group in plan.groups:
         key = "top" if group.parent_id is None else group.parent_id
-        for child in group.children:
-            what = "local weight" if group.spec.kind == "unknown" else "swing rating"
+        for child in group.varying:
+            what = "local weight" if group.judged_by_local_weight else "swing rating"
             out.append(
                 (
                     f"{what} of {names.node(child).name} under {group.label}",

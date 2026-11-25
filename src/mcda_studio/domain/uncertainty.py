@@ -63,11 +63,23 @@ class GroupUncertainty(DomainModel):
     ``unknown``: local weights uniform on the group's simplex, Dirichlet(1, ..., 1).
     ``rating_intervals``: each child's raw swing rating uniform on its stated [lower, upper], then
     normalised within the group.
+    ``ranking`` (schema 7): local weights uniform on the part of the simplex that respects
+    ``order`` (best first): every split in which no child outweighs one ranked above it.
+
+    ``held`` (schema 7): children held at the profile's local weight in every draw; the varying
+    children share the rest. It lets a group vary without giving weight to a child the profile
+    deliberately rates 0, such as a screened-only mandate. It needs no interval and no place in
+    ``order``.
     """
 
     parent_id: Id | None  # None is the top-level group
-    kind: Literal["unknown", "rating_intervals"]
+    kind: Literal["unknown", "rating_intervals", "ranking"]
     intervals: dict[Id, tuple[FiniteFloat, FiniteFloat]] = Field(default_factory=dict)
+    order: list[Id] = Field(default_factory=list, exclude_if=lambda v: not v)
+    held: list[Id] = Field(default_factory=list, exclude_if=lambda v: not v)
+
+    def uses_schema_7(self) -> bool:
+        return self.kind == "ranking" or bool(self.order) or bool(self.held)
 
 
 class CellRef(DomainModel):

@@ -15,6 +15,7 @@ from mcda_studio.domain.criteria import ValueFunctionSpec
 from mcda_studio.domain.measurements import Measurement
 from mcda_studio.domain.outranking import PrometheeModel
 from mcda_studio.domain.pairwise import AhpModel
+from mcda_studio.domain.preferences import Elicitation
 from mcda_studio.domain.project import Project
 from mcda_studio.domain.requirements import Requirement
 from mcda_studio.domain.scales import Scale
@@ -149,6 +150,14 @@ class RemoveWeightProfile(DomainModel):
     replacement_profile_id: Id | None = None
 
 
+class SetElicitation(DomainModel):
+    """Record how a profile's judgements were given; ``elicitation`` None clears the record."""
+
+    op: Literal["set_elicitation"] = "set_elicitation"
+    profile_id: Id
+    elicitation: Elicitation | None
+
+
 class SetDefaultWeightProfile(DomainModel):
     op: Literal["set_default_weight_profile"] = "set_default_weight_profile"
     profile_id: Id | None
@@ -275,6 +284,7 @@ Operation = Annotated[
     | RenameWeightProfile
     | RemoveWeightProfile
     | SetDefaultWeightProfile
+    | SetElicitation
     | CreateScenario
     | DuplicateScenario
     | RenameScenario
@@ -358,6 +368,8 @@ def apply_operation(project: Project, op: Operation) -> Project:
             return ps.remove_weight_profile(project, op.profile_id, op.replacement_profile_id)
         case SetDefaultWeightProfile():
             return ps.set_default_weight_profile(project, op.profile_id)
+        case SetElicitation():
+            return ps.set_elicitation(project, op.profile_id, op.elicitation)
 
         case CreateScenario():
             return ps.create_scenario(project, op.name, op.scenario_id)

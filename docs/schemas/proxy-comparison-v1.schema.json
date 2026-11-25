@@ -2750,6 +2750,61 @@
       "title": "DominancePair",
       "type": "object"
     },
+    "Elicitation": {
+      "additionalProperties": false,
+      "description": "How a weight profile's judgements were given: who, when, how sure, and why.\n\nIt stores judgements only. The swing ratings stay in ``WeightProfile.judgements``; checks\n(agreement of order and ratings, AHP consistency, rank-order weights) and proposed weight\nuncertainty are derived, never stored.",
+      "properties": {
+        "conviction": {
+          "anyOf": [
+            {
+              "enum": [
+                "high",
+                "medium",
+                "low"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Conviction"
+        },
+        "elicited_by": {
+          "default": "",
+          "title": "Elicited By",
+          "type": "string"
+        },
+        "elicited_on": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Elicited On"
+        },
+        "groups": {
+          "items": {
+            "$ref": "#/$defs/GroupElicitation"
+          },
+          "title": "Groups",
+          "type": "array"
+        },
+        "note": {
+          "default": "",
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "title": "Elicitation",
+      "type": "object"
+    },
     "EvidenceCell": {
       "additionalProperties": false,
       "properties": {
@@ -3730,10 +3785,65 @@
       "title": "FeasibilitySnapshot",
       "type": "object"
     },
+    "GroupElicitation": {
+      "additionalProperties": false,
+      "description": "One sibling group as the person judged it (``parent_id`` None: the top level).\n\n``order``: the children best first, each once, no ties; empty when no ranking was given.\n``pairwise``: optional AHP answers for the same children, a cross-check on the swing ratings.\n``reasons``: one line per child, in the person's words.",
+      "properties": {
+        "order": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+            "type": "string"
+          },
+          "title": "Order",
+          "type": "array"
+        },
+        "pairwise": {
+          "items": {
+            "$ref": "#/$defs/PairwiseJudgement"
+          },
+          "title": "Pairwise",
+          "type": "array"
+        },
+        "parent_id": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Parent Id"
+        },
+        "reasons": {
+          "patternProperties": {
+            "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$": {
+              "type": "string"
+            }
+          },
+          "title": "Reasons",
+          "type": "object"
+        }
+      },
+      "required": [
+        "parent_id"
+      ],
+      "title": "GroupElicitation",
+      "type": "object"
+    },
     "GroupUncertainty": {
       "additionalProperties": false,
-      "description": "Weight uncertainty in one sibling group; a group without an entry keeps its ratings.\n\n``unknown``: local weights uniform on the group's simplex, Dirichlet(1, ..., 1).\n``rating_intervals``: each child's raw swing rating uniform on its stated [lower, upper], then\nnormalised within the group.",
+      "description": "Weight uncertainty in one sibling group; a group without an entry keeps its ratings.\n\n``unknown``: local weights uniform on the group's simplex, Dirichlet(1, ..., 1).\n``rating_intervals``: each child's raw swing rating uniform on its stated [lower, upper], then\nnormalised within the group.\n``ranking`` (schema 7): local weights uniform on the part of the simplex that respects\n``order`` (best first): every split in which no child outweighs one ranked above it.\n\n``held`` (schema 7): children held at the profile's local weight in every draw; the varying\nchildren share the rest. It lets a group vary without giving weight to a child the profile\ndeliberately rates 0, such as a screened-only mandate. It needs no interval and no place in\n``order``.",
       "properties": {
+        "held": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+            "type": "string"
+          },
+          "title": "Held",
+          "type": "array"
+        },
         "intervals": {
           "patternProperties": {
             "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$": {
@@ -3756,10 +3866,19 @@
         "kind": {
           "enum": [
             "unknown",
-            "rating_intervals"
+            "rating_intervals",
+            "ranking"
           ],
           "title": "Kind",
           "type": "string"
+        },
+        "order": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+            "type": "string"
+          },
+          "title": "Order",
+          "type": "array"
         },
         "parent_id": {
           "anyOf": [
@@ -8348,6 +8467,17 @@
       "additionalProperties": false,
       "description": "Raw swing ratings, one per criterion node, relative to that node's siblings.\n\nA rating expresses the importance of the swing from worst to best *over the scale range\nin use* - not abstract importance. Ratings need not sum to anything; they are normalised\nwithin each sibling group. An only child needs no rating (its local weight is 1).",
       "properties": {
+        "elicitation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Elicitation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "id": {
           "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
           "title": "Id",
