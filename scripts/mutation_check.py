@@ -4171,6 +4171,9 @@ REFERENCE_RATING_BACKEND = [
     Mutation("RATING VEE packets carry VEE's hindsight commentary", RR_PILOT,
              'ENTRY_FIELDS = ["label", "date", "sector", "institutional_investor", "locator"]',
              'ENTRY_FIELDS = ["label", "date", "sector", "institutional_investor", "locator", "passage"]'),
+    Mutation("RATING a review-sheet stem may be a path", "src/mcda_studio/cli.py",
+             '    if not stem or any(c in stem for c in FORBIDDEN_IN_STEM) or stem in (".", ".."):',
+             "    if not stem:"),
     Mutation("RATING the pilot sample depends on input order", RR_PILOT,
              "    ordered = sorted(case_ids)", "    ordered = list(case_ids)"),
 ]  # fmt: skip

@@ -501,3 +501,25 @@ def test_the_import_command_refuses_and_writes_nothing(tmp_path: Path) -> None:
     ])  # fmt: skip
     assert made.exit_code == 0, made.output
     assert not keys(json.loads(packets_out.read_text(encoding="utf-8"))) & OUTCOME_KEYS
+
+
+def test_a_second_sheet_is_written_beside_the_first_and_never_over_it(tmp_path: Path) -> None:
+    from typer.testing import CliRunner
+
+    from mcda_studio.cli import app
+
+    paths = _files(tmp_path)
+    out_dir = tmp_path / "review"
+    base = ["reference-cases", "review-sheet", str(paths["props"]), "--reference-cases"]
+    base += [str(paths["set"]), "--project", str(paths["project"]), "--out-dir", str(out_dir)]
+    assert CliRunner().invoke(app, base).exit_code == 0
+    first = (out_dir / "review.csv").read_bytes()
+    second = CliRunner().invoke(app, [*base, "--stem", "review-2"])
+    assert second.exit_code == 0, second.output
+    assert (out_dir / "review-2.csv").exists() and (out_dir / "review-2.html").exists()
+    assert (out_dir / "review.csv").read_bytes() == first
+    again = CliRunner().invoke(app, [*base, "--stem", "review-2"])
+    assert again.exit_code == 1 and "Refusing to overwrite" in again.output
+    for stem in ("../elsewhere", "a\\b", ".."):
+        bad = CliRunner().invoke(app, [*base, "--stem", stem])
+        assert bad.exit_code == 1 and "plain file name" in bad.output, stem

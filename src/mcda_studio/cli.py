@@ -700,6 +700,9 @@ def reference_packets(
     err_console.print(f"wrote {len(items)} packet(s) to {out}")
 
 
+FORBIDDEN_IN_STEM = set('/\\:*?"<>|')  # a stem is a plain file name, never a path
+
+
 @reference_app.command("review-sheet")
 def reference_review_sheet(
     proposals_file: Annotated[Path, typer.Argument(help="rating-proposals JSON (version 1).")],
@@ -712,6 +715,14 @@ def reference_review_sheet(
         Path | None,
         typer.Option("--rubric-text", help="JSON object: criterion id to rubric text."),
     ] = None,
+    stem: Annotated[
+        str,
+        typer.Option(
+            "--stem",
+            help="File name stem, e.g. review-2 for review-2.csv and review-2.html beside an "
+            "earlier sheet (default review).",
+        ),
+    ] = "review",
 ) -> None:
     """Write a review sheet (UTF-8 CSV with a byte-order mark, every row 'skip') and a page of
     labels, rubrics and sources to keep open beside it. Refuses invalid proposals."""
@@ -722,7 +733,9 @@ def reference_review_sheet(
     reference_set = _load_reference_set_v2(reference_file)
     proposals = _load_rating_proposals(proposals_file)
     _guard(lambda: reference_outcome_service.check(project, reference_set))
-    sheet, page = out_dir / "review.csv", out_dir / "review.html"
+    if not stem or any(c in stem for c in FORBIDDEN_IN_STEM) or stem in (".", ".."):
+        _fail("--stem must be a plain file name without a folder or extension")
+    sheet, page = out_dir / f"{stem}.csv", out_dir / f"{stem}.html"
     _refuse_existing(sheet)
     _refuse_existing(page)
     rows = _guard(
