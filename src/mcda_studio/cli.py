@@ -947,15 +947,49 @@ def evaluate(
         str | None, typer.Option(help="AHP synthesis: distributive or ideal.")
     ] = None,
     as_json: Annotated[bool, typer.Option("--json", help="Print full result JSON.")] = False,
+    weight_samples_file: Annotated[
+        Path | None,
+        typer.Option(
+            "--weight-samples",
+            help="SMAA-2: take the weights from this weight-samples sidecar (basis prior or "
+            "calibrated) instead of the stated weight groups.",
+        ),
+    ] = None,
+    resample: Annotated[
+        bool,
+        typer.Option("--resample", help="SMAA-2: allow more draws than stored weight vectors."),
+    ] = False,
 ) -> None:
     """Calculate rankings and save the full inspectable result."""
+    from mcda_studio.domain.weight_samples import WeightSamples
+    from mcda_studio.methods.smaa import samples as weight_samples
+
     project = _guard(lambda: repo.load(file))
     cfg = _configuration(project, method, weight_profile_id=profile, scenario_id=scenario)
     run = {"samples": samples, "seed": seed, "uncertainty": uncertainty, "synthesis": synthesis}
     if any(v is not None for v in run.values()):
         given = {k: v for k, v in run.items() if v is not None}
         cfg = cfg.model_copy(update={"parameters": {**cfg.parameters, **given}})
-    result = _guard(lambda: svc.evaluate_project(project, cfg))
+    supplied: WeightSamples | None = None
+    if weight_samples_file is not None:
+        try:
+            supplied = WeightSamples.model_validate_json(
+                weight_samples_file.read_text(encoding="utf-8")
+            )
+        except (OSError, UnicodeError, ValidationError) as exc:
+            _fail(f"Cannot load the weight samples: {exc}")
+        # A saved configuration that already pins a digest keeps it, so a different file is
+        # refused (WEIGHT_SAMPLES_DIGEST_MISMATCH) rather than silently used.
+        pinned = cfg.parameters.get("weight_samples_sha256") or weight_samples.digest(supplied)
+        source = {"weight_source": "samples", "weight_samples_sha256": pinned}
+        if resample:
+            source["resample"] = True
+        cfg = cfg.model_copy(update={"parameters": {**cfg.parameters, **source}})
+    elif resample:
+        _fail("--resample needs --weight-samples")
+
+    with weight_samples.supplied(supplied):
+        result = _guard(lambda: svc.evaluate_project(project, cfg))
     if output:
         _guard(lambda: _save_result(result, output))
     if as_json:

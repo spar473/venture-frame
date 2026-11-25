@@ -158,3 +158,27 @@ def test_the_command_writes_the_sidecar_and_prints_its_digest(tmp_path: Path) ->
     assert summary["groups"][0] == {"parent_id": None, "kappa": 136.0, "kappa_method": method}
     again = CliRunner().invoke(app, args)
     assert again.exit_code == 1 and "Refusing to overwrite" in again.output
+
+
+def test_a_listed_held_child_keeps_its_weight_and_the_rest_share_what_is_left(project: Any) -> None:
+    from mcda_studio.domain.uncertainty import GroupUncertainty, SmaaModel
+    from mcda_studio.methods.mavt.weighting import compute_weights
+    from mcda_studio.services import project_service as ps
+
+    held = ps.set_smaa_model(
+        project,
+        SmaaModel(cells=project.smaa.cells, groups=[
+            GroupUncertainty(parent_id="team", kind="unknown", held=["board_advisors"])]),
+    )  # fmt: skip
+    samples = cps.conviction_prior(held, "technical_ip", conviction="low", draws=2000, seed=5)
+    team = next(g for g in samples.prior.groups if g.parent_id == "team")
+    assert team.held == ["board_advisors"] and "board_advisors" not in team.children
+    local = compute_weights(held.tree(), held.weight_profiles[0].judgements).local
+    assert team.share == pytest.approx(1 - local["board_advisors"])
+    w = np.array(samples.samples)
+    leaves = samples.leaf_ids
+    team_leaves = ("founder_problem_fit", "team_completeness", "track_record", "board_advisors")
+    team_total = w[:, [leaves.index(x) for x in team_leaves]].sum(axis=1)
+    board = w[:, leaves.index("board_advisors")] / team_total
+    assert np.allclose(board, local["board_advisors"], atol=1e-12)
+    assert np.allclose(w.sum(axis=1), 1.0, atol=1e-12)

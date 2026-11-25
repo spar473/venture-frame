@@ -59,6 +59,7 @@ from mcda_studio.domain.results import (
 from mcda_studio.domain.scales import AnchorMode, Scale, ScaleType
 from mcda_studio.domain.validation import ValidationReport
 from mcda_studio.methods.base import available_methods, get_method
+from mcda_studio.methods.smaa import samples as weight_samples
 from mcda_studio.runtime import asset_directory, build_identity, package_version
 from mcda_studio.services import analysis_service as svc
 from mcda_studio.services import calculation_workspace_service as calculations
@@ -1018,7 +1019,8 @@ def _router(examples_dir: Path | None, frontend: Path | None) -> APIRouter:
     def evaluate_draft(req: sc.EvaluateDraftRequest) -> ApiResult:
         """Evaluation of the project in the body by its configured method, tagged by ``method``.
         422 VALIDATION_FAILED if it has errors."""
-        return _evaluate(req.project, req.configuration)
+        with weight_samples.supplied(req.weight_samples):
+            return _evaluate(req.project, req.configuration)
 
     @r.post(
         "/projects/{project_id}/evaluate", response_model=AnalysisResultUnion, tags=["analysis"]

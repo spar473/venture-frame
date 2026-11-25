@@ -25,6 +25,7 @@ from mcda_studio.domain.provenance import ProjectCopyReceipt
 from mcda_studio.domain.reference_cases import ReferenceCases
 from mcda_studio.domain.scales import AnchorMode, ScaleType
 from mcda_studio.domain.validation import ValidationReport
+from mcda_studio.domain.weight_samples import WeightSamples
 from mcda_studio.methods.base import Capability
 from mcda_studio.services.decision_record_service import (
     MAX_ARTIFACTS,
@@ -162,9 +163,13 @@ class AnalysisOptions(DomainModel):
 
 class EvaluateDraftRequest(AnalysisOptions):
     project: Project
+    # SMAA-2 with weight_source "samples": the weight-samples sidecar the configuration's
+    # weight_samples_sha256 pins. Never stored in the project.
+    weight_samples: WeightSamples | None = Field(default=None, exclude_if=lambda v: v is None)
 
 
-class OpenQuestionsRequest(EvaluateDraftRequest):
+class OpenQuestionsRequest(AnalysisOptions):
+    project: Project
     proposals: ExternalProposals | None = None
     model_comparison: ModelComparison | None = None
     dossier: EvidenceDossier | None = None
