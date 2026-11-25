@@ -26,6 +26,7 @@ import { EvidenceWorkspacePanel } from "./EvidenceWorkspacePanel";
 import { DecisionRecordPanel } from "./DecisionRecordPanel";
 import { RequirementsPanel } from "./RequirementsPanel";
 import { UncertaintyPanel } from "./UncertaintyPanel";
+import { ElicitationPanel } from "./ElicitationPanel";
 import { useEditorStore } from "../state/editorStore";
 import { setLeaveGuard } from "../state/navigation";
 import { AlternativesPanel } from "./AlternativesPanel";
@@ -55,6 +56,7 @@ const STAGES: { name: string; icon: string; tabs: { id: EditorTab; label: string
     { id: "alternatives", label: "Alternatives" },
     { id: "measurements", label: "Measurements" },
     { id: "weights", label: "Weights" },
+    { id: "judgement", label: "Judgement" },
     { id: "requirements", label: "Requirements" },
     { id: "classes", label: "Classes" },
     { id: "uncertainty", label: "Uncertainty" },
@@ -585,6 +587,7 @@ export function EditorScreen({ projectId, onClose, onOpenOther }: Props) {
           {tab === "scenarios" && <ScenarioPanel project={project} context={context} busy={busy} manage={manageScenario}
             onSelect={scenarioId=>store.selectAnalysis({scenarioId})} onEdit={criterionId=>{setSelectedId(criterionId);setEditorScenario(context.scenarioId);setFunctionEditor(true);}}/>}
           {tab === "classes" && <ClassesPanel project={project} context={context} busy={busy} apply={apply}/>}
+          {tab === "judgement" && <ElicitationPanel project={project} context={context} busy={busy} apply={apply}/>}
           {tab === "uncertainty" && <UncertaintyPanel project={project} context={context} busy={busy} apply={apply}/>}
           {tab === "outranking" && <OutrankingPanel project={project} context={context} busy={busy} apply={apply}/>}
           {tab === "pairwise" && <PairwisePanel project={project} context={context} busy={busy} apply={apply}/>}

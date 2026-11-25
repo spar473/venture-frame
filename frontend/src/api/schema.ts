@@ -298,6 +298,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/elicitation/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Elicitation Check Draft
+         * @description Checks of the configured profile's elicitation record (order against ratings, AHP
+         *     consistency, swing-AHP gap, missing reasons) and the weight uncertainty it proposes.
+         *     Read-only; a proposal changes nothing until a person applies it.
+         */
+        post: operations["elicitation_check_draft_api_elicitation_check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/elicitation/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Elicitation Preview Draft
+         * @description Decision confidence now and under each proposal, from the same SMAA-2 settings.
+         */
+        post: operations["elicitation_preview_draft_api_elicitation_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/evaluate": {
         parameters: {
             query?: never;
@@ -893,6 +935,40 @@ export interface paths {
          * @description An independent deep copy under a fresh id; the original is untouched.
          */
         post: operations["duplicate_project_api_projects__project_id__duplicate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{project_id}/elicitation/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Elicitation Check Stored */
+        post: operations["elicitation_check_stored_api_projects__project_id__elicitation_check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{project_id}/elicitation/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Elicitation Preview Stored */
+        post: operations["elicitation_preview_stored_api_projects__project_id__elicitation_preview_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1887,6 +1963,28 @@ export interface components {
             result: components["schemas"]["AhpResult"];
             /** Scenario Name */
             scenario_name: string;
+        };
+        /** AhpCheck */
+        AhpCheck: {
+            /** Complete */
+            complete: boolean;
+            /** Consistency Ratio */
+            consistency_ratio: number | null;
+            /**
+             * Inconsistent
+             * @default false
+             */
+            inconsistent: boolean;
+            /**
+             * Issues
+             * @default []
+             */
+            issues: string[];
+            /**
+             * Triad
+             * @default []
+             */
+            triad: string[];
         };
         /**
          * AhpMatrixAnalysis
@@ -3080,6 +3178,25 @@ export interface components {
              * @constant
              */
             version: 1;
+        };
+        /** ChildCheck */
+        ChildCheck: {
+            /** Ahp */
+            ahp: number | null;
+            /** Criterion Id */
+            criterion_id: string;
+            /** Held */
+            held: boolean;
+            /** Name */
+            name: string;
+            /** Rating */
+            rating: number | null;
+            /** Reason */
+            reason: string;
+            /** Roc */
+            roc: number | null;
+            /** Swing */
+            swing: number | null;
         };
         /** Claim */
         "Claim-Input": {
@@ -4298,8 +4415,114 @@ export interface components {
         /** EditRequest */
         EditRequest: {
             /** Operations */
-            operations: (components["schemas"]["UpdateProject"] | components["schemas"]["AddAlternative"] | components["schemas"]["RenameAlternative"] | components["schemas"]["RemoveAlternative"] | components["schemas"]["AddCriterion"] | components["schemas"]["UpdateCriterion"] | components["schemas"]["MoveCriterion"] | components["schemas"]["RemoveCriterion"] | components["schemas"]["SetScale"] | components["schemas"]["SetValueFunction"] | components["schemas"]["SetPerformance"] | components["schemas"]["ClearPerformance"] | components["schemas"]["ClearCriterionPerformances"] | components["schemas"]["SetJudgement"] | components["schemas"]["ClearJudgement"] | components["schemas"]["CreateWeightProfile"] | components["schemas"]["DuplicateWeightProfile"] | components["schemas"]["RenameWeightProfile"] | components["schemas"]["RemoveWeightProfile"] | components["schemas"]["SetDefaultWeightProfile"] | components["schemas"]["CreateScenario"] | components["schemas"]["DuplicateScenario"] | components["schemas"]["RenameScenario"] | components["schemas"]["RemoveScenario"] | components["schemas"]["SetScenarioProfile"] | components["schemas"]["SetScenarioOverride"] | components["schemas"]["ClearScenarioOverride"] | components["schemas"]["SetDefaultScenario"] | components["schemas"]["SetSortingModel"] | components["schemas"]["ClearSortingModel"] | components["schemas"]["SetSmaaModel"] | components["schemas"]["ClearSmaaModel"] | components["schemas"]["SetPrometheeModel"] | components["schemas"]["ClearPrometheeModel"] | components["schemas"]["SetAhpModel"] | components["schemas"]["ClearAhpModel"] | components["schemas"]["SetRequirements"] | components["schemas"]["ClearRequirements"] | components["schemas"]["SetAnalysisMethod"])[];
+            operations: (components["schemas"]["UpdateProject"] | components["schemas"]["AddAlternative"] | components["schemas"]["RenameAlternative"] | components["schemas"]["RemoveAlternative"] | components["schemas"]["AddCriterion"] | components["schemas"]["UpdateCriterion"] | components["schemas"]["MoveCriterion"] | components["schemas"]["RemoveCriterion"] | components["schemas"]["SetScale"] | components["schemas"]["SetValueFunction"] | components["schemas"]["SetPerformance"] | components["schemas"]["ClearPerformance"] | components["schemas"]["ClearCriterionPerformances"] | components["schemas"]["SetJudgement"] | components["schemas"]["ClearJudgement"] | components["schemas"]["CreateWeightProfile"] | components["schemas"]["DuplicateWeightProfile"] | components["schemas"]["RenameWeightProfile"] | components["schemas"]["RemoveWeightProfile"] | components["schemas"]["SetDefaultWeightProfile"] | components["schemas"]["SetElicitation"] | components["schemas"]["CreateScenario"] | components["schemas"]["DuplicateScenario"] | components["schemas"]["RenameScenario"] | components["schemas"]["RemoveScenario"] | components["schemas"]["SetScenarioProfile"] | components["schemas"]["SetScenarioOverride"] | components["schemas"]["ClearScenarioOverride"] | components["schemas"]["SetDefaultScenario"] | components["schemas"]["SetSortingModel"] | components["schemas"]["ClearSortingModel"] | components["schemas"]["SetSmaaModel"] | components["schemas"]["ClearSmaaModel"] | components["schemas"]["SetPrometheeModel"] | components["schemas"]["ClearPrometheeModel"] | components["schemas"]["SetAhpModel"] | components["schemas"]["ClearAhpModel"] | components["schemas"]["SetRequirements"] | components["schemas"]["ClearRequirements"] | components["schemas"]["SetAnalysisMethod"])[];
             project: components["schemas"]["Project-Input"];
+        };
+        /**
+         * Elicitation
+         * @description How a weight profile's judgements were given: who, when, how sure, and why.
+         *
+         *     It stores judgements only. The swing ratings stay in ``WeightProfile.judgements``; checks
+         *     (agreement of order and ratings, AHP consistency, rank-order weights) and proposed weight
+         *     uncertainty are derived, never stored.
+         */
+        "Elicitation-Input": {
+            /** Conviction */
+            conviction?: ("high" | "medium" | "low") | null;
+            /**
+             * Elicited By
+             * @default
+             */
+            elicited_by: string;
+            /** Elicited On */
+            elicited_on?: string | null;
+            /** Groups */
+            groups?: components["schemas"]["GroupElicitation"][];
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /**
+         * Elicitation
+         * @description How a weight profile's judgements were given: who, when, how sure, and why.
+         *
+         *     It stores judgements only. The swing ratings stay in ``WeightProfile.judgements``; checks
+         *     (agreement of order and ratings, AHP consistency, rank-order weights) and proposed weight
+         *     uncertainty are derived, never stored.
+         */
+        "Elicitation-Output": {
+            /** Conviction */
+            conviction?: ("high" | "medium" | "low") | null;
+            /**
+             * Elicited By
+             * @default
+             */
+            elicited_by: string;
+            /** Elicited On */
+            elicited_on?: string | null;
+            /** Groups */
+            groups: components["schemas"]["GroupElicitation"][];
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /** ElicitationCheck */
+        ElicitationCheck: {
+            /** Conviction */
+            conviction: string | null;
+            /**
+             * Elicited By
+             * @default
+             */
+            elicited_by: string;
+            /** Elicited On */
+            elicited_on: string | null;
+            /**
+             * Groups
+             * @default []
+             */
+            groups: components["schemas"]["GroupCheck"][];
+            /**
+             * Label
+             * @default Checks and proposals are derived from the profile's swing ratings and its elicitation record; nothing here changes the project until a person applies a proposal.
+             */
+            label: string;
+            /** Profile Id */
+            profile_id: string;
+            /** Profile Name */
+            profile_name: string;
+            /** Project Fingerprint */
+            project_fingerprint: string;
+            /**
+             * Proposals
+             * @default []
+             */
+            proposals: components["schemas"]["Proposal"][];
+            /** Recorded */
+            recorded: boolean;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "consistent" | "check" | "incomplete";
+        };
+        /** ElicitationPreview */
+        ElicitationPreview: {
+            /**
+             * Label
+             * @default Decision confidence under the project's current stated uncertainty and under each proposal, from the same SMAA-2 settings. Read-only.
+             */
+            label: string;
+            /** Previews */
+            previews: components["schemas"]["ProposalPreview"][];
+            /** Profile Id */
+            profile_id: string;
+            /** Project Fingerprint */
+            project_fingerprint: string;
         };
         /** EnclosureRange */
         "EnclosureRange-Input": {
@@ -5096,6 +5319,60 @@ export interface components {
             /** Weight Change */
             weight_change: number | null;
         };
+        /** GroupCheck */
+        GroupCheck: {
+            ahp: components["schemas"]["AhpCheck"] | null;
+            /** Children */
+            children: components["schemas"]["ChildCheck"][];
+            /** Findings */
+            findings: string[];
+            /** Largest Gap */
+            largest_gap: number | null;
+            /** Missing Reasons */
+            missing_reasons: string[];
+            /** Name */
+            name: string;
+            /** Order */
+            order: string[];
+            /** Order Agrees */
+            order_agrees: boolean | null;
+            /** Order Conflicts */
+            order_conflicts: [
+                string,
+                string
+            ][];
+            /** Parent Id */
+            parent_id: string | null;
+            /** Scored */
+            scored: boolean;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "consistent" | "check" | "incomplete";
+            /** Suggested Order */
+            suggested_order: string[];
+        };
+        /**
+         * GroupElicitation
+         * @description One sibling group as the person judged it (``parent_id`` None: the top level).
+         *
+         *     ``order``: the children best first, each once, no ties; empty when no ranking was given.
+         *     ``pairwise``: optional AHP answers for the same children, a cross-check on the swing ratings.
+         *     ``reasons``: one line per child, in the person's words.
+         */
+        GroupElicitation: {
+            /** Order */
+            order?: string[];
+            /** Pairwise */
+            pairwise?: components["schemas"]["PairwiseJudgement"][];
+            /** Parent Id */
+            parent_id: string | null;
+            /** Reasons */
+            reasons?: {
+                [key: string]: string;
+            };
+        };
         /**
          * GroupUncertainty
          * @description Weight uncertainty in one sibling group; a group without an entry keeps its ratings.
@@ -5103,8 +5380,17 @@ export interface components {
          *     ``unknown``: local weights uniform on the group's simplex, Dirichlet(1, ..., 1).
          *     ``rating_intervals``: each child's raw swing rating uniform on its stated [lower, upper], then
          *     normalised within the group.
+         *     ``ranking`` (schema 7): local weights uniform on the part of the simplex that respects
+         *     ``order`` (best first): every split in which no child outweighs one ranked above it.
+         *
+         *     ``held`` (schema 7): children held at the profile's local weight in every draw; the varying
+         *     children share the rest. It lets a group vary without giving weight to a child the profile
+         *     deliberately rates 0, such as a screened-only mandate. It needs no interval and no place in
+         *     ``order``.
          */
         "GroupUncertainty-Input": {
+            /** Held */
+            held?: string[];
             /** Intervals */
             intervals?: {
                 [key: string]: [
@@ -5116,7 +5402,9 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "unknown" | "rating_intervals";
+            kind: "unknown" | "rating_intervals" | "ranking";
+            /** Order */
+            order?: string[];
             /** Parent Id */
             parent_id: string | null;
         };
@@ -5127,8 +5415,17 @@ export interface components {
          *     ``unknown``: local weights uniform on the group's simplex, Dirichlet(1, ..., 1).
          *     ``rating_intervals``: each child's raw swing rating uniform on its stated [lower, upper], then
          *     normalised within the group.
+         *     ``ranking`` (schema 7): local weights uniform on the part of the simplex that respects
+         *     ``order`` (best first): every split in which no child outweighs one ranked above it.
+         *
+         *     ``held`` (schema 7): children held at the profile's local weight in every draw; the varying
+         *     children share the rest. It lets a group vary without giving weight to a child the profile
+         *     deliberately rates 0, such as a screened-only mandate. It needs no interval and no place in
+         *     ``order``.
          */
         "GroupUncertainty-Output": {
+            /** Held */
+            held?: string[];
             /** Intervals */
             intervals: {
                 [key: string]: [
@@ -5140,7 +5437,9 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "unknown" | "rating_intervals";
+            kind: "unknown" | "rating_intervals" | "ranking";
+            /** Order */
+            order?: string[];
             /** Parent Id */
             parent_id: string | null;
         };
@@ -6778,6 +7077,19 @@ export interface components {
             /** Weight Profile Id */
             weight_profile_id: string | null;
         };
+        /** Proposal */
+        Proposal: {
+            /** Explanation */
+            explanation: string;
+            /** Label */
+            label: string;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "conviction" | "ranking";
+            smaa: components["schemas"]["SmaaModel-Output"];
+        };
         /** ProposalCell */
         ProposalCell: {
             /** Alternative Id */
@@ -6969,6 +7281,17 @@ export interface components {
             sources: {
                 [key: string]: components["schemas"]["Source-Output"];
             };
+        };
+        /** ProposalPreview */
+        ProposalPreview: {
+            /** Label */
+            label: string;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "current" | "conviction" | "ranking";
+            robustness: components["schemas"]["ScreeningRobustness"];
         };
         /** ProposalRegistryRequest */
         ProposalRegistryRequest: {
@@ -9075,6 +9398,20 @@ export interface components {
             /** Profile Id */
             profile_id: string | null;
         };
+        /**
+         * SetElicitation
+         * @description Record how a profile's judgements were given; ``elicitation`` None clears the record.
+         */
+        SetElicitation: {
+            elicitation: components["schemas"]["Elicitation-Input"] | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            op: "set_elicitation";
+            /** Profile Id */
+            profile_id: string;
+        };
         /** SetJudgement */
         SetJudgement: {
             /** Node Id */
@@ -10515,6 +10852,7 @@ export interface components {
          *     within each sibling group. An only child needs no rating (its local weight is 1).
          */
         "WeightProfile-Input": {
+            elicitation?: components["schemas"]["Elicitation-Input"] | null;
             /** Id */
             id: string;
             /** Judgements */
@@ -10538,6 +10876,7 @@ export interface components {
          *     within each sibling group. An only child needs no rating (its local weight is 1).
          */
         "WeightProfile-Output": {
+            elicitation?: components["schemas"]["Elicitation-Output"] | null;
             /** Id */
             id: string;
             /** Judgements */
@@ -11053,6 +11392,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectDocument"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    elicitation_check_draft_api_elicitation_check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EvaluateDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElicitationCheck"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    elicitation_preview_draft_api_elicitation_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EvaluateDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElicitationPreview"];
                 };
             };
             /** @description Validation Error */
@@ -12167,6 +12572,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectDocument"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    elicitation_check_stored_api_projects__project_id__elicitation_check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnalysisOptions"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElicitationCheck"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    elicitation_preview_stored_api_projects__project_id__elicitation_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnalysisOptions"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ElicitationPreview"];
                 };
             };
             /** @description Validation Error */
