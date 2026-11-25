@@ -805,6 +805,37 @@ def calibrate_synthetic_check(
         _fail("not converged")
 
 
+@calibrate_app.command("choices-synthetic-check")
+def calibrate_choices_synthetic_check(
+    decisions: Annotated[int, typer.Option(help="Simulated accept/decline decisions.")] = 200,
+    seed: Annotated[int, typer.Option(help="Seed for the simulation and the sampler.")] = 0,
+    flip_share: Annotated[
+        float,
+        typer.Option(help="Share of decisions flipped after drawing (label noise), [0, 0.5)."),
+    ] = 0.0,
+    warmup: Annotated[int, typer.Option(help="Warm-up iterations per chain.")] = 2000,
+    draws: Annotated[int, typer.Option(help="Kept iterations per chain.")] = 3000,
+) -> None:
+    """Plant weights, simulate decisions on the synthetic tree, fit the choice model, show recovery.
+
+    Revealed preference (docs/design/revealed-preference.md). Synthetic decisions only; it says
+    nothing about any real decider and writes nothing. Exits 1 if not converged."""
+    from mcda_studio.calibration import synthetic
+    from mcda_studio.calibration.sampler import SamplerSettings
+
+    if decisions < 1:
+        _fail("--decisions must be at least 1")
+    if not 0.0 <= flip_share < 0.5:
+        _fail("--flip-share must be at least 0 and below 0.5")
+    if warmup < 0 or draws < 4:
+        _fail("--warmup must be non-negative and --draws at least 4")
+    settings = SamplerSettings(warmup=warmup, draws=draws, samples=min(4000, 4 * draws), seed=seed)
+    result = synthetic.choices_synthetic_check(decisions, seed, flip_share, settings)
+    typer.echo(json.dumps(result.model_dump(mode="json"), indent=2))
+    if not result.diagnostics.converged:
+        _fail("not converged")
+
+
 report_app = typer.Typer(help="Self-contained reports from a project.", no_args_is_help=True)
 app.add_typer(report_app, name="report")
 

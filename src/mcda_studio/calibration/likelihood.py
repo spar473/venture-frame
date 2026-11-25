@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, Protocol
 
 import numpy as np
 from numpy.typing import NDArray
@@ -112,7 +112,20 @@ class OutcomeData:
         )
 
 
-def scores(data: OutcomeData, global_weights: Array) -> Array:
+class RatedValues(Protocol):
+    """What a score needs: rated values on the compared leaves (outcome or choice data)."""
+
+    @property
+    def values(self) -> Array: ...
+    @property
+    def rated(self) -> Array: ...
+    @property
+    def leaf_index(self) -> NDArray[np.intp]: ...
+    @property
+    def cases(self) -> int: ...
+
+
+def scores(data: RatedValues, global_weights: Array) -> Array:
     """``s_i`` per case and chain, ``(cases, chains)``: weights renormalised over rated leaves."""
     w = global_weights[data.leaf_index, :]  # (compared, chains)
     num = np.zeros((data.cases, w.shape[1]))

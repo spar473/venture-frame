@@ -19,7 +19,8 @@ from typing import Literal
 import numpy as np
 from numpy.typing import NDArray
 
-from mcda_studio.calibration import report
+from mcda_studio.calibration import choices, report
+from mcda_studio.calibration.choices import ChoiceData
 from mcda_studio.calibration.likelihood import Observation, OutcomeData, encode
 from mcda_studio.calibration.sampler import Problem, SamplerSettings, alpha_prior_mean, run
 from mcda_studio.domain.common import DomainModel
@@ -249,6 +250,146 @@ def synthetic_check(
         counts=counts,
         censoring=censoring,
         seed=seed,
+        rows=rows,
+        diagnostics=report.diagnose(prior, chains),
+    )
+
+
+# --- Revealed preference: planted weights and simulated accept/decline decisions (Layer 2) ------
+# Design: docs/design/revealed-preference.md. Same tree, stated profile and planted local weights
+# as the outcome bench; decisions follow ``choices``: accept with probability
+# ``sigmoid(alpha + beta * (s - S_REF))``.
+
+#: The stated base accept rate at the reference score, and the planted choice parameters.
+BASE_ACCEPT_RATE = 0.3
+PLANTED_CHOICE_ALPHA = math.log(BASE_ACCEPT_RATE / (1.0 - BASE_ACCEPT_RATE))
+PLANTED_CHOICE_BETA = 10.0
+
+
+def planted_choice() -> Truth:
+    return Truth(dict(PLANTED), PLANTED_CHOICE_ALPHA, PLANTED_CHOICE_BETA)
+
+
+def draw_choice_truth(prior: NestedDirichletPrior, rng: np.random.Generator) -> Truth:
+    """A truth drawn from the choice model's prior (for coverage and simulation-based checks)."""
+    ys = [y[:1] for y in prior.sample_ys(rng, 1)]
+    local = prior.local(ys, 1)[:-1, 0]
+    alpha = choices.alpha_prior_mean(BASE_ACCEPT_RATE) + choices.ALPHA_PRIOR_SD * float(
+        rng.standard_normal()
+    )
+    beta = math.exp(
+        choices.LOG_BETA_PRIOR_MEAN + choices.LOG_BETA_PRIOR_SD * float(rng.standard_normal())
+    )
+    return Truth(dict(zip(prior.node_ids, (float(v) for v in local), strict=True)), alpha, beta)
+
+
+@dataclass(frozen=True)
+class DecisionSet:
+    data: ChoiceData
+    truth: Truth
+    flipped: int  # decisions whose call was flipped (label noise)
+
+
+def simulate_decisions(
+    prior: NestedDirichletPrior,
+    truth: Truth,
+    decisions: int,
+    rng: np.random.Generator,
+    *,
+    missing_share: float = 0.0,
+    flip_share: float = 0.0,
+) -> DecisionSet:
+    """Simulate ``decisions`` accept/decline calls on alternatives with independent labels.
+
+    ``flip_share`` of the calls are flipped after they are drawn (label noise: an inconsistent
+    decider). A decision that would rate no leaf rates its first leaf instead.
+    """
+    leaves = list(prior.leaf_ids)
+    k = len(leaves)
+    values = rng.choice(np.array(LEVELS), size=(decisions, k))
+    rated = (rng.random((decisions, k)) >= missing_share).astype(float)
+    rated[rated.sum(axis=1) == 0, 0] = 1.0
+    weights = truth.global_weights(prior)
+    w = np.array([weights[leaf] for leaf in leaves])
+    s = (rated * values * w).sum(axis=1) / np.maximum((rated * w).sum(axis=1), 1e-300)
+    eta = truth.alpha + truth.beta * (s - choices.S_REF)
+    accept = rng.random(decisions) < 1.0 / (1.0 + np.exp(-eta))
+    flip = rng.random(decisions) < flip_share
+    accept = accept ^ flip
+    data = ChoiceData.build(values, rated, accept.astype(float), list(range(k)))
+    return DecisionSet(data=data, truth=truth, flipped=int(flip.sum()))
+
+
+class ChoicesSyntheticCheck(DomainModel):
+    decisions: int
+    accepts: int
+    flipped: int
+    flip_share: float
+    seed: int
+    base_accept_rate: float
+    mean_absolute_error: float  # posterior-mean global weights against the planted ones
+    rows: list[TruthRow]
+    diagnostics: report.Diagnostics
+    label: str = (
+        "Synthetic decisions: planted weights and simulated accept/decline calls. This checks the "
+        "method; it says nothing about any real decider."
+    )
+
+
+def choices_synthetic_check(
+    decisions: int = 200,
+    seed: int = 0,
+    flip_share: float = 0.0,
+    settings: SamplerSettings | None = None,
+    kappa: float = 10.0,
+) -> ChoicesSyntheticCheck:
+    """Plant weights, simulate decisions, fit, and report which 90% intervals cover the truth."""
+    prior = bench_prior(kappa)
+    truth = planted_choice()
+    dset = simulate_decisions(
+        prior,
+        truth,
+        decisions,
+        np.random.Generator(np.random.PCG64(seed)),
+        flip_share=flip_share,
+    )
+    settings = settings or SamplerSettings(seed=seed)
+    problem = choices.choice_problem(prior, dset.data, BASE_ACCEPT_RATE)
+    chains = run(problem, settings)
+    leaves = report.leaf_summaries(prior, chains)
+    params = choices.parameter_summaries(chains, problem)
+    planted_global = truth.global_weights(prior)
+    values = {"alpha": truth.alpha, "beta": truth.beta}
+    rows = [
+        TruthRow(
+            name=f"w[{leaf.criterion_id}]",
+            truth=planted_global[leaf.criterion_id],
+            posterior_mean=leaf.posterior_mean,
+            interval=leaf.interval,
+            covered=leaf.interval[0] <= planted_global[leaf.criterion_id] <= leaf.interval[1],
+        )
+        for leaf in leaves
+    ] + [
+        TruthRow(
+            name=p.name,
+            truth=values[p.name],
+            posterior_mean=p.posterior_mean,
+            interval=p.interval,
+            covered=p.interval[0] <= values[p.name] <= p.interval[1],
+        )
+        for p in params
+    ]
+    error = float(
+        np.mean([abs(leaf.posterior_mean - planted_global[leaf.criterion_id]) for leaf in leaves])
+    )
+    return ChoicesSyntheticCheck(
+        decisions=decisions,
+        accepts=int(dset.data.accept.sum()),
+        flipped=dset.flipped,
+        flip_share=flip_share,
+        seed=seed,
+        base_accept_rate=BASE_ACCEPT_RATE,
+        mean_absolute_error=error,
         rows=rows,
         diagnostics=report.diagnose(prior, chains),
     )

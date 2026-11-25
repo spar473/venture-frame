@@ -71,6 +71,11 @@ class Problem:
     alpha_mean: float
     alpha_sd: float = ALPHA_PRIOR_SD
     log_beta_sd: float = LOG_BETA_PRIOR_SD
+    log_beta_mean: float = 0.0  # beta ~ LogNormal(log_beta_mean, log_beta_sd)
+
+    def log_likelihood(self, global_weights: Array, alpha: Array, beta: Array) -> Array:
+        """The total log-likelihood per chain: the outcome model (a subclass may replace it)."""
+        return log_likelihood(self.data, global_weights, alpha, beta)
 
     def score_centre(self) -> float:
         """The mean score of the entering cases at the prior's centre weights (0 without data).
@@ -120,8 +125,8 @@ def log_posterior(
     total = (
         problem.prior.log_density(ys, chains)
         + _normal_logpdf(alpha, problem.alpha_mean, problem.alpha_sd)
-        + _normal_logpdf(log_beta, 0.0, problem.log_beta_sd)
-        + log_likelihood(problem.data, weights, alpha, np.exp(log_beta))
+        + _normal_logpdf(log_beta, problem.log_beta_mean, problem.log_beta_sd)
+        + problem.log_likelihood(weights, alpha, np.exp(log_beta))
     )
     out: Array = np.where(np.isfinite(total), total, -np.inf)
     return out
@@ -150,7 +155,7 @@ def run(problem: Problem, settings: SamplerSettings) -> Chains:
         [
             [
                 problem.alpha_mean + problem.alpha_sd * rng.standard_normal(),
-                problem.log_beta_sd * rng.standard_normal(),
+                problem.log_beta_mean + problem.log_beta_sd * rng.standard_normal(),
             ]
             for rng in streams
         ]

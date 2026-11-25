@@ -20,7 +20,7 @@ def test_the_calibration_package_uses_no_domain_words() -> None:
     files = sorted(PACKAGE.glob("*.py"))
     assert {f.name for f in files} >= {
         "prior.py", "likelihood.py", "sampler.py", "diagnostics.py", "synthetic.py",
-        "weight_samples.py", "service.py",
+        "weight_samples.py", "service.py", "choices.py",
     }  # fmt: skip
     for path in files:
         text = path.read_text(encoding="utf-8").lower()
@@ -82,3 +82,36 @@ def test_the_interface_never_requests_a_calibration() -> None:
             text = json.dumps(operation).lower()
             assert "calibrat" not in str(operation.get("operationId", "")).lower(), route
             assert "calibrate fit" not in text and "calibrate_fit" not in text, route
+
+
+def test_revealed_preference_stays_offline() -> None:
+    """The choice model (Layer 2, synthetic only) is CLI-only like the rest of the package: no
+    module outside the package and the CLI imports it, the API never loads it, and neither the
+    published API nor the interface names it."""
+    source = ROOT / "src" / "mcda_studio"
+    for path in source.rglob("*.py"):
+        if PACKAGE in path.parents or path.name == "cli.py":
+            continue
+        assert not any("choices" in n and "calibration" in n for n in _imports(path)), path
+    code = (
+        "import sys; from mcda_studio.api import create_app; create_app(); "
+        "print('mcda_studio.calibration.choices' in sys.modules)"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=True,
+        cwd=ROOT,
+    )
+    assert result.stdout.strip() == "False"
+    words = ("choices-synthetic", "choice_problem", "choicedata", "revealed preference")
+    openapi = (ROOT / "docs" / "api" / "openapi.json").read_text(encoding="utf-8").lower()
+    for word in words:
+        assert word not in openapi, word
+    for path in (ROOT / "frontend" / "src").rglob("*"):
+        if path.is_file() and path.suffix in {".ts", ".tsx", ".js", ".jsx", ".json", ".css"}:
+            text = path.read_text(encoding="utf-8").lower()
+            for word in words:
+                assert word not in text, (path, word)
