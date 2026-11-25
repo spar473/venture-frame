@@ -77,7 +77,13 @@ decision 1; the content is the same either way:
   - `unknown`: local weights uniform on the group's simplex, `Dirichlet(1, …, 1)`, the classical
     SMAA "no preference information" assumption;
   - `rating_intervals`: each raw swing rating uniform on a stated `[lower, upper]`, then normalised
-    within the group; a draw whose ratings are all zero is refused, not skipped.
+    within the group; a draw whose ratings are all zero is refused, not skipped;
+  - `ranking` (schema 7, [structured judgement](structured-judgement.md)): local weights uniform on
+    the part of the simplex that keeps a stated order, best first (a uniform simplex draw, sorted).
+
+  Any varying group may also name **`held`** children (schema 7): they keep the profile's local
+  weight in every draw and take no uniform column; the other children share what is left. Use it
+  for a child the profile rates 0, such as a screened-only mandate.
 
   These are different probability measures over weights, and the result says which was used.
 - **Dependence** is stated, never assumed silently (decision 3). The section has

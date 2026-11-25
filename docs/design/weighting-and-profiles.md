@@ -147,5 +147,8 @@ read as another's, and a late or cancelled response cannot overwrite the current
 ## 7. Supported weighting methods
 
 Only swing weighting is supported. A profile with any other `method` produces
-`UNSUPPORTED_WEIGHT_METHOD`. For how profiles are used elsewhere, see
+`UNSUPPORTED_WEIGHT_METHOD`. Since schema 7 a profile may carry an elicitation record (who, when,
+conviction, an order and reasons per group, optional AHP answers), which is checked against the
+ratings and can propose weight uncertainty for SMAA-2; the ratings stay the judgement of record.
+See [structured judgement](structured-judgement.md). For how profiles are used elsewhere, see
 [sensitivity](sensitivity.md), [scenarios](scenarios.md) and [results](results-and-exports.md).

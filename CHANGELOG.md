@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+### Structured judgement (schema 7)
+
+- A weight profile may carry an **elicitation record**: who gave the judgement and when, a
+  conviction level, an order per sibling group, optional AHP answers and one reason per weight. It
+  stores judgements only; the swing ratings stay the judgement of record.
+- **Checks** (read-only): swing, rank-order (ROC) and AHP weights on one footing, orders the
+  ratings contradict, AHP consistency ratio and most inconsistent triad, the largest swing-AHP gap,
+  missing reasons, and a suggested order. `POST /api/elicitation/check`,
+  `mcda elicitation-check`.
+- **Proposals**: *conviction* (each nonzero rating within ±15/30/50%) and *ranking only*, each a
+  complete SMAA-2 section applied by a person; `POST /api/elicitation/preview` gives decision
+  confidence under each before anything is applied.
+- **SMAA-2**: a `ranking` weight kind (uniform on the ordered region; mean = ROC weights) and
+  `held` children on any group (kept at the profile's weight). Earlier outputs are byte-identical
+  (969 of 969).
+- **App**: a Judgement tab in Build; the Uncertainty tab states rankings and held children.
+- Schema version 7, written only when one of these is used; version-6 files cannot hold them.
+  `mcda uncertainty group --rank … --hold …`. Design:
+  [structured judgement](docs/design/structured-judgement.md).
+
 ### Decision confidence
 
 - Each robustness-band row gains `first`, `top_ranks` and `classes`: the share of SMAA-2 draws in

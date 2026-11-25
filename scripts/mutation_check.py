@@ -15,7 +15,8 @@ The working tree is never modified. An unmodified baseline run must pass first.
                                       --models-only | --proxy-only | --benchmark-only |
                                       --study-only | --summary-only |
                                       --cleanup-only | --showcase-only |
-                                      --reference_cases-only | --robustness-only]
+                                      --reference_cases-only | --robustness-only |
+                                      --structured_judgement-only]
 
 Groups are named after the milestone that introduced them (B3 weighting, B4 sensitivity, B5
 scenarios, B6 results) or after the development itself (RETRY: analysis retry; COVERAGE:
@@ -3946,6 +3947,60 @@ OVERNIGHT["robustness"] = (
         "tests/api/test_api_screening_robustness.py",
         "tests/regression/test_decision_confidence_reference.py",
         "tests/regression/test_screening_report_reference.py",
+    ),
+)
+
+
+# Structured judgement (deep dive 3, 25 November 2026): the ranking kind, held children, the
+# elicitation check and its proposals. Design: docs/design/structured-judgement.md.
+STRUCTURED_BACKEND = [
+    Mutation("JUDGEMENT ranking sorted ascending, not best first", "src/mcda_studio/methods/smaa/engine.py",
+             "            shares = -np.sort(-shares, axis=1)", "            shares = np.sort(shares, axis=1)"),
+    Mutation("JUDGEMENT ranking ignores the stated order", "src/mcda_studio/methods/smaa/engine.py",
+             "            names = list(group.spec.order)", "            names = group.varying"),
+    Mutation("JUDGEMENT ranking draws not sorted at all", "src/mcda_studio/methods/smaa/engine.py",
+             "            shares = -np.sort(-shares, axis=1)\n", "            shares = shares\n"),
+    Mutation("JUDGEMENT held children not scaled out of the rest", "src/mcda_studio/methods/smaa/engine.py",
+             "                local[child] = shares[:, k] * rest", "                local[child] = shares[:, k]"),
+    Mutation("JUDGEMENT held child takes no weight from the profile", "src/mcda_studio/methods/smaa/engine.py",
+             "            held = {c: plan.prep.local[c] for c in group.held}", "            held = {c: 0.0 for c in group.held}"),
+    Mutation("JUDGEMENT a ranked child judged by its uniform", "src/mcda_studio/methods/smaa/engine.py",
+             '        return self.spec.kind in {"unknown", "ranking"}', '        return self.spec.kind == "unknown"'),
+    Mutation("JUDGEMENT ROC off by one", "src/mcda_studio/services/elicitation_service.py",
+             "    return [math.fsum(1.0 / i for i in range(k, n + 1)) / n for k in range(1, n + 1)]",
+             "    return [math.fsum(1.0 / i for i in range(k, n + 1)) / n for k in range(0, n)]"),
+    Mutation("JUDGEMENT equal ratings counted as a conflict", "src/mcda_studio/services/elicitation_service.py",
+             "if ratings[hi] < ratings[lo]", "if ratings[hi] <= ratings[lo]"),
+    Mutation("JUDGEMENT conviction band one-sided", "src/mcda_studio/services/elicitation_service.py",
+             "    return {c: (r * (1.0 - half_width), r * (1.0 + half_width)) for c, r in ratings.items()}",
+             "    return {c: (r, r * (1.0 + half_width)) for c, r in ratings.items()}"),
+    Mutation("JUDGEMENT zero-rated children not held in proposals", "src/mcda_studio/services/elicitation_service.py",
+             "                    held=[c.criterion_id for c in g.children if c.held],\n                )\n            )\n        if groups:",
+             "                    held=[],\n                )\n            )\n        if groups:"),
+    Mutation("JUDGEMENT unscored branches varied", "src/mcda_studio/services/elicitation_service.py",
+             "        if profile.judgements.get(node) == 0.0:\n            return False",
+             "        if profile.judgements.get(node) == -1.0:\n            return False"),
+    Mutation("JUDGEMENT the gap is measured against ROC, not AHP", "src/mcda_studio/services/elicitation_service.py",
+             "        gap = max(abs(swing[c] - ahp[c]) for c in ranked)",
+             "        gap = max(abs(swing[c] - roc.get(c, ahp[c])) for c in ranked)"),
+    Mutation("JUDGEMENT a v6 file may hold a ranking group", "src/mcda_studio/storage/json_repository.py",
+             '            group.get("kind") == "ranking" or "order" in group or "held" in group',
+             '            "order" in group or "held" in group'),
+    Mutation("JUDGEMENT a ranking may leave out a child", "src/mcda_studio/methods/smaa/validation.py",
+             '    if missing:\n        add("INVALID_ORDER", f"the order leaves out {missing}", path)',
+             '    if missing and False:\n        add("INVALID_ORDER", f"the order leaves out {missing}", path)'),
+    Mutation("JUDGEMENT removing a criterion keeps its reasons", "src/mcda_studio/services/project_service.py",
+             "            group.reasons = {k: v for k, v in group.reasons.items() if k not in criteria}",
+             "            group.reasons = dict(group.reasons)"),
+]  # fmt: skip
+OVERNIGHT["structured_judgement"] = (
+    STRUCTURED_BACKEND,
+    pytest_runner(
+        "Structured judgement",
+        "tests/regression/test_ranking_weights_reference.py",
+        "tests/unit/test_structured_judgement_schema.py",
+        "tests/unit/test_elicitation_service.py",
+        "tests/api/test_api_elicitation.py",
     ),
 )
 

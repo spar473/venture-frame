@@ -186,6 +186,8 @@ complete list of runtime errors.
 | `POST /api/feasibility`, `POST /api/projects/{id}/feasibility` | `{project}` (or nothing, per stored project) → `FeasibilityResult`: pass, fail or unknown per alternative and requirement with the measurement and reason, each alternative's overall status, per-requirement counts and the label. Independent of every method, profile and scenario. 422 `VALIDATION_FAILED` when there are no requirements (`NO_REQUIREMENTS`) or they have errors | 200 |
 | `POST /api/feasibility/export`, `POST /api/projects/{id}/feasibility/export` | `{expected_project_fingerprint, format}` → the result as JSON, or a CSV with one row per alternative and requirement. 412 `STALE_REVISION` when the project changed | 200 |
 | `POST /api/screening-summary`, `POST /api/projects/{id}/screening-summary` | `{project, configuration?, dossier?}` (or `{configuration?, dossier?}` per stored project) → `ScreeningSummary`: one read-only row per alternative under the resolved profile and scenario (rank, value, class and margin, requirement status, the two largest weighted contributions, the closest one-way change in global weight, open-question count), with column notes, the label and the fragility definition. `status: unavailable` with the reason and issue codes when MAVT cannot evaluate the model; never zeros ([design](../design/screening-summary.md)) | 200 |
+| `POST /api/elicitation/check`, `POST /api/projects/{id}/elicitation/check` | `{project, configuration?}` (or `{configuration?}`) → `ElicitationCheck` for the resolved profile: per sibling group the swing, rank-order and AHP weights, order conflicts, AHP consistency, the swing-AHP gap, missing reasons, a suggested order and a status, plus proposals (`conviction`, `ranking`), each a complete SMAA-2 section. Read-only ([design](../design/structured-judgement.md)) | 200 |
+| `POST /api/elicitation/preview`, `POST /api/projects/{id}/elicitation/preview` | `{project, configuration?}` → `ElicitationPreview`: the robustness bands and decision confidence under the current stated uncertainty and under each proposal, with the same SMAA-2 settings. Read-only | 200 |
 | `POST /api/ahp/preview` | `{items, judgements}` → one drafted AHP matrix: `ready`, its `issues`, and once complete its priorities, λmax, CI, RI, CR, flag and most inconsistent triad. Read-only, needs no project | 200 |
 | `POST /api/analysis/export`, `POST /api/projects/{id}/analysis/export` | JSON or CSV download of a verified record | 200 |
 
@@ -245,6 +247,7 @@ unless `discard_leaf_data` is true, so a client has to ask the user first; the a
 | `rename_weight_profile` | `profile_id`, `name` (the ID never changes) |
 | `remove_weight_profile` | `profile_id`, `replacement_profile_id?` (required when referenced) |
 | `set_default_weight_profile` | `profile_id` (`null` restores automatic resolution) |
+| `set_elicitation` | `profile_id`, `elicitation` (`null` clears the record); ratings never change ([structured judgement](../design/structured-judgement.md)) |
 
 Raw swing ratings are the only weight input. No operation writes a local or global weight,
 because those are always derived.
