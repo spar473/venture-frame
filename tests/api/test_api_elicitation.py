@@ -101,7 +101,7 @@ def test_the_cli_states_a_ranking_group_with_a_held_child_and_prints_the_check(
     for child in ORDER:
         args += ["--rank", child]
     run(*args, "--hold", "mandate")
-    raw = json.loads(path.read_text())
+    raw = json.loads(path.read_text(encoding="utf-8"))
     assert raw["schema_version"] == 7
     (group,) = [g for g in raw["smaa"]["groups"] if g["parent_id"] is None]
     assert group == {"parent_id": None, "kind": "ranking", "intervals": {}, "order": ORDER,
