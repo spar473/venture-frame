@@ -73,13 +73,13 @@ def test_an_elicitation_record_makes_version_7_and_round_trips(tmp_path: Path) -
     project = ps.set_elicitation(repo.load(STUDY), "technical_ip", record())
     assert project.required_schema_version() == 7
     path = repo.save(project, tmp_path / "p.json")
-    raw = json.loads(path.read_text())
+    raw = json.loads(path.read_text(encoding="utf-8"))
     assert raw["schema_version"] == 7
     saved = raw["weight_profiles"][0]["elicitation"]
     assert saved["elicited_on"] == "2026-11-25" and saved["conviction"] == "medium"
     assert repo.load(path) == project
     cleared = ps.set_elicitation(project, "technical_ip", None)
-    assert to_json_text(cleared) == STUDY.read_text()
+    assert to_json_text(cleared) == STUDY.read_text(encoding="utf-8")
 
 
 def test_a_ranking_group_or_held_children_make_version_7() -> None:
@@ -100,7 +100,7 @@ def test_a_ranking_group_or_held_children_make_version_7() -> None:
     ],
 )
 def test_a_version_6_file_cannot_hold_version_7_fields(where: str, value: dict) -> None:  # type: ignore[type-arg]
-    raw = json.loads(STUDY.read_text())
+    raw = json.loads(STUDY.read_text(encoding="utf-8"))
     if where == "profile":
         raw["weight_profiles"][0]["elicitation"] = value
     else:
