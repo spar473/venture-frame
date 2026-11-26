@@ -17,7 +17,9 @@ STUDY = Path(__file__).parents[2] / "examples" / "nz_venture_screening"
 
 def test_profile_comparison_preserves_each_existing_summary_and_source_exactly() -> None:
     project = repo.load(STUDY / "project.json")
-    dossier = EvidenceDossier.model_validate_json((STUDY / "evidence.json").read_text())
+    dossier = EvidenceDossier.model_validate_json(
+        (STUDY / "evidence.json").read_text(encoding="utf-8")
+    )
     before, evidence_before = project.model_dump_json(), dossier.model_dump_json()
     for scenario in (None, "linear_market_size"):
         cfg = AnalysisConfiguration(method="mavt_sorting", scenario_id=scenario)

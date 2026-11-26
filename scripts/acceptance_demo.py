@@ -126,7 +126,9 @@ def main() -> int:
             check=True,
             capture_output=True,
         )
-        identical = json.loads(out.read_text()) == json.loads(before.model_dump_json())
+        identical = json.loads(out.read_text(encoding="utf-8")) == json.loads(
+            before.model_dump_json()
+        )
         print("    identical results after reload in a fresh process:", identical)
         assert identical, "results differ after reload"
     print("\nDemonstration finished. Step 7: run `python -m pytest`.")

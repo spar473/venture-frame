@@ -9,7 +9,9 @@ EXAMPLE = Path(__file__).parents[2] / "examples/derived_measurements"
 
 def test_derived_preview_matches_service_without_editing_project(client):
     p = JsonProjectRepository().load(EXAMPLE / "supplier-project.json")
-    model = DerivedModel.model_validate_json((EXAMPLE / "supplier-model.json").read_text())
+    model = DerivedModel.model_validate_json(
+        (EXAMPLE / "supplier-model.json").read_text(encoding="utf-8")
+    )
     before = p.model_dump_json()
     response = client.post(
         "/api/derived/preview",
@@ -28,7 +30,9 @@ def test_derived_preview_matches_service_without_editing_project(client):
 
 def test_compilation_is_stateless_digest_guarded_and_bundle_can_be_reopened(client):
     p = JsonProjectRepository().load(EXAMPLE / "supplier-project.json")
-    model = DerivedModel.model_validate_json((EXAMPLE / "supplier-model.json").read_text())
+    model = DerivedModel.model_validate_json(
+        (EXAMPLE / "supplier-model.json").read_text(encoding="utf-8")
+    )
     project = p.model_dump(mode="json")
     assert client.post("/api/projects/import", json=project).status_code == 201
     before = client.get(f"/api/projects/{p.id}").json()

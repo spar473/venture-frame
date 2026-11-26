@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[2]
 def test_new_model_schemas_and_component_contracts_are_current(tmp_path):
     script = runpy.run_path(str(ROOT / "scripts/export_model_schemas.py"))
     for name, model in script["MODELS"].items():
-        assert json.loads((ROOT / "docs/schemas" / name).read_text()) == {
+        assert json.loads((ROOT / "docs/schemas" / name).read_text(encoding="utf-8")) == {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             **model.model_json_schema(mode="validation"),
         }
@@ -40,7 +40,9 @@ def test_new_model_schemas_and_component_contracts_are_current(tmp_path):
     }
     for file in tmp_path.glob("*.json"):
         script["assert_fixture_matches"](
-            file.name, json.loads((committed / file.name).read_text()), json.loads(file.read_text())
+            file.name,
+            json.loads((committed / file.name).read_text(encoding="utf-8")),
+            json.loads(file.read_text(encoding="utf-8")),
         )
     assert all(file.read_bytes() == value for file, value in before.items())
 
@@ -70,7 +72,9 @@ def test_screening_snapshot_names_only_the_six_approved_float_exceptions():
 )
 def test_screening_snapshot_accepts_platform_floats_but_preserves_types_and_nullability(path):
     script = runpy.run_path(str(ROOT / "scripts/export_model_test_fixtures.py"))
-    committed = json.loads((ROOT / "frontend/tests/fixtures/screening-summary.json").read_text())
+    committed = json.loads(
+        (ROOT / "frontend/tests/fixtures/screening-summary.json").read_text(encoding="utf-8")
+    )
     changed = deepcopy(committed)
     target = changed["rows"][0]
     for key in path[:-1]:
@@ -111,7 +115,9 @@ def test_screening_snapshot_accepts_platform_floats_but_preserves_types_and_null
 )
 def test_screening_snapshot_keeps_every_non_float_field_exact(path, value):
     script = runpy.run_path(str(ROOT / "scripts/export_model_test_fixtures.py"))
-    committed = json.loads((ROOT / "frontend/tests/fixtures/screening-summary.json").read_text())
+    committed = json.loads(
+        (ROOT / "frontend/tests/fixtures/screening-summary.json").read_text(encoding="utf-8")
+    )
     changed = deepcopy(committed)
     target = changed
     for key in path[:-1]:
@@ -124,7 +130,9 @@ def test_screening_snapshot_keeps_every_non_float_field_exact(path, value):
 
 def test_screening_snapshot_keeps_keys_and_unknown_float_fields_exact():
     script = runpy.run_path(str(ROOT / "scripts/export_model_test_fixtures.py"))
-    committed = json.loads((ROOT / "frontend/tests/fixtures/screening-summary.json").read_text())
+    committed = json.loads(
+        (ROOT / "frontend/tests/fixtures/screening-summary.json").read_text(encoding="utf-8")
+    )
     missing = deepcopy(committed)
     del missing["rows"][0]["margin"]
     with pytest.raises(AssertionError, match="keys differ"):

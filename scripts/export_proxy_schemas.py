@@ -30,10 +30,10 @@ def main():
         )
         file = ROOT / name
         if "--check" in sys.argv:
-            if not file.is_file() or file.read_text() != text:
+            if not file.is_file() or file.read_text(encoding="utf-8") != text:
                 raise SystemExit(f"Out of date proxy schema: {name}")
         else:
-            file.write_text(text, newline="\n")
+            file.write_text(text, newline="\n", encoding="utf-8")
     print("Proxy schemas are current")
 
 

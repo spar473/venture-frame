@@ -118,14 +118,14 @@ def test_lock_marker_is_never_archived_and_a_clean_library_has_no_warnings(tmp_p
 def test_backup_skips_and_reports_files_it_must_not_follow_or_adopt(tmp_path):
     store, _, _ = make_library(tmp_path)
     outside = tmp_path / "outside.json"
-    outside.write_text('{"secret": true}')
+    outside.write_text('{"secret": true}', encoding="utf-8")
     (store.root / "link.json").symlink_to(outside)
-    (store.root / ".restore-abc.tmp").write_text("stage")
-    (store.root / ".hidden.json").write_text("{}")
-    (store.root / "notes.txt").write_text("x")
+    (store.root / ".restore-abc.tmp").write_text("stage", encoding="utf-8")
+    (store.root / ".hidden.json").write_text("{}", encoding="utf-8")
+    (store.root / "notes.txt").write_text("x", encoding="utf-8")
     (store.root / "sub").mkdir()
-    (store.root / "bad name.json").write_text("{}")
-    (store.root / lb.TRASH_DIR / "stray.json").write_text("{}")
+    (store.root / "bad name.json").write_text("{}", encoding="utf-8")
+    (store.root / lb.TRASH_DIR / "stray.json").write_text("{}", encoding="utf-8")
     archive = tmp_path / "backup.zip"
     report = lb.create_backup(store.root, archive)
     skipped = dict(report.skipped)
@@ -142,9 +142,11 @@ def test_backup_skips_and_reports_files_it_must_not_follow_or_adopt(tmp_path):
 def test_unreadable_and_newer_schema_files_are_kept_byte_for_byte_and_reported(tmp_path):
     store, _, _ = make_library(tmp_path)
     (store.root / "broken.json").write_bytes(b"{not json")
-    newer = json.loads((store.root / f"{store.list()[0][0].project.id}.json").read_text())
+    newer = json.loads(
+        (store.root / f"{store.list()[0][0].project.id}.json").read_text(encoding="utf-8")
+    )
     newer.update(id="future", schema_version=99)
-    (store.root / "future.json").write_text(json.dumps(newer))
+    (store.root / "future.json").write_text(json.dumps(newer), encoding="utf-8")
     archive = tmp_path / "backup.zip"
     report = lb.create_backup(store.root, archive)
     unchecked = dict(report.unchecked)
@@ -400,14 +402,14 @@ def test_restore_writes_nothing_when_the_archive_fails_verification(tmp_path):
 
 @pytest.mark.skipif(sys.platform == "win32", reason="POSIX only; counterpart in test_fs_platform")
 def test_new_files_are_created_exclusively(tmp_path):
-    (tmp_path / "x.json").write_text("existing")
+    (tmp_path / "x.json").write_text("existing", encoding="utf-8")
     fd = os.open(tmp_path, os.O_RDONLY | os.O_DIRECTORY)
     try:
         with pytest.raises(FileExistsError):
             lb._write_new("x.json", b"new", 0, fd)
     finally:
         os.close(fd)
-    assert (tmp_path / "x.json").read_text() == "existing"
+    assert (tmp_path / "x.json").read_text(encoding="utf-8") == "existing"
 
 
 def test_a_failed_restore_removes_exactly_what_it_created(tmp_path, monkeypatch):
@@ -448,7 +450,7 @@ def test_the_incomplete_marker_is_present_until_the_restore_has_been_rechecked(
 def unfinished(tmp_path: Path) -> Path:
     root = tmp_path / "half"
     root.mkdir()
-    (root / lb.INCOMPLETE_MARKER).write_text("restore in progress\n")
+    (root / lb.INCOMPLETE_MARKER).write_text("restore in progress\n", encoding="utf-8")
     return root
 
 
@@ -488,7 +490,7 @@ def test_cli_exit_status_is_0_clean_3_with_warnings_and_1_on_failure(tmp_path):
     assert verified.exit_code == 0 and json.loads(verified.output)["active"] == 1
     restored = run(cli, ["library", "restore", str(archive), "--to", str(tmp_path / "r")])
     assert restored.exit_code == 0 and "mcda serve --store" in " ".join(restored.output.split())
-    (store.root / ".restore-x.tmp").write_text("stage")
+    (store.root / ".restore-x.tmp").write_text("stage", encoding="utf-8")
     warned = run(
         cli, ["library", "backup", "--store", str(store.root), "--to", str(tmp_path / "w.zip")]
     )
