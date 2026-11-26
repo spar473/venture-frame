@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+### Reference sets version 2 (proposed; needs the owner's approval)
+
+- A second `reference-cases` format with **observation-aware outcomes**: named outcome definitions
+  with a window, and per case `event`, `competing_event`, `no_event`, `censored` or `unknown`, so
+  what was not watched is never read as what did not happen. Partial dates (`YYYY`, `YYYY-Qn`,
+  `YYYY-MM`) for sources and events; the snapshot guard uses the latest day a date can mean.
+  Every rating says whether it is `proposed` or `reviewed`.
+- `mcda reference-cases outcomes`: counts by status, the share among fully observed cases with a
+  Clopper–Pearson interval, the range over every case, and rating coverage per labelled leaf.
+  `mcda reference-cases validate` reads either version. Version 1 is unchanged.
+- `examples/vee_bridge`: converts a Venture Evidence Explorer cohort audit into a version 2 set,
+  mapping only exact rubric equivalences and marking every rating proposed. Design:
+  [reference cases, version 2](docs/design/reference-cases.md#version-2-observation-aware-outcomes-proposed).
+
 ### Structured judgement (schema 7)
 
 - A weight profile may carry an **elicitation record**: who gave the judgement and when, a
