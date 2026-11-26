@@ -168,7 +168,7 @@ class TestListing:
         (store.root / "future.json").write_text(
             json.dumps(
                 {
-                    **json.loads((store.root / "good.json").read_text()),
+                    **json.loads((store.root / "good.json").read_text(encoding="utf-8")),
                     "schema_version": 99,
                     "id": "future",
                 }

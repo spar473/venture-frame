@@ -265,7 +265,7 @@ def test_the_cli_judges_checks_runs_and_clears(
     run("ahp", "judge", f, "--leaf", "cost", "a", "b", "3")
     assert "pairs not judged" in run("ahp", "check", f, code=1)
     run("ahp", "judge", f, "--leaf", "quality", "b", "a", "5")
-    assert json.loads(path.read_text())["schema_version"] == 5
+    assert json.loads(path.read_text(encoding="utf-8"))["schema_version"] == 5
     out = run("ahp", "check", f)
     assert "criteria under top level" in out and "alternatives under cost" in out
     out = run("evaluate", f, "--method", "ahp")
@@ -280,7 +280,7 @@ def test_the_cli_judges_checks_runs_and_clears(
         "ahp", "judge", f, "a", "b", "3", code=1
     )
     run("ahp", "judge", f, "--leaf", "cost", "b", "a", "4")  # replaces the pair, either way round
-    model = json.loads(path.read_text())["ahp"]
+    model = json.loads(path.read_text(encoding="utf-8"))["ahp"]
     assert model["alternatives"][0]["judgements"] == [{"row": "b", "column": "a", "value": 4.0}]
     run("ahp", "remove", f, "--leaf", "quality", "a", "b")
     assert "AHP_JUDGEMENT_MISSING" in run("evaluate", f, "--method", "ahp", code=1)

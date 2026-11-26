@@ -21,7 +21,7 @@ PAIRS = [("vc", "nz_deeptech_vc", ("hyades", "market_size")),
 def inputs(name="supplier", example="supplier_qualification"):
     p = JsonProjectRepository().load(ROOT / f"examples/{example}/project.json")
     d = EvidenceDossier.model_validate_json(
-        (ROOT / f"examples/evidence_demo/{name}.json").read_text()
+        (ROOT / f"examples/evidence_demo/{name}.json").read_text(encoding="utf-8")
     )
     return p, d
 
@@ -74,8 +74,8 @@ def test_bundle_retains_history_and_reproduces_after_reopening(name, example, ce
     cli = evidence_service.compile_copy(p, exported, current.preview.review_digest)
     assert cli == bundle.project
     path = tmp_path / "bundle.json"
-    path.write_text(bundle.model_dump_json())
-    reopened = svc.EvidenceCompilation.model_validate_json(path.read_text())
+    path.write_text(bundle.model_dump_json(), encoding="utf-8")
+    reopened = svc.EvidenceCompilation.model_validate_json(path.read_text(encoding="utf-8"))
     assert svc.verify(reopened) == bundle
     opened = svc.inspect(p, reopened)
     assert opened.compilation == bundle and opened.inspection == current

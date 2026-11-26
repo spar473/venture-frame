@@ -21,7 +21,7 @@ ROOT = Path(__file__).parents[2]
 def evidence_bundle():
     p = JsonProjectRepository().load(ROOT / "examples/supplier_qualification/project.json")
     d = EvidenceDossier.model_validate_json(
-        (ROOT / "examples/evidence_demo/supplier.json").read_text()
+        (ROOT / "examples/evidence_demo/supplier.json").read_text(encoding="utf-8")
     )
     current = workspaces.inspect(p, d)
     review = Review(status="rejected", reviewer="Analyst", reviewed_at=datetime.now(UTC))
@@ -40,7 +40,9 @@ def evidence_bundle():
 def calculation_bundle():
     folder = ROOT / "examples/derived_measurements"
     p = JsonProjectRepository().load(folder / "venture-project.json")
-    model = DerivedModel.model_validate_json((folder / "venture-model.json").read_text())
+    model = DerivedModel.model_validate_json(
+        (folder / "venture-model.json").read_text(encoding="utf-8")
+    )
     return p, derived_service.compilation_bundle(
         p, model, derived_service.preview(p, model).review_digest
     )

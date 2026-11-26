@@ -242,7 +242,7 @@ def write_json(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
     data = value.model_dump(mode="json") if hasattr(value, "model_dump") else value
     text = json.dumps(data, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
-    path.write_text(text, newline="\n")
+    path.write_text(text, newline="\n", encoding="utf-8")
 
 
 def build(destination=None, demo_destination=None):
@@ -262,7 +262,7 @@ def build(destination=None, demo_destination=None):
     from mcda_studio.domain.external_proposals import ExternalProposals
 
     old_workspace = ExternalProposals.model_validate_json(
-        (root / "external_proposals/screening-workspace.json").read_text()
+        (root / "external_proposals/screening-workspace.json").read_text(encoding="utf-8")
     )
     p = old_workspace.source_project.model_copy(deep=True)
     # The formula criterion is a deliberately separate leaf from classifier-proposed labels.
@@ -410,7 +410,7 @@ def build(destination=None, demo_destination=None):
             ],
         ),
     ):
-        raw = json.loads((root / name / "project.json").read_text())
+        raw = json.loads((root / name / "project.json").read_text(encoding="utf-8"))
         identities = {
             item["id"]: f"option_{chr(97 + i)}" for i, item in enumerate(raw["alternatives"])
         }
@@ -477,7 +477,7 @@ def build(destination=None, demo_destination=None):
         for artifact_id, value, kind, optional, for_model in items:
             path = folder / (artifact_id + ".json")
             write_json(path, value)
-            data = json.loads(path.read_text())
+            data = json.loads(path.read_text(encoding="utf-8"))
             version = data.get("schema_version", data.get("version", data.get("workspace_version")))
             artifacts.append(
                 StarterArtifact(
@@ -514,7 +514,9 @@ def build(destination=None, demo_destination=None):
         for id in ("blank", "supplier-selection")
     }
     write_json(destination / "legacy.json", legacy)
-    demo_destination = Path(demo_destination) if demo_destination is not None else Path(__file__).resolve().parent
+    demo_destination = (
+        Path(demo_destination) if demo_destination is not None else Path(__file__).resolve().parent
+    )
     write_json(demo_destination / "comparison.json", comparison)
     write_json(demo_destination / "model-project.json", p)
 

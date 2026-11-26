@@ -122,7 +122,7 @@ def test_synthetic_evidence_examples_match_source_projects(example):
     project_name = "nz_deeptech_vc" if example == "vc" else "supplier_qualification"
     p = repo.load(ROOT / "examples" / project_name / "project.json")
     d = EvidenceDossier.model_validate_json(
-        (ROOT / "examples" / "evidence_demo" / f"{example}.json").read_text()
+        (ROOT / "examples" / "evidence_demo" / f"{example}.json").read_text(encoding="utf-8")
     )
     report = evidence.preview(p, d)
     assert not report.issues and len(report.changes) == 1

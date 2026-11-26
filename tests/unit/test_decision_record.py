@@ -68,7 +68,7 @@ def test_refuses_unknown_choice_and_tampered_predecessor():
 def test_evidence_snapshot_must_reproduce_the_project():
     source = project()
     dossier = EvidenceDossier.model_validate_json(
-        (ROOT / "examples/evidence_demo/supplier.json").read_text()
+        (ROOT / "examples/evidence_demo/supplier.json").read_text(encoding="utf-8")
     )
     preview = evidence_service.preview(source, dossier)
     compiled = evidence_service.compile_copy(source, dossier, preview.review_digest)
@@ -95,7 +95,7 @@ def test_cli_creates_new_record_and_never_overwrites(tmp_path):
     runner = CliRunner()
     run = runner.invoke(app, command)
     assert run.exit_code == 0, run.output
-    record = DecisionRecord.model_validate_json(record_path.read_text())
+    record = DecisionRecord.model_validate_json(record_path.read_text(encoding="utf-8"))
     assert record.digest == decision_service.digest(record)
     prior = record_path.read_bytes()
     assert runner.invoke(app, command).exit_code != 0

@@ -17,8 +17,8 @@ WHEN = datetime(2026, 11, 1, 9, tzinfo=UTC)
 
 
 def test_inspect_propose_apply_and_edit_reproduce_the_service(client):
-    raw = json.loads((EXAMPLE / "supplier-project.json").read_text())
-    model = json.loads((EXAMPLE / "supplier-model.json").read_text())
+    raw = json.loads((EXAMPLE / "supplier-project.json").read_text(encoding="utf-8"))
+    model = json.loads((EXAMPLE / "supplier-model.json").read_text(encoding="utf-8"))
     stored = client.post("/api/projects/import", json=raw).json()
     saved = client.get(f"/api/projects/{raw['id']}/file").content
     project = stored["project"]
@@ -76,8 +76,8 @@ def test_inspect_propose_apply_and_edit_reproduce_the_service(client):
 
 
 def test_stale_refused_and_malformed_requests_are_structured(client):
-    raw = json.loads((EXAMPLE / "venture-project.json").read_text())
-    model = json.loads((EXAMPLE / "venture-model.json").read_text())
+    raw = json.loads((EXAMPLE / "venture-project.json").read_text(encoding="utf-8"))
+    model = json.loads((EXAMPLE / "venture-model.json").read_text(encoding="utf-8"))
     opened = client.post(
         "/api/calculations/inspect", json={"project": raw, "document": model}
     ).json()

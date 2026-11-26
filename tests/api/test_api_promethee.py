@@ -264,7 +264,7 @@ def test_the_cli_states_runs_explains_and_clears(
         "--code",
         "domestic=2",
     )
-    assert json.loads(path.read_text())["schema_version"] == 4
+    assert json.loads(path.read_text(encoding="utf-8"))["schema_version"] == 4
     assert repo.load(path).promethee == stated().promethee
     out = run("evaluate", f, "--method", "promethee2")
     assert LABEL in out and "net flow" in out and "PROMETHEE I incomparable pairs:" in out
