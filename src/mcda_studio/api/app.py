@@ -66,6 +66,7 @@ from mcda_studio.services import comparison_service as comparisons
 from mcda_studio.services import decision_impact_service as decision_impact
 from mcda_studio.services import decision_record_service as decisions
 from mcda_studio.services import derived_service as derived
+from mcda_studio.services import elicitation_service as elicitation
 from mcda_studio.services import evidence_compilation_service as evidence_compilation
 from mcda_studio.services import evidence_workspace_service as evidence_workspace
 from mcda_studio.services import factor_analysis_service as factor_analysis
@@ -690,6 +691,47 @@ def _router(examples_dir: Path | None, frontend: Path | None) -> APIRouter:
         return screening_robustness.screening_robustness(
             store.get(project_id).project, opts.configuration
         )
+
+    @r.post("/elicitation/check", response_model=elicitation.ElicitationCheck, tags=["analysis"])
+    def elicitation_check_draft(req: sc.EvaluateDraftRequest) -> elicitation.ElicitationCheck:
+        """Checks of the configured profile's elicitation record (order against ratings, AHP
+        consistency, swing-AHP gap, missing reasons) and the weight uncertainty it proposes.
+        Read-only; a proposal changes nothing until a person applies it."""
+        configuration = req.configuration or req.project.analysis
+        profile = req.project.resolve_profile(configuration)
+        return elicitation.elicitation_check(req.project, profile.id if profile else None)
+
+    @r.post(
+        "/projects/{project_id}/elicitation/check",
+        response_model=elicitation.ElicitationCheck,
+        tags=["analysis"],
+    )
+    def elicitation_check_stored(
+        project_id: str, opts: sc.AnalysisOptions, store: Store
+    ) -> elicitation.ElicitationCheck:
+        project = store.get(project_id).project
+        profile = project.resolve_profile(opts.configuration or project.analysis)
+        return elicitation.elicitation_check(project, profile.id if profile else None)
+
+    @r.post(
+        "/elicitation/preview", response_model=elicitation.ElicitationPreview, tags=["analysis"]
+    )
+    def elicitation_preview_draft(req: sc.EvaluateDraftRequest) -> elicitation.ElicitationPreview:
+        """Decision confidence now and under each proposal, from the same SMAA-2 settings."""
+        return elicitation.elicitation_preview(
+            req.project, req.configuration or req.project.analysis
+        )
+
+    @r.post(
+        "/projects/{project_id}/elicitation/preview",
+        response_model=elicitation.ElicitationPreview,
+        tags=["analysis"],
+    )
+    def elicitation_preview_stored(
+        project_id: str, opts: sc.AnalysisOptions, store: Store
+    ) -> elicitation.ElicitationPreview:
+        project = store.get(project_id).project
+        return elicitation.elicitation_preview(project, opts.configuration or project.analysis)
 
     @r.post("/screening-summary", response_model=screening.ScreeningSummary, tags=["analysis"])
     def screening_summary_draft(req: sc.ScreeningSummaryRequest) -> screening.ScreeningSummary:

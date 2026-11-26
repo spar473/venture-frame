@@ -54,6 +54,24 @@ def _v5_to_v6(raw: dict[str, Any]) -> dict[str, Any]:
     return raw
 
 
+def _v6_to_v7(raw: dict[str, Any]) -> dict[str, Any]:
+    """Version 7 only adds optional fields (an elicitation record per weight profile, and the
+    SMAA-2 ``ranking`` kind with ``order`` and ``held`` children), which an older file cannot
+    hold."""
+    for profile in raw.get("weight_profiles") or []:
+        if isinstance(profile, dict) and "elicitation" in profile:
+            raise ProjectLoadError("schema version 6 cannot contain a weight profile 'elicitation'")
+    smaa = raw.get("smaa")
+    for group in (smaa.get("groups") or []) if isinstance(smaa, dict) else []:
+        if isinstance(group, dict) and (
+            group.get("kind") == "ranking" or "order" in group or "held" in group
+        ):
+            raise ProjectLoadError(
+                "schema version 6 cannot contain a 'ranking' weight group, 'order' or 'held'"
+            )
+    return raw
+
+
 #: ``MIGRATIONS[n]`` upgrades a raw dict from schema version n to n + 1.
 MIGRATIONS: dict[int, Callable[[dict[str, Any]], dict[str, Any]]] = {
     1: _v1_to_v2,
@@ -61,6 +79,7 @@ MIGRATIONS: dict[int, Callable[[dict[str, Any]], dict[str, Any]]] = {
     3: _v3_to_v4,
     4: _v4_to_v5,
     5: _v5_to_v6,
+    6: _v6_to_v7,
 }
 
 

@@ -28,7 +28,7 @@ def create(client: TestClient, **body: Any) -> dict[str, Any]:
 def test_health_reports_versions_methods_and_store(client: TestClient, store_dir: Path) -> None:
     body = client.get("/api/health").json()
     assert body["status"] == "ok"
-    assert body["schema_version"] == 6
+    assert body["schema_version"] == 7
     assert body["methods"] == ["ahp", "mavt", "mavt_sorting", "promethee2", "smaa2"]
     assert body["store"] == str(store_dir)
 
@@ -232,7 +232,7 @@ def test_save_refuses_a_body_whose_id_differs_from_the_url(
 
 def test_save_rejects_other_schema_versions(client: TestClient) -> None:
     p = create(client)["project"]
-    resp = client.put(f"/api/projects/{p['id']}", json={**p, "schema_version": 7})
+    resp = client.put(f"/api/projects/{p['id']}", json={**p, "schema_version": 8})
     assert resp.status_code == 422
     assert errors(resp)["code"] == "UNSUPPORTED_SCHEMA_VERSION"
     # a version-1 body cannot hold a version-2 section

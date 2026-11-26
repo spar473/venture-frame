@@ -4,7 +4,7 @@ import type { StarterTemplate, StarterRequest, StarterMaterialization, ModelComp
 import type { ExternalProposals, ProposalInspection, ProposalReview, ProposalCompilation, ProposalRegistrySupply } from "./types";
 import type { DecisionDetails as FactorDecision, FactorInspection, FactorRunParameters, FactorRunRecord } from "./types";
 import type {
-  AhpMatrixPreview, PairwiseJudgement, MethodComparison, MethodComparisonExportRequest, FeasibilityResult, QuestionsResult, DecisionImpact, ReferenceCasesResult, ReferenceCasesValidation, ScreeningSummary, ScreeningRobustness, ScreeningDetails, ProfileComparison, ScreeningWhatIf, DerivedPreview,
+  AhpMatrixPreview, PairwiseJudgement, MethodComparison, MethodComparisonExportRequest, FeasibilityResult, QuestionsResult, DecisionImpact, ReferenceCasesResult, ReferenceCasesValidation, ScreeningSummary, ScreeningRobustness, ElicitationCheck, ElicitationPreview, ScreeningDetails, ProfileComparison, ScreeningWhatIf, DerivedPreview,
   EvidenceInspection, EvidenceWorkspace, ClaimReview, DerivedCompilation,
   CalculationInspection, CalculationWorkspace, CalculationApplication, CalculationEvent,
   EvidenceCompilation, EvidenceCompilationInspection, ArtifactBinding, ProjectCopyReceipt, ImportedProjectDocument,
@@ -188,6 +188,10 @@ export const api = {
     request<ScreeningSummary>("POST", "/api/screening-summary", { body: { project, configuration, dossier }, signal }),
   screeningRobustness: (project: Project, configuration: AnalysisConfiguration, signal?: AbortSignal) =>
     request<ScreeningRobustness>("POST", "/api/screening-summary/robustness", { body: { project, configuration }, signal }),
+  elicitationCheck: (project: Project, configuration: AnalysisConfiguration, signal?: AbortSignal) =>
+    request<ElicitationCheck>("POST", "/api/elicitation/check", { body: { project, configuration }, signal }),
+  elicitationPreview: (project: Project, configuration: AnalysisConfiguration, signal?: AbortSignal) =>
+    request<ElicitationPreview>("POST", "/api/elicitation/preview", { body: { project, configuration }, signal }),
   health: () => request<Health>("GET", "/api/health"),
   meta: () => request<Meta>("GET", "/api/meta"),
   templates: () => request<TemplateInfo[]>("GET", "/api/templates"),

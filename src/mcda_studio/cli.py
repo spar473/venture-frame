@@ -435,6 +435,22 @@ def open_questions(
     console.print_json(data=report.model_dump(mode="json"))
 
 
+@app.command("elicitation-check")
+def elicitation_check_command(
+    file: FileArg,
+    profile: Annotated[
+        str | None, typer.Option(help="A weight profile ID (default: the first).")
+    ] = None,
+) -> None:
+    """Check a profile's structured judgement: order against ratings, AHP consistency, the
+    swing-AHP gap and missing reasons, with the weight uncertainty it proposes. Read-only."""
+    from mcda_studio.services import elicitation_service
+
+    project = _guard(lambda: repo.load(file))
+    check = _guard(lambda: elicitation_service.elicitation_check(project, profile))
+    console.print_json(data=check.model_dump(mode="json"))
+
+
 @app.command("decision-impact")
 def decision_impact_command(
     file: FileArg,
@@ -1273,12 +1289,22 @@ def uncertainty_group(
     interval: Annotated[
         list[str] | None, typer.Option(help="CHILD=LOWER:UPPER raw rating interval (repeat).")
     ] = None,
+    rank: Annotated[
+        list[str] | None,
+        typer.Option(help="CHILD in order, best first (repeat): every split keeping the order."),
+    ] = None,
+    hold: Annotated[
+        list[str] | None,
+        typer.Option(help="CHILD held at the profile's local weight in every draw (repeat)."),
+    ] = None,
     fixed: Annotated[bool, typer.Option("--fixed", help="Back to the profile's ratings.")] = False,
     output: OutOpt = None,
 ) -> None:
     """Set a sibling group's weight uncertainty."""
-    if unknown + fixed + bool(interval) != 1:
-        _fail("give exactly one of --unknown, --interval or --fixed")
+    if unknown + fixed + bool(interval) + bool(rank) != 1:
+        _fail("give exactly one of --unknown, --interval, --rank or --fixed")
+    if fixed and hold:
+        _fail("--hold applies to a varying group, not with --fixed")
     intervals: dict[str, tuple[float, float]] = {}
     for item in interval or []:
         child, sep, bounds = item.partition("=")
@@ -1294,8 +1320,16 @@ def uncertainty_group(
         model = _smaa(p)
         model.groups = [g for g in model.groups if g.parent_id != parent]
         if not fixed:
-            kind = "unknown" if unknown else "rating_intervals"
-            model.groups.append(GroupUncertainty(parent_id=parent, kind=kind, intervals=intervals))
+            kind = "unknown" if unknown else "ranking" if rank else "rating_intervals"
+            model.groups.append(
+                GroupUncertainty(
+                    parent_id=parent,
+                    kind=kind,
+                    intervals=intervals,
+                    order=list(rank or []),
+                    held=list(hold or []),
+                )
+            )
         return ps.set_smaa_model(p, model)
 
     _edit(file, output, change)

@@ -82,7 +82,7 @@ export function criterionHasError(
   });
 }
 
-export type EditorTab = "project" | "model" | "alternatives" | "measurements" | "weights" | "scenarios" | "requirements" | "classes" | "uncertainty" | "outranking" | "pairwise" | "sensitivity" | "results" | "compare" | "references" | "questions" | "evidence" | "decision";
+export type EditorTab = "project" | "model" | "alternatives" | "measurements" | "weights" | "judgement" | "scenarios" | "requirements" | "classes" | "uncertainty" | "outranking" | "pairwise" | "sensitivity" | "results" | "compare" | "references" | "questions" | "evidence" | "decision";
 
 /** The tab that can fix an issue (used by "click an issue to go to it"). */
 export function tabForIssue(issue: Issue): EditorTab {

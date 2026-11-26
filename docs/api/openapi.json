@@ -389,6 +389,57 @@
         "title": "AhpAnalysisRecord",
         "type": "object"
       },
+      "AhpCheck": {
+        "additionalProperties": false,
+        "properties": {
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "consistency_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consistency Ratio"
+          },
+          "inconsistent": {
+            "default": false,
+            "title": "Inconsistent",
+            "type": "boolean"
+          },
+          "issues": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "triad": {
+            "default": [],
+            "items": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+              "type": "string"
+            },
+            "title": "Triad",
+            "type": "array"
+          }
+        },
+        "required": [
+          "complete",
+          "consistency_ratio",
+          "inconsistent",
+          "triad",
+          "issues"
+        ],
+        "title": "AhpCheck",
+        "type": "object"
+      },
       "AhpMatrixAnalysis": {
         "additionalProperties": false,
         "description": "Priorities and consistency of one complete pairwise matrix.",
@@ -3779,6 +3830,84 @@
           "digest"
         ],
         "title": "CheckedFactorRun",
+        "type": "object"
+      },
+      "ChildCheck": {
+        "additionalProperties": false,
+        "properties": {
+          "ahp": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ahp"
+          },
+          "criterion_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+            "title": "Criterion Id",
+            "type": "string"
+          },
+          "held": {
+            "title": "Held",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "roc": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Roc"
+          },
+          "swing": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Swing"
+          }
+        },
+        "required": [
+          "criterion_id",
+          "name",
+          "rating",
+          "swing",
+          "roc",
+          "ahp",
+          "held",
+          "reason"
+        ],
+        "title": "ChildCheck",
         "type": "object"
       },
       "Claim-Input": {
@@ -7267,6 +7396,7 @@
                   "set_analysis_method": "#/components/schemas/SetAnalysisMethod",
                   "set_default_scenario": "#/components/schemas/SetDefaultScenario",
                   "set_default_weight_profile": "#/components/schemas/SetDefaultWeightProfile",
+                  "set_elicitation": "#/components/schemas/SetElicitation",
                   "set_judgement": "#/components/schemas/SetJudgement",
                   "set_performance": "#/components/schemas/SetPerformance",
                   "set_promethee_model": "#/components/schemas/SetPrometheeModel",
@@ -7344,6 +7474,9 @@
                   "$ref": "#/components/schemas/SetDefaultWeightProfile"
                 },
                 {
+                  "$ref": "#/components/schemas/SetElicitation"
+                },
+                {
                   "$ref": "#/components/schemas/CreateScenario"
                 },
                 {
@@ -7416,6 +7549,244 @@
           "operations"
         ],
         "title": "EditRequest",
+        "type": "object"
+      },
+      "Elicitation-Input": {
+        "additionalProperties": false,
+        "description": "How a weight profile's judgements were given: who, when, how sure, and why.\n\nIt stores judgements only. The swing ratings stay in ``WeightProfile.judgements``; checks\n(agreement of order and ratings, AHP consistency, rank-order weights) and proposed weight\nuncertainty are derived, never stored.",
+        "properties": {
+          "conviction": {
+            "anyOf": [
+              {
+                "enum": [
+                  "high",
+                  "medium",
+                  "low"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conviction"
+          },
+          "elicited_by": {
+            "default": "",
+            "title": "Elicited By",
+            "type": "string"
+          },
+          "elicited_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Elicited On"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/GroupElicitation"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "note": {
+            "default": "",
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "title": "Elicitation",
+        "type": "object"
+      },
+      "Elicitation-Output": {
+        "additionalProperties": false,
+        "description": "How a weight profile's judgements were given: who, when, how sure, and why.\n\nIt stores judgements only. The swing ratings stay in ``WeightProfile.judgements``; checks\n(agreement of order and ratings, AHP consistency, rank-order weights) and proposed weight\nuncertainty are derived, never stored.",
+        "properties": {
+          "conviction": {
+            "anyOf": [
+              {
+                "enum": [
+                  "high",
+                  "medium",
+                  "low"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conviction"
+          },
+          "elicited_by": {
+            "default": "",
+            "title": "Elicited By",
+            "type": "string"
+          },
+          "elicited_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Elicited On"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/GroupElicitation"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "note": {
+            "default": "",
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "elicited_by",
+          "groups"
+        ],
+        "title": "Elicitation",
+        "type": "object"
+      },
+      "ElicitationCheck": {
+        "additionalProperties": false,
+        "properties": {
+          "conviction": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conviction"
+          },
+          "elicited_by": {
+            "default": "",
+            "title": "Elicited By",
+            "type": "string"
+          },
+          "elicited_on": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Elicited On"
+          },
+          "groups": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/GroupCheck"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "label": {
+            "default": "Checks and proposals are derived from the profile's swing ratings and its elicitation record; nothing here changes the project until a person applies a proposal.",
+            "title": "Label",
+            "type": "string"
+          },
+          "profile_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+            "title": "Profile Id",
+            "type": "string"
+          },
+          "profile_name": {
+            "title": "Profile Name",
+            "type": "string"
+          },
+          "project_fingerprint": {
+            "title": "Project Fingerprint",
+            "type": "string"
+          },
+          "proposals": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/Proposal"
+            },
+            "title": "Proposals",
+            "type": "array"
+          },
+          "recorded": {
+            "title": "Recorded",
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "consistent",
+              "check",
+              "incomplete"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_fingerprint",
+          "profile_id",
+          "profile_name",
+          "recorded",
+          "elicited_by",
+          "elicited_on",
+          "conviction",
+          "groups",
+          "proposals",
+          "status",
+          "label"
+        ],
+        "title": "ElicitationCheck",
+        "type": "object"
+      },
+      "ElicitationPreview": {
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "default": "Decision confidence under the project's current stated uncertainty and under each proposal, from the same SMAA-2 settings. Read-only.",
+            "title": "Label",
+            "type": "string"
+          },
+          "previews": {
+            "items": {
+              "$ref": "#/components/schemas/ProposalPreview"
+            },
+            "title": "Previews",
+            "type": "array"
+          },
+          "profile_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+            "title": "Profile Id",
+            "type": "string"
+          },
+          "project_fingerprint": {
+            "title": "Project Fingerprint",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_fingerprint",
+          "profile_id",
+          "previews",
+          "label"
+        ],
+        "title": "ElicitationPreview",
         "type": "object"
       },
       "EnclosureRange-Input": {
@@ -9678,10 +10049,205 @@
         "title": "Fragility",
         "type": "object"
       },
+      "GroupCheck": {
+        "additionalProperties": false,
+        "properties": {
+          "ahp": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AhpCheck"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "children": {
+            "items": {
+              "$ref": "#/components/schemas/ChildCheck"
+            },
+            "title": "Children",
+            "type": "array"
+          },
+          "findings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "largest_gap": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Largest Gap"
+          },
+          "missing_reasons": {
+            "items": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+              "type": "string"
+            },
+            "title": "Missing Reasons",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "order": {
+            "items": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+              "type": "string"
+            },
+            "title": "Order",
+            "type": "array"
+          },
+          "order_agrees": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order Agrees"
+          },
+          "order_conflicts": {
+            "items": {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+                  "type": "string"
+                },
+                {
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+                  "type": "string"
+                }
+              ],
+              "type": "array"
+            },
+            "title": "Order Conflicts",
+            "type": "array"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "scored": {
+            "title": "Scored",
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "consistent",
+              "check",
+              "incomplete"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "suggested_order": {
+            "items": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+              "type": "string"
+            },
+            "title": "Suggested Order",
+            "type": "array"
+          }
+        },
+        "required": [
+          "parent_id",
+          "name",
+          "scored",
+          "children",
+          "order",
+          "suggested_order",
+          "order_agrees",
+          "order_conflicts",
+          "ahp",
+          "largest_gap",
+          "missing_reasons",
+          "findings",
+          "status"
+        ],
+        "title": "GroupCheck",
+        "type": "object"
+      },
+      "GroupElicitation": {
+        "additionalProperties": false,
+        "description": "One sibling group as the person judged it (``parent_id`` None: the top level).\n\n``order``: the children best first, each once, no ties; empty when no ranking was given.\n``pairwise``: optional AHP answers for the same children, a cross-check on the swing ratings.\n``reasons``: one line per child, in the person's words.",
+        "properties": {
+          "order": {
+            "items": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+              "type": "string"
+            },
+            "title": "Order",
+            "type": "array"
+          },
+          "pairwise": {
+            "items": {
+              "$ref": "#/components/schemas/PairwiseJudgement"
+            },
+            "title": "Pairwise",
+            "type": "array"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "reasons": {
+            "patternProperties": {
+              "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$": {
+                "type": "string"
+              }
+            },
+            "title": "Reasons",
+            "type": "object"
+          }
+        },
+        "required": [
+          "parent_id"
+        ],
+        "title": "GroupElicitation",
+        "type": "object"
+      },
       "GroupUncertainty-Input": {
         "additionalProperties": false,
-        "description": "Weight uncertainty in one sibling group; a group without an entry keeps its ratings.\n\n``unknown``: local weights uniform on the group's simplex, Dirichlet(1, ..., 1).\n``rating_intervals``: each child's raw swing rating uniform on its stated [lower, upper], then\nnormalised within the group.",
+        "description": "Weight uncertainty in one sibling group; a group without an entry keeps its ratings.\n\n``unknown``: local weights uniform on the group's simplex, Dirichlet(1, ..., 1).\n``rating_intervals``: each child's raw swing rating uniform on its stated [lower, upper], then\nnormalised within the group.\n``ranking`` (schema 7): local weights uniform on the part of the simplex that respects\n``order`` (best first): every split in which no child outweighs one ranked above it.\n\n``held`` (schema 7): children held at the profile's local weight in every draw; the varying\nchildren share the rest. It lets a group vary without giving weight to a child the profile\ndeliberately rates 0, such as a screened-only mandate. It needs no interval and no place in\n``order``.",
         "properties": {
+          "held": {
+            "items": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+              "type": "string"
+            },
+            "title": "Held",
+            "type": "array"
+          },
           "intervals": {
             "patternProperties": {
               "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$": {
@@ -9704,10 +10270,19 @@
           "kind": {
             "enum": [
               "unknown",
-              "rating_intervals"
+              "rating_intervals",
+              "ranking"
             ],
             "title": "Kind",
             "type": "string"
+          },
+          "order": {
+            "items": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+              "type": "string"
+            },
+            "title": "Order",
+            "type": "array"
           },
           "parent_id": {
             "anyOf": [
@@ -9731,8 +10306,16 @@
       },
       "GroupUncertainty-Output": {
         "additionalProperties": false,
-        "description": "Weight uncertainty in one sibling group; a group without an entry keeps its ratings.\n\n``unknown``: local weights uniform on the group's simplex, Dirichlet(1, ..., 1).\n``rating_intervals``: each child's raw swing rating uniform on its stated [lower, upper], then\nnormalised within the group.",
+        "description": "Weight uncertainty in one sibling group; a group without an entry keeps its ratings.\n\n``unknown``: local weights uniform on the group's simplex, Dirichlet(1, ..., 1).\n``rating_intervals``: each child's raw swing rating uniform on its stated [lower, upper], then\nnormalised within the group.\n``ranking`` (schema 7): local weights uniform on the part of the simplex that respects\n``order`` (best first): every split in which no child outweighs one ranked above it.\n\n``held`` (schema 7): children held at the profile's local weight in every draw; the varying\nchildren share the rest. It lets a group vary without giving weight to a child the profile\ndeliberately rates 0, such as a screened-only mandate. It needs no interval and no place in\n``order``.",
         "properties": {
+          "held": {
+            "items": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+              "type": "string"
+            },
+            "title": "Held",
+            "type": "array"
+          },
           "intervals": {
             "patternProperties": {
               "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$": {
@@ -9755,10 +10338,19 @@
           "kind": {
             "enum": [
               "unknown",
-              "rating_intervals"
+              "rating_intervals",
+              "ranking"
             ],
             "title": "Kind",
             "type": "string"
+          },
+          "order": {
+            "items": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+              "type": "string"
+            },
+            "title": "Order",
+            "type": "array"
           },
           "parent_id": {
             "anyOf": [
@@ -14615,6 +15207,38 @@
         "title": "PrometheeResult",
         "type": "object"
       },
+      "Proposal": {
+        "additionalProperties": false,
+        "properties": {
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "conviction",
+              "ranking"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "smaa": {
+            "$ref": "#/components/schemas/SmaaModel-Output"
+          }
+        },
+        "required": [
+          "mode",
+          "label",
+          "explanation",
+          "smaa"
+        ],
+        "title": "Proposal",
+        "type": "object"
+      },
       "ProposalCell": {
         "additionalProperties": false,
         "properties": {
@@ -15220,6 +15844,34 @@
           "human_dossier"
         ],
         "title": "ProposalIntake",
+        "type": "object"
+      },
+      "ProposalPreview": {
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "current",
+              "conviction",
+              "ranking"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "robustness": {
+            "$ref": "#/components/schemas/ScreeningRobustness"
+          }
+        },
+        "required": [
+          "mode",
+          "label",
+          "robustness"
+        ],
+        "title": "ProposalPreview",
         "type": "object"
       },
       "ProposalRegistryRequest": {
@@ -21543,6 +22195,39 @@
         "title": "SetDefaultWeightProfile",
         "type": "object"
       },
+      "SetElicitation": {
+        "additionalProperties": false,
+        "description": "Record how a profile's judgements were given; ``elicitation`` None clears the record.",
+        "properties": {
+          "elicitation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Elicitation-Input"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "op": {
+            "const": "set_elicitation",
+            "default": "set_elicitation",
+            "title": "Op",
+            "type": "string"
+          },
+          "profile_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+            "title": "Profile Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile_id",
+          "elicitation"
+        ],
+        "title": "SetElicitation",
+        "type": "object"
+      },
       "SetJudgement": {
         "additionalProperties": false,
         "properties": {
@@ -25584,6 +26269,16 @@
         "additionalProperties": false,
         "description": "Raw swing ratings, one per criterion node, relative to that node's siblings.\n\nA rating expresses the importance of the swing from worst to best *over the scale range\nin use* - not abstract importance. Ratings need not sum to anything; they are normalised\nwithin each sibling group. An only child needs no rating (its local weight is 1).",
         "properties": {
+          "elicitation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Elicitation-Input"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "id": {
             "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
             "title": "Id",
@@ -25620,6 +26315,16 @@
         "additionalProperties": false,
         "description": "Raw swing ratings, one per criterion node, relative to that node's siblings.\n\nA rating expresses the importance of the swing from worst to best *over the scale range\nin use* - not abstract importance. Ratings need not sum to anything; they are normalised\nwithin each sibling group. An only child needs no rating (its local weight is 1).",
         "properties": {
+          "elicitation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Elicitation-Output"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "id": {
             "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
             "title": "Id",
@@ -26349,6 +27054,90 @@
         "summary": "Edit",
         "tags": [
           "editing"
+        ]
+      }
+    },
+    "/api/elicitation/check": {
+      "post": {
+        "description": "Checks of the configured profile's elicitation record (order against ratings, AHP\nconsistency, swing-AHP gap, missing reasons) and the weight uncertainty it proposes.\nRead-only; a proposal changes nothing until a person applies it.",
+        "operationId": "elicitation_check_draft_api_elicitation_check_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvaluateDraftRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ElicitationCheck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Elicitation Check Draft",
+        "tags": [
+          "analysis"
+        ]
+      }
+    },
+    "/api/elicitation/preview": {
+      "post": {
+        "description": "Decision confidence now and under each proposal, from the same SMAA-2 settings.",
+        "operationId": "elicitation_preview_draft_api_elicitation_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvaluateDraftRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ElicitationPreview"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Elicitation Preview Draft",
+        "tags": [
+          "analysis"
         ]
       }
     },
@@ -27879,6 +28668,110 @@
         "summary": "Duplicate Project",
         "tags": [
           "projects"
+        ]
+      }
+    },
+    "/api/projects/{project_id}/elicitation/check": {
+      "post": {
+        "operationId": "elicitation_check_stored_api_projects__project_id__elicitation_check_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalysisOptions"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ElicitationCheck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Elicitation Check Stored",
+        "tags": [
+          "analysis"
+        ]
+      }
+    },
+    "/api/projects/{project_id}/elicitation/preview": {
+      "post": {
+        "operationId": "elicitation_preview_stored_api_projects__project_id__elicitation_preview_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalysisOptions"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ElicitationPreview"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Elicitation Preview Stored",
+        "tags": [
+          "analysis"
         ]
       }
     },

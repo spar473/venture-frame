@@ -12,6 +12,7 @@ from mcda_studio.domain.criteria import ControlPoint, Direction, LinearValueFunc
 from mcda_studio.domain.criteria import PiecewiseLinearValueFunction as Piecewise
 from mcda_studio.domain.outranking import PrometheeModel
 from mcda_studio.domain.pairwise import AhpModel
+from mcda_studio.domain.preferences import Elicitation
 from mcda_studio.domain.project import Project
 from mcda_studio.domain.requirements import AnyRequirement, Requirement
 from mcda_studio.domain.scales import AnchorMode, Scale, ScaleType
@@ -39,6 +40,12 @@ def edited(client: TestClient, project: Project, *ops: dict[str, Any]) -> Projec
 # ---- every operation equals the direct service call -----------------------------------------
 NEW_SCALE = Scale(type=ScaleType.RATIO, unit="days", lower=0.0, upper=30.0)
 NEW_VF = LinearValueFunction(direction=Direction.INCREASING)  # unit_price is decreasing
+_ELICITATION = {
+    "elicited_by": "Analyst",
+    "conviction": "high",
+    "groups": [{"parent_id": None, "reasons": {"cost": "budget is fixed"}}],
+}
+
 CASES: list[tuple[str, dict[str, Any], Any]] = [
     (
         "update_project",
@@ -166,6 +173,11 @@ CASES.extend(
             "set_default_weight_profile",
             {"op": "set_default_weight_profile", "profile_id": "cost_focus"},
             lambda p: ps.set_default_weight_profile(p, "cost_focus"),
+        ),
+        (
+            "set_elicitation",
+            {"op": "set_elicitation", "profile_id": "default", "elicitation": _ELICITATION},
+            lambda p: ps.set_elicitation(p, "default", Elicitation.model_validate(_ELICITATION)),
         ),
     ]
 )

@@ -8,13 +8,14 @@ import { IssueText } from "./IssueText";
 
 const SMAA = "smaa2";
 type Kind = Distribution["kind"];
-type GroupKind = "fixed" | "unknown" | "rating_intervals";
+type GroupKind = "fixed" | "unknown" | "rating_intervals" | "ranking";
 
 interface DraftCell {
   alternative: string; criterion: string; kind: Kind;
   lower: string; mode: string; upper: string; outcomes: { outcome: string; probability: string }[]; shared: string;
 }
-interface DraftGroup { parent: string | null; kind: GroupKind; intervals: Record<string, [string, string]> }
+/** order: best first, for a ranking; held: children kept at the profile's local weight. */
+interface DraftGroup { parent: string | null; kind: GroupKind; intervals: Record<string, [string, string]>; order: string[]; held: string[] }
 interface Draft { cells: DraftCell[]; groups: DraftGroup[] }
 
 const smaaIssue = (i: Issue) => i.path === "smaa" || i.path.startsWith("smaa.") || i.code === "NOTHING_UNCERTAIN";
@@ -44,7 +45,9 @@ function draftOf(model: SmaaModel | null | undefined, project: Project): Draft {
   });
   const groups = siblingGroups(project).map(({ parent, children }): DraftGroup => {
     const given = model?.groups.find((g) => g.parent_id === parent);
-    return { parent, kind: given?.kind ?? "fixed",
+    const held = given?.held ?? [];
+    return { parent, kind: given?.kind ?? "fixed", held,
+      order: given?.order?.length ? given.order : children.filter((c) => !held.includes(c)),
       intervals: Object.fromEntries(children.map((c) => {
         const pair = given?.intervals[c];
         return [c, pair ? [String(pair[0]), String(pair[1])] : ["", ""]];
@@ -75,9 +78,11 @@ function modelOf(draft: Draft, cellName: (c: DraftCell) => string, criterionName
       return { alternative_id: c.alternative, criterion_id: c.criterion, distribution };
     });
     const groups = draft.groups.filter((g) => g.kind !== "fixed").map((g) => ({
-      parent_id: g.parent, kind: g.kind as "unknown" | "rating_intervals",
-      intervals: g.kind === "unknown" ? {} : Object.fromEntries(Object.entries(g.intervals).map(([child, [lo, hi]]) =>
+      parent_id: g.parent, kind: g.kind as "unknown" | "rating_intervals" | "ranking",
+      intervals: g.kind !== "rating_intervals" ? {} : Object.fromEntries(Object.entries(g.intervals).filter(([child]) => !g.held.includes(child)).map(([child, [lo, hi]]) =>
         [child, [num(lo, `The lower rating for ${criterionName(child)}`), num(hi, `The upper rating for ${criterionName(child)}`)] as [number, number]])),
+      ...(g.kind === "ranking" ? { order: g.order.filter((c) => !g.held.includes(c)) } : {}),
+      ...(g.held.length ? { held: g.held } : {}),
     }));
     const shared = new Map<string, { alternative_id: string; criterion_id: string }[]>();
     for (const c of draft.cells) if (c.shared.trim()) {
@@ -169,7 +174,9 @@ function UncertaintyEditor({ project, context, busy, apply, saved }: {
 
     <h3>Weights</h3>
     <p className="muted small">Fixed keeps the profile’s ratings. Unknown draws local weights uniformly within the group. Rating intervals draw
-      each raw swing rating uniformly between its bounds, then normalise within the group.</p>
+      each raw swing rating uniformly between its bounds, then normalise within the group. Ranking draws every split that keeps the
+      stated order, best first. A held child keeps the profile’s weight in every draw (use it for a child the profile rates 0, such as a
+      screened-only mandate); the others share the rest. Judgement can propose these for you.</p>
     {draft.groups.map((g, i) => {
       const group = siblingGroups(project)[i];
       const name = group?.name ?? "group";
@@ -178,8 +185,21 @@ function UncertaintyEditor({ project, context, busy, apply, saved }: {
         <select aria-label={`Weight uncertainty under ${name}`} value={g.kind}
           onChange={(e) => set((d) => { const row = d.groups[i]; if (row) row.kind = e.target.value as GroupKind; })}>
           <option value="fixed">Fixed</option><option value="unknown">Unknown</option><option value="rating_intervals">Rating intervals</option>
+          <option value="ranking">Ranking</option>
         </select>
-        {g.kind === "rating_intervals" && Object.entries(g.intervals).map(([child, [lo, hi]]) => <span key={child} className="class-row">
+        {g.kind !== "fixed" && <span className="class-row">{Object.keys(g.intervals).map((child) => <label key={child}>
+          <input type="checkbox" aria-label={`Hold ${criterionName(child)} at the profile’s weight`} checked={g.held.includes(child)}
+            onChange={(e) => set((d) => { const row = d.groups[i]; if (!row) return;
+              row.held = e.target.checked ? [...row.held, child] : row.held.filter((c) => c !== child);
+              row.order = e.target.checked ? row.order.filter((c) => c !== child) : row.order.includes(child) ? row.order : [...row.order, child]; })}/>
+          {" "}Hold {criterionName(child)}</label>)}</span>}
+        {g.kind === "ranking" && <ol aria-label={`Order under ${name}`}>{g.order.map((child, k) => <li key={child}>{criterionName(child)}{" "}
+          <button type="button" aria-label={`Move ${criterionName(child)} up under ${name}`} disabled={k === 0}
+            onClick={() => set((d) => { const row = d.groups[i]; if (!row) return; const [c] = row.order.splice(k, 1); if (c !== undefined) row.order.splice(k - 1, 0, c); })}>↑</button>
+          <button type="button" aria-label={`Move ${criterionName(child)} down under ${name}`} disabled={k === g.order.length - 1}
+            onClick={() => set((d) => { const row = d.groups[i]; if (!row) return; const [c] = row.order.splice(k, 1); if (c !== undefined) row.order.splice(k + 1, 0, c); })}>↓</button>
+        </li>)}</ol>}
+        {g.kind === "rating_intervals" && Object.entries(g.intervals).filter(([child]) => !g.held.includes(child)).map(([child, [lo, hi]]) => <span key={child} className="class-row">
           {criterionName(child)}
           <input aria-label={`Lower rating for ${criterionName(child)}`} value={lo}
             onChange={(e) => set((d) => { const row = d.groups[i]; if (row) row.intervals[child] = [e.target.value, row.intervals[child]?.[1] ?? ""]; })}/>

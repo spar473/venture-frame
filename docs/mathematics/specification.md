@@ -158,9 +158,13 @@ the additive model of §4. See the [design note](../design/smaa-2.md).
 (numeric values or scale labels with probabilities summing to one; the probabilities are used as
 exact fractions normalised to sum to one). The support lies inside the value-function domain and
 is never clamped; a missing measurement stays missing. Per sibling group: *fixed* (the profile's
-ratings), *unknown* (local weights `Dirichlet(1, …, 1)`, drawn as normalised exponentials) or
+ratings), *unknown* (local weights `Dirichlet(1, …, 1)`, drawn as normalised exponentials),
 *rating intervals* (each raw rating uniform on its interval, then normalised; a draw summing to
-zero is refused). Inputs are independent, except cells in a *shared draw*, which use one common
+zero is refused) or *ranking* (schema 7: a `Dirichlet(1, …, 1)` draw sorted in descending order and
+assigned to the stated order, best first, which is uniform on the ordered region and has the
+rank-order centroid `wⱼ = (1/k) Σᵢ₌ⱼᵏ 1/i` as its mean). Any varying group may hold children at
+the profile's local weight `ℓ`: they take no uniform, and the varying children's shares are
+multiplied by `1 − Σ ℓ`. Inputs are independent, except cells in a *shared draw*, which use one common
 uniform `U` through their own quantile functions (comonotone). A run varies the measurements, the
 weights, or both.
 

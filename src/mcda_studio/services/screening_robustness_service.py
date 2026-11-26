@@ -185,14 +185,24 @@ def _basis(project: Project, result: SmaaResult, saved: bool) -> str:
         names = {node.id: node.name for node in project.criteria}
         for group in model.groups:
             where = "the top level" if group.parent_id is None else names[group.parent_id]
+            kept = ""
+            if group.held:
+                held = ", ".join(names[c] for c in group.held)
+                kept = f", with {held} held at this profile's weight"
             if group.kind == "unknown":
                 varied.append(
-                    f"the weights at {where}, over every split, in place of this profile's"
+                    f"the weights at {where}, over every split, in place of this profile's{kept}"
+                )
+            elif group.kind == "ranking":
+                order = ", then ".join(names[c] for c in group.order)
+                varied.append(
+                    f"the weights at {where}, over every split that keeps the order {order}, in "
+                    f"place of this profile's{kept}"
                 )
             else:
                 varied.append(
                     f"the swing ratings at {where} within stated intervals, in place of this "
-                    "profile's"
+                    f"profile's{kept}"
                 )
     weights = "every weight" if result.run == "performance" or not model.groups else "other weights"
     fixed = [f"{weights} (this profile's)"]

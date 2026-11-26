@@ -173,6 +173,28 @@ level over the stated range?* It is not abstract "importance".
 the app asks you to review the related ratings. It never changes them for you. Details:
 [weighting and profiles](design/weighting-and-profiles.md).
 
+### Record the judgement (Judgement tab)
+
+**Judgement**, after Weights in Build, records how the viewed profile's ratings were given, so a
+weight comes with its provenance rather than as a bare number:
+
+1. **Who and how sure.** Enter who gave the judgement and when. Set **conviction**: how far the
+   ratings could reasonably move (high about ±15%, medium ±30%, low ±50%).
+2. **Rank each group.** *Rank …, starting from the swing ratings* takes the engine's suggested order;
+   move children with ↑ and ↓ until the order is the person's own. Add one reason per weight.
+3. **Optional AHP cross-check.** Answer the pairs the other way ("how many times more important?").
+4. **Read the checks.** The engine shows each child's swing weight, rank-order weight and AHP
+   weight, and flags an order the ratings contradict, inconsistent pairwise answers (consistency
+   ratio above 0.10), a swing-AHP gap above 0.10 and missing reasons. A branch rated 0, such as a
+   screened-only mandate, is never varied.
+5. **Use a proposal.** *Conviction* turns each rating into a band; *Ranking only* keeps the order and
+   sets magnitudes aside. *Compare decision confidence* runs SMAA-2 under the current uncertainty
+   and each proposal; *Use as the weight uncertainty* replaces the weight groups in Uncertainty
+   (undoable). Even low conviction is a fairly confident statement once ratings are normalised; if
+   only the order is sure, use the ranking.
+
+Details: [structured judgement](design/structured-judgement.md).
+
 ## 7. Preference profiles
 
 Use profiles for different decision makers or different judgement sets over the same tree.

@@ -16,7 +16,12 @@ from mcda_studio.domain.errors import ModelEditError, UnknownReferenceError
 from mcda_studio.domain.measurements import Measurement, Performance
 from mcda_studio.domain.outranking import PrometheeModel
 from mcda_studio.domain.pairwise import AhpModel, PairwiseJudgement
-from mcda_studio.domain.preferences import AnalysisConfiguration, Scenario, WeightProfile
+from mcda_studio.domain.preferences import (
+    AnalysisConfiguration,
+    Elicitation,
+    Scenario,
+    WeightProfile,
+)
 from mcda_studio.domain.project import Project
 from mcda_studio.domain.requirements import AnyRequirement
 from mcda_studio.domain.scales import Scale
@@ -149,6 +154,24 @@ def _prune_uncertainty(
     out.smaa.groups = [g for g in out.smaa.groups if g.parent_id not in criteria]
     for group in out.smaa.groups:
         group.intervals = {k: v for k, v in group.intervals.items() if k not in criteria}
+        group.order = [c for c in group.order if c not in criteria]
+        group.held = [c for c in group.held if c not in criteria]
+
+
+def _prune_elicitation(out: Project, criteria: AbstractSet[str]) -> None:
+    """A removed criterion leaves every elicitation record: its own group, its place in an
+    order, its pairwise answers and its reason. Nothing is ever added."""
+    for profile in out.weight_profiles:
+        record = profile.elicitation
+        if record is None:
+            continue
+        record.groups = [g for g in record.groups if g.parent_id not in criteria]
+        for group in record.groups:
+            group.order = [c for c in group.order if c not in criteria]
+            group.pairwise = [
+                j for j in group.pairwise if j.row not in criteria and j.column not in criteria
+            ]
+            group.reasons = {k: v for k, v in group.reasons.items() if k not in criteria}
 
 
 def _prune_judgements(
@@ -332,6 +355,7 @@ def remove_criterion(project: Project, crit_id: str) -> Project:
         }
     _prune_uncertainty(out, criteria=doomed)
     _prune_judgements(out, items=doomed, groups=doomed)
+    _prune_elicitation(out, doomed)
     if out.requirements is not None:  # requirements go with the leaves they test
         kept = [r for r in out.requirements if r.criterion_id not in doomed]
         out.requirements = kept or None
@@ -467,6 +491,19 @@ def duplicate_weight_profile(
     new_id = new_profile_id or _unique_id(_slug(name), _managed_profile_ids(project))
     clone = source.model_copy(deep=True, update={"id": new_id, "name": name})
     return add_weight_profile(project, clone)
+
+
+def set_elicitation(
+    project: Project, profile_id: str | None, elicitation: Elicitation | None
+) -> Project:
+    """Record (or with None, clear) how a profile's judgements were given. Its references are
+    checked by the elicitation check, so a draft record saves; ratings are never changed here."""
+    _profile(project, profile_id)
+    out = _copy(project)
+    _profile(out, profile_id).elicitation = (
+        None if elicitation is None else elicitation.model_copy(deep=True)
+    )
+    return _rebuild(out)
 
 
 def rename_weight_profile(project: Project, profile_id: str, name: str) -> Project:

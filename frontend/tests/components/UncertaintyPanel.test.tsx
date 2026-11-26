@@ -94,4 +94,30 @@ describe("the Uncertainty editor", () => {
     fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Remove uncertainty" }));
     expect(applied(apply)).toEqual([[{ op: "clear_smaa_model" }]]);
   });
+  it("states a ranking with a held child, and keeps a saved ranking when nothing changes", () => {
+    const { apply } = setup();
+    fireEvent.change(screen.getByLabelText("Weight uncertainty under Top level"), { target: { value: "ranking" } });
+    const order = () => within(screen.getByRole("list", { name: "Order under Top level" })).getAllByRole("listitem").map((li) => li.firstChild?.textContent);
+    expect(order()).toEqual(["Cost", "Looks"]);
+    fireEvent.click(screen.getByRole("button", { name: "Move Looks up under Top level" }));
+    expect(order()).toEqual(["Looks", "Cost"]);
+    fireEvent.click(screen.getByRole("button", { name: "Apply uncertainty" }));
+    expect(applied(apply)).toEqual([[{ op: "set_smaa_model", smaa: {
+      dependence: "independent", cells: [], shared_draws: [],
+      groups: [{ parent_id: null, kind: "ranking", intervals: {}, order: ["looks", "cost"] }],
+    } }]]);
+  });
+  it("holds a child at the profile's weight in a rating-interval group, with no interval for it", () => {
+    const { apply } = setup();
+    fireEvent.change(screen.getByLabelText("Weight uncertainty under Top level"), { target: { value: "rating_intervals" } });
+    fireEvent.click(screen.getByLabelText("Hold Looks at the profile’s weight"));
+    expect(screen.queryByLabelText("Lower rating for Looks")).toBeNull();
+    fireEvent.change(screen.getByLabelText("Lower rating for Cost"), { target: { value: "50" } });
+    fireEvent.change(screen.getByLabelText("Upper rating for Cost"), { target: { value: "100" } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply uncertainty" }));
+    expect(applied(apply)).toEqual([[{ op: "set_smaa_model", smaa: {
+      dependence: "independent", cells: [], shared_draws: [],
+      groups: [{ parent_id: null, kind: "rating_intervals", intervals: { cost: [50, 100] }, held: ["looks"] }],
+    } }]]);
+  });
 });
