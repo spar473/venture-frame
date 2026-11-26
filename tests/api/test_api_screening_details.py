@@ -15,7 +15,9 @@ STUDY = EXAMPLES / "nz_venture_screening"
 
 def test_details_equal_existing_engines_and_preserve_every_scored_leaf() -> None:
     project = repo.load(STUDY / "project.json")
-    dossier = EvidenceDossier.model_validate_json((STUDY / "evidence.json").read_text())
+    dossier = EvidenceDossier.model_validate_json(
+        (STUDY / "evidence.json").read_text(encoding="utf-8")
+    )
     before = project.model_dump_json()
     for profile in ("technical_ip", "commercial_traction"):
         for scenario in (None, "linear_market_size"):
@@ -110,7 +112,9 @@ def test_route_is_read_only_and_unavailable_is_honest(client: TestClient) -> Non
 
 def test_stale_dossier_cannot_supply_sources() -> None:
     project = repo.load(STUDY / "project.json")
-    dossier = EvidenceDossier.model_validate_json((STUDY / "evidence.json").read_text())
+    dossier = EvidenceDossier.model_validate_json(
+        (STUDY / "evidence.json").read_text(encoding="utf-8")
+    )
     dossier.project_fingerprint = "0" * 64
     response = screening_details(project, dossier=dossier, alternative_id="upstock")
     assert response.alternative is not None

@@ -164,7 +164,9 @@ def test_the_label_lists_and_smallest_change_follow_their_definitions():
 
 def test_dossier_reasons_are_judgement_disputed_outdated_and_missing_and_unreasoned_cells_stay():
     project = repo.load(STUDY / "project.json")
-    dossier = EvidenceDossier.model_validate_json((STUDY / "evidence.json").read_text())
+    dossier = EvidenceDossier.model_validate_json(
+        (STUDY / "evidence.json").read_text(encoding="utf-8")
+    )
     plain = impact.decision_impact(project)
     result = impact.decision_impact(project, dossier=dossier)
     assert [(c.alternative_id, c.criterion_id) for c in result.cells] == [
@@ -204,7 +206,9 @@ def test_dossier_reasons_are_judgement_disputed_outdated_and_missing_and_unreaso
 
 def test_a_dossier_for_another_revision_gives_no_reasons():
     project = repo.load(STUDY / "project.json")
-    dossier = EvidenceDossier.model_validate_json((STUDY / "evidence.json").read_text())
+    dossier = EvidenceDossier.model_validate_json(
+        (STUDY / "evidence.json").read_text(encoding="utf-8")
+    )
     stale = dossier.model_copy(update={"project_fingerprint": "0" * 64})
     assert all(c.reasons == [] for c in impact.decision_impact(project, dossier=stale).cells)
 
@@ -433,7 +437,9 @@ def test_a_value_exactly_on_a_class_boundary_takes_the_higher_class():
 
 def test_a_rejected_claim_leaves_the_cell_without_support():
     project = repo.load(STUDY / "project.json")
-    dossier = EvidenceDossier.model_validate_json((STUDY / "evidence.json").read_text())
+    dossier = EvidenceDossier.model_validate_json(
+        (STUDY / "evidence.json").read_text(encoding="utf-8")
+    )
     plain = impact.decision_impact(project, dossier=dossier)
     judged = next(c for c in plain.cells if "judgement_only" in c.reasons)
     cell_ids = (judged.alternative_id, judged.criterion_id)
@@ -451,7 +457,9 @@ def test_a_rejected_claim_leaves_the_cell_without_support():
 
 def test_a_dossier_with_two_accepted_claims_on_one_cell_gives_no_reasons():
     project = repo.load(STUDY / "project.json")
-    dossier = EvidenceDossier.model_validate_json((STUDY / "evidence.json").read_text())
+    dossier = EvidenceDossier.model_validate_json(
+        (STUDY / "evidence.json").read_text(encoding="utf-8")
+    )
     first = next(c for c in impact.decision_impact(project, dossier=dossier).cells if c.reasons)
     template = next(
         x

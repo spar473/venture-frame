@@ -16,7 +16,7 @@ ROOT = Path(__file__).parents[2]
 def test_inspect_review_export_reopen_is_stateless_and_matches_service(client, name, example):
     p = JsonProjectRepository().load(ROOT / f"examples/{example}/project.json")
     d = EvidenceDossier.model_validate_json(
-        (ROOT / f"examples/evidence_demo/{name}.json").read_text()
+        (ROOT / f"examples/evidence_demo/{name}.json").read_text(encoding="utf-8")
     )
     document = p.model_dump(mode="json")
     imported = client.post("/api/projects/import", json=document)

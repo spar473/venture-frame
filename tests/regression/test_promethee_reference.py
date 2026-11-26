@@ -218,6 +218,7 @@ def test_the_oracle_imports_nothing_from_mcda_studio() -> None:
         capture_output=True,
         text=True,
         check=True,
+        encoding="utf-8",
     )
     assert run.stdout.strip() == "[]"
 

@@ -273,7 +273,9 @@ what was actually run. A `windows-python312` job on `windows-latest` runs the Py
 frontend gate, a serve smoke, both distribution routes and the installed smoke over HTTP and the
 CLI; `byte-identity-across-platforms` then compares the Linux and Windows byte-identity
 manifests. Browser tests, the browser mode of the installed smoke and mutation checks run on Linux
-only.
+only. Both jobs run pytest with `-m "not slow"`. A `slow-tests` job runs the tests marked `slow`
+(`-m slow`) in full on Linux and on Windows, so that each job fits its time limit. Together, the
+two selections run the whole suite.
 
 ## Library ownership and recovery checks
 

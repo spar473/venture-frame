@@ -36,7 +36,11 @@ def server_pid(process):
         return process.pid
     query = f"(Get-CimInstance Win32_Process -Filter 'ParentProcessId={process.pid}').ProcessId"
     found = subprocess.run(
-        ["powershell", "-NoProfile", "-Command", query], capture_output=True, text=True, timeout=60
+        ["powershell", "-NoProfile", "-Command", query],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        encoding="utf-8",
     ).stdout.split()
     assert len(found) == 1, found
     return int(found[0])
@@ -62,7 +66,9 @@ def running(root, port=None):
         str(port),
         "--no-open",
     ]
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    process = subprocess.Popen(
+        command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8"
+    )
     url = f"http://127.0.0.1:{port}"
     try:
         for _ in range(200):
@@ -120,6 +126,7 @@ def test_independent_servers_and_cli_writers_respect_lifetime_owner(tmp_path):
             capture_output=True,
             text=True,
             timeout=10,
+            encoding="utf-8",
         )
         assert second.returncode == 1
         diagnostic = " ".join((second.stdout + second.stderr).split())
@@ -133,6 +140,7 @@ def test_independent_servers_and_cli_writers_respect_lifetime_owner(tmp_path):
             capture_output=True,
             text=True,
             timeout=10,
+            encoding="utf-8",
         )
         assert blocked.returncode == 1 and "owned by another process" in " ".join(
             blocked.stderr.split()
@@ -144,6 +152,7 @@ def test_independent_servers_and_cli_writers_respect_lifetime_owner(tmp_path):
             capture_output=True,
             text=True,
             timeout=10,
+            encoding="utf-8",
         )
         assert result.returncode == 0 and unrelated.exists()
         assert not (unrelated.parent / ".mcda-studio.lock").exists()
@@ -157,6 +166,7 @@ def test_independent_servers_and_cli_writers_respect_lifetime_owner(tmp_path):
         capture_output=True,
         text=True,
         timeout=10,
+        encoding="utf-8",
     )
     assert result.returncode == 0 and source.read_bytes() != before
 
@@ -246,7 +256,11 @@ def test_stopped_library_backup_and_fresh_location_recovery_drill(tmp_path):
 
 def mcda(*args):
     return subprocess.run(
-        [sys.executable, "-m", "mcda_studio", *args], capture_output=True, text=True, timeout=60
+        [sys.executable, "-m", "mcda_studio", *args],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        encoding="utf-8",
     )
 
 
