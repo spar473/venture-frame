@@ -70,6 +70,7 @@ pythonpath = ["tests"]
 addopts = "-ra"
 markers = [
     "regression: reproduces documented reference-study numbers",
+    "slow: long statistical checks (minutes); deselect with -m 'not slow'",
 ]
 
 [tool.ruff]

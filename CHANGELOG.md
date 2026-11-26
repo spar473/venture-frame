@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+### Calibration on synthetic data (deep dive 5)
+
+- `src/mcda_studio/calibration/`: an offline, domain-neutral module. It fits a censoring-aware
+  constant-hazard outcome model to a version 2 reference set, with a nested Dirichlet prior centred
+  on a profile's stated weights (κ moment-matched to the DD3 conviction bands: 555 / 136 / 47 on
+  case 2's top level). It uses its own NumPy sampler (adaptive random-walk Metropolis within Gibbs,
+  four chains, PCG64), rank-normalised split-R-hat and bulk ESS, and a fixed convergence gate
+  (R-hat < 1.01, ESS ≥ 400).
+- Only reviewed ratings count. `--include-proposed` is diagnostic only and says so. Missing is never
+  zero, and unknown follow-up is excluded under a stated missing-at-random assumption.
+- `mcda calibrate fit` writes a new opt-in sidecar, `weight-samples` version 1, and only for a
+  converged run. `mcda calibrate synthetic-check` plants weights and checks recovery. Neither the
+  API nor the interface imports the module.
+- Validated on synthetic data only: recovery improves with the number of cases, interval coverage,
+  simulation-based calibration, and a censoring-bias regression. Nothing is claimed about real
+  outcomes. Design: [calibration](docs/design/calibration.md). Proposal (not implemented):
+  [sampled weights in SMAA-2](docs/design/sampled-weights-in-smaa.md).
+- `examples/vee_bridge/convert.py` now writes its output as UTF-8, so it no longer fails on Windows
+  with a non-UTF-8 code page.
+
 ### Reference sets version 2 (proposed; needs the owner's approval)
 
 - A second `reference-cases` format with **observation-aware outcomes**: named outcome definitions

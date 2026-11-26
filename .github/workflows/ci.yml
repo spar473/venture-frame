@@ -11,7 +11,8 @@ jobs:
   linux-python312:
     runs-on: ubuntu-24.04
     # The job takes about 18-24 minutes (Python gate, every browser workflow, both distribution
-    # routes and the installed GUI); 25 minutes cancelled passing runs on slower runners.
+    # routes and the installed GUI); 25 minutes cancelled passing runs on slower runners. Tests
+    # marked `slow` run in the slow-tests job instead, on Linux and Windows.
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v7.0.1
@@ -31,7 +32,7 @@ jobs:
           npm --prefix frontend ci
       - name: Python and contracts
         run: |
-          python -m pytest -q
+          python -m pytest -q -m "not slow"
           ruff check src tests scripts hatch_build.py
           ruff format --check src tests scripts hatch_build.py
           mypy
@@ -94,7 +95,7 @@ jobs:
           npm --prefix frontend ci
       - name: Python and contracts
         run: |
-          python -m pytest -q
+          python -m pytest -q -m "not slow"
           ruff check src tests scripts hatch_build.py
           ruff format --check src tests scripts hatch_build.py
           mypy
@@ -139,6 +140,38 @@ jobs:
         with:
           name: windows-python312-evidence
           path: dist/
+
+  slow-tests:
+    # Tests marked `slow` (long statistical checks), split out of the two jobs above so each fits
+    # its time limit. They run in full on both platforms; nothing is skipped or loosened.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            utf8: ''
+          - os: windows-latest
+            utf8: '1'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    defaults:
+      run:
+        shell: bash
+    env:
+      # As in the windows-python312 job; empty (the platform default) on Linux.
+      PYTHONUTF8: ${{ matrix.utf8 }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Install pinned build and development tools
+        run: |
+          python -m pip install --require-hashes -r requirements/build-py312.txt -r requirements/dev-py312.txt
+          python -m pip install --no-deps --no-build-isolation -e '.[dev]'
+          python -m pip check
+      - name: Slow tests
+        run: python -m pytest -q -m slow
 
   byte-identity-across-platforms:
     # Every historical output must be the same bytes on Linux and on native Windows.
