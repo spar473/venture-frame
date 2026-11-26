@@ -7716,8 +7716,11 @@
           "type": "array"
         },
         "algorithm": {
-          "const": "smaa2.pcg64.v1",
           "default": "smaa2.pcg64.v1",
+          "enum": [
+            "smaa2.pcg64.v1",
+            "smaa2.pcg64.v1+samples"
+          ],
           "title": "Algorithm",
           "type": "string"
         },
@@ -7885,6 +7888,17 @@
             }
           ],
           "title": "Weight Profile Id"
+        },
+        "weight_samples": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WeightSamplesUse"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
@@ -8508,6 +8522,84 @@
         "name"
       ],
       "title": "WeightProfile",
+      "type": "object"
+    },
+    "WeightSamplesUse": {
+      "additionalProperties": false,
+      "description": "Where a run's weights came from when SMAA-2 read a weight-samples sidecar.",
+      "properties": {
+        "basis": {
+          "enum": [
+            "prior",
+            "calibrated"
+          ],
+          "title": "Basis",
+          "type": "string"
+        },
+        "index_method": {
+          "enum": [
+            "without replacement",
+            "with replacement"
+          ],
+          "title": "Index Method",
+          "type": "string"
+        },
+        "index_stream": {
+          "title": "Index Stream",
+          "type": "string"
+        },
+        "interval_n": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Interval N"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "sha256": {
+          "title": "Sha256",
+          "type": "string"
+        },
+        "stored": {
+          "title": "Stored",
+          "type": "integer"
+        },
+        "used": {
+          "title": "Used",
+          "type": "integer"
+        },
+        "weight_profile_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+          "title": "Weight Profile Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sha256",
+        "basis",
+        "weight_profile_id",
+        "stored",
+        "used",
+        "index_method",
+        "index_stream"
+      ],
+      "title": "WeightSamplesUse",
       "type": "object"
     }
   },

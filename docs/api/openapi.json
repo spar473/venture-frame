@@ -5668,6 +5668,74 @@
         "title": "Crossover",
         "type": "object"
       },
+      "DataSpec": {
+        "additionalProperties": false,
+        "properties": {
+          "compared_criteria": {
+            "items": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+              "type": "string"
+            },
+            "title": "Compared Criteria",
+            "type": "array"
+          },
+          "entering_cases": {
+            "title": "Entering Cases",
+            "type": "integer"
+          },
+          "excluded": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Excluded",
+            "type": "object"
+          },
+          "insufficient": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Insufficient",
+            "type": "array"
+          },
+          "min_rated_fraction": {
+            "title": "Min Rated Fraction",
+            "type": "string"
+          },
+          "outcome_definition": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+            "title": "Outcome Definition",
+            "type": "string"
+          },
+          "rated_cases": {
+            "patternProperties": {
+              "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$": {
+                "type": "integer"
+              }
+            },
+            "title": "Rated Cases",
+            "type": "object"
+          },
+          "statuses": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Statuses",
+            "type": "object"
+          }
+        },
+        "required": [
+          "outcome_definition",
+          "min_rated_fraction",
+          "compared_criteria",
+          "entering_cases",
+          "excluded",
+          "statuses",
+          "rated_cases",
+          "insufficient"
+        ],
+        "title": "DataSpec",
+        "type": "object"
+      },
       "DecisionDetails-Input": {
         "additionalProperties": false,
         "description": "What the decision owner states for a version-2 record. ``alternatives_considered`` is a\ndeclaration only: every recorded analysis still uses all of the project's alternatives.",
@@ -6046,6 +6114,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/ExternalProposals-Input"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "weight_samples": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WeightSamples"
               },
               {
                 "type": "null"
@@ -7029,6 +7107,49 @@
         "title": "DerivedPreviewRequest",
         "type": "object"
       },
+      "DiagnosticsSpec": {
+        "additionalProperties": false,
+        "properties": {
+          "acceptance": {
+            "additionalProperties": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "title": "Acceptance",
+            "type": "object"
+          },
+          "converged": {
+            "title": "Converged",
+            "type": "boolean"
+          },
+          "ess_min": {
+            "title": "Ess Min",
+            "type": "number"
+          },
+          "quantities": {
+            "items": {
+              "$ref": "#/components/schemas/QuantityDiagnosticsSpec"
+            },
+            "title": "Quantities",
+            "type": "array"
+          },
+          "rhat_max": {
+            "title": "Rhat Max",
+            "type": "number"
+          }
+        },
+        "required": [
+          "converged",
+          "rhat_max",
+          "ess_min",
+          "quantities",
+          "acceptance"
+        ],
+        "title": "DiagnosticsSpec",
+        "type": "object"
+      },
       "DirectRatingValueFunction-Input": {
         "additionalProperties": false,
         "description": "The measurement *is* a rating on [min_rating, max_rating], rescaled linearly to [0, 1].",
@@ -7833,6 +7954,16 @@
           },
           "project": {
             "$ref": "#/components/schemas/Project-Input"
+          },
+          "weight_samples": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WeightSamples"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -9825,6 +9956,42 @@
         "title": "FeasibilitySnapshot",
         "type": "object"
       },
+      "FixedGroupPrior": {
+        "additionalProperties": false,
+        "properties": {
+          "children": {
+            "items": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+              "type": "string"
+            },
+            "title": "Children",
+            "type": "array"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "parent_id",
+          "children",
+          "reason"
+        ],
+        "title": "FixedGroupPrior",
+        "type": "object"
+      },
       "FormulaCheck": {
         "additionalProperties": false,
         "description": "The formula evaluated as if it alone were accepted; shown before its review.",
@@ -10236,6 +10403,69 @@
         "title": "GroupElicitation",
         "type": "object"
       },
+      "GroupPrior": {
+        "additionalProperties": false,
+        "properties": {
+          "centre": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Centre",
+            "type": "array"
+          },
+          "children": {
+            "items": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+              "type": "string"
+            },
+            "title": "Children",
+            "type": "array"
+          },
+          "held": {
+            "default": [],
+            "items": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+              "type": "string"
+            },
+            "title": "Held",
+            "type": "array"
+          },
+          "kappa": {
+            "title": "Kappa",
+            "type": "number"
+          },
+          "kappa_method": {
+            "title": "Kappa Method",
+            "type": "string"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "share": {
+            "title": "Share",
+            "type": "number"
+          }
+        },
+        "required": [
+          "parent_id",
+          "children",
+          "centre",
+          "kappa",
+          "kappa_method",
+          "share"
+        ],
+        "title": "GroupPrior",
+        "type": "object"
+      },
       "GroupUncertainty-Input": {
         "additionalProperties": false,
         "description": "Weight uncertainty in one sibling group; a group without an entry keeps its ratings.\n\n``unknown``: local weights uniform on the group's simplex, Dirichlet(1, ..., 1).\n``rating_intervals``: each child's raw swing rating uniform on its stated [lower, upper], then\nnormalised within the group.\n``ranking`` (schema 7): local weights uniform on the part of the simplex that respects\n``order`` (best first): every split in which no child outweighs one ranked above it.\n\n``held`` (schema 7): children held at the profile's local weight in every draw; the varying\nchildren share the rest. It lets a group vary without giving weight to a child the profile\ndeliberately rates 0, such as a screened-only mandate. It needs no interval and no place in\n``order``.",
@@ -10617,6 +10847,38 @@
           "path"
         ],
         "title": "Issue",
+        "type": "object"
+      },
+      "KappaUsed": {
+        "additionalProperties": false,
+        "properties": {
+          "kappa": {
+            "title": "Kappa",
+            "type": "number"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          }
+        },
+        "required": [
+          "parent_id",
+          "name",
+          "kappa"
+        ],
+        "title": "KappaUsed",
         "type": "object"
       },
       "LabelEffect": {
@@ -14049,6 +14311,130 @@
         "title": "PredecessorSummary",
         "type": "object"
       },
+      "PriorSpec": {
+        "additionalProperties": false,
+        "properties": {
+          "alpha_mean": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alpha Mean"
+          },
+          "alpha_sd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alpha Sd"
+          },
+          "base_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Rate"
+          },
+          "centre_global": {
+            "patternProperties": {
+              "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$": {
+                "type": "number"
+              }
+            },
+            "title": "Centre Global",
+            "type": "object"
+          },
+          "conviction": {
+            "anyOf": [
+              {
+                "enum": [
+                  "high",
+                  "medium",
+                  "low"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conviction"
+          },
+          "conviction_source": {
+            "title": "Conviction Source",
+            "type": "string"
+          },
+          "fixed_groups": {
+            "items": {
+              "$ref": "#/components/schemas/FixedGroupPrior"
+            },
+            "title": "Fixed Groups",
+            "type": "array"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/GroupPrior"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "half_width": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Half Width"
+          },
+          "log_beta_mean": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Log Beta Mean"
+          },
+          "log_beta_sd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Log Beta Sd"
+          }
+        },
+        "required": [
+          "conviction",
+          "conviction_source",
+          "half_width",
+          "groups",
+          "fixed_groups",
+          "centre_global"
+        ],
+        "title": "PriorSpec",
+        "type": "object"
+      },
       "ProfileComparison": {
         "additionalProperties": false,
         "properties": {
@@ -15849,6 +16235,13 @@
       "ProposalPreview": {
         "additionalProperties": false,
         "properties": {
+          "kappas": {
+            "items": {
+              "$ref": "#/components/schemas/KappaUsed"
+            },
+            "title": "Kappas",
+            "type": "array"
+          },
           "label": {
             "title": "Label",
             "type": "string"
@@ -15857,7 +16250,8 @@
             "enum": [
               "current",
               "conviction",
-              "ranking"
+              "ranking",
+              "dirichlet"
             ],
             "title": "Mode",
             "type": "string"
@@ -18400,6 +18794,44 @@
         "title": "QuantityCheck",
         "type": "object"
       },
+      "QuantityDiagnosticsSpec": {
+        "additionalProperties": false,
+        "properties": {
+          "ess_bulk": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ess Bulk"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "rhat": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rhat"
+          }
+        },
+        "required": [
+          "name",
+          "rhat",
+          "ess_bulk"
+        ],
+        "title": "QuantityDiagnosticsSpec",
+        "type": "object"
+      },
       "QuantityRange-Input": {
         "additionalProperties": false,
         "properties": {
@@ -18992,6 +19424,16 @@
           },
           "reference_cases": {
             "$ref": "#/components/schemas/ReferenceCases"
+          },
+          "weight_samples": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WeightSamples"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "weighting": {
             "default": "equal",
@@ -20194,6 +20636,50 @@
         "title": "SampledRange",
         "type": "object"
       },
+      "SamplerSpec": {
+        "additionalProperties": false,
+        "properties": {
+          "algorithm": {
+            "title": "Algorithm",
+            "type": "string"
+          },
+          "chains": {
+            "title": "Chains",
+            "type": "integer"
+          },
+          "draws": {
+            "title": "Draws",
+            "type": "integer"
+          },
+          "numpy_version": {
+            "title": "Numpy Version",
+            "type": "string"
+          },
+          "python_version": {
+            "title": "Python Version",
+            "type": "string"
+          },
+          "samples": {
+            "title": "Samples",
+            "type": "integer"
+          },
+          "warmup": {
+            "title": "Warmup",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "algorithm",
+          "chains",
+          "warmup",
+          "draws",
+          "samples",
+          "numpy_version",
+          "python_version"
+        ],
+        "title": "SamplerSpec",
+        "type": "object"
+      },
       "Scale-Input": {
         "additionalProperties": false,
         "properties": {
@@ -20915,6 +21401,16 @@
           },
           "project": {
             "$ref": "#/components/schemas/Project-Input"
+          },
+          "weight_samples": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WeightSamples"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -22801,8 +23297,11 @@
             "type": "array"
           },
           "algorithm": {
-            "const": "smaa2.pcg64.v1",
             "default": "smaa2.pcg64.v1",
+            "enum": [
+              "smaa2.pcg64.v1",
+              "smaa2.pcg64.v1+samples"
+            ],
             "title": "Algorithm",
             "type": "string"
           },
@@ -22970,6 +23469,16 @@
               }
             ],
             "title": "Weight Profile Id"
+          },
+          "weight_samples": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WeightSamplesUse"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -26113,6 +26622,16 @@
             "minimum": 2.0,
             "title": "Sample Count",
             "type": "integer"
+          },
+          "weight_samples": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WeightSamples"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -26357,6 +26876,285 @@
           "judgements"
         ],
         "title": "WeightProfile",
+        "type": "object"
+      },
+      "WeightSamples": {
+        "additionalProperties": false,
+        "properties": {
+          "alpha": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alpha"
+          },
+          "basis": {
+            "default": "calibrated",
+            "enum": [
+              "prior",
+              "calibrated"
+            ],
+            "title": "Basis",
+            "type": "string"
+          },
+          "beta": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Beta"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DataSpec"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "diagnostic": {
+            "title": "Diagnostic",
+            "type": "boolean"
+          },
+          "diagnostics": {
+            "$ref": "#/components/schemas/DiagnosticsSpec"
+          },
+          "kind": {
+            "const": "weight-samples",
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "leaf_ids": {
+            "items": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Leaf Ids",
+            "type": "array"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "prior": {
+            "$ref": "#/components/schemas/PriorSpec"
+          },
+          "project_fingerprint": {
+            "maxLength": 64,
+            "minLength": 64,
+            "title": "Project Fingerprint",
+            "type": "string"
+          },
+          "project_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "reference_set_digest_basis": {
+            "anyOf": [
+              {
+                "enum": [
+                  "file bytes",
+                  "canonical JSON"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Set Digest Basis"
+          },
+          "reference_set_id": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Set Id"
+          },
+          "reference_set_sha256": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Set Sha256"
+          },
+          "review_states": {
+            "items": {
+              "enum": [
+                "proposed",
+                "reviewed"
+              ],
+              "type": "string"
+            },
+            "title": "Review States",
+            "type": "array"
+          },
+          "sampler": {
+            "$ref": "#/components/schemas/SamplerSpec"
+          },
+          "samples": {
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "minItems": 1,
+            "title": "Samples",
+            "type": "array"
+          },
+          "seed": {
+            "minimum": 0.0,
+            "title": "Seed",
+            "type": "integer"
+          },
+          "usable": {
+            "title": "Usable",
+            "type": "boolean"
+          },
+          "version": {
+            "const": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "weight_profile_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+            "title": "Weight Profile Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "version",
+          "project_id",
+          "project_fingerprint",
+          "weight_profile_id",
+          "diagnostic",
+          "usable",
+          "review_states",
+          "prior",
+          "seed",
+          "sampler",
+          "diagnostics",
+          "leaf_ids",
+          "samples",
+          "label",
+          "limitations"
+        ],
+        "title": "WeightSamples",
+        "type": "object"
+      },
+      "WeightSamplesUse": {
+        "additionalProperties": false,
+        "description": "Where a run's weights came from when SMAA-2 read a weight-samples sidecar.",
+        "properties": {
+          "basis": {
+            "enum": [
+              "prior",
+              "calibrated"
+            ],
+            "title": "Basis",
+            "type": "string"
+          },
+          "index_method": {
+            "enum": [
+              "without replacement",
+              "with replacement"
+            ],
+            "title": "Index Method",
+            "type": "string"
+          },
+          "index_stream": {
+            "title": "Index Stream",
+            "type": "string"
+          },
+          "interval_n": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interval N"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          },
+          "stored": {
+            "title": "Stored",
+            "type": "integer"
+          },
+          "used": {
+            "title": "Used",
+            "type": "integer"
+          },
+          "weight_profile_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+            "title": "Weight Profile Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sha256",
+          "basis",
+          "weight_profile_id",
+          "stored",
+          "used",
+          "index_method",
+          "index_stream",
+          "interval_n",
+          "note"
+        ],
+        "title": "WeightSamplesUse",
         "type": "object"
       },
       "WinnerChange": {

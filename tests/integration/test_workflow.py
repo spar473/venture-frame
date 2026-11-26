@@ -106,9 +106,10 @@ def test_fresh_process_reproduces_identical_results(tmp_path: Path) -> None:
         text=True,
         cwd=tmp_path,
         check=False,
+        encoding="utf-8",
     )
     assert proc.returncode == 0, proc.stderr
-    assert json.loads(out.read_text()) == json.loads(here.model_dump_json())
+    assert json.loads(out.read_text(encoding="utf-8")) == json.loads(here.model_dump_json())
 
 
 def test_cli_builds_a_model_from_scratch(tmp_path: Path) -> None:
@@ -147,7 +148,7 @@ def test_cli_builds_a_model_from_scratch(tmp_path: Path) -> None:
     assert "valid" in run("validate", f)
     out = str(tmp_path / "r.json")
     table = run("evaluate", f, "-o", out)
-    assert "Blue" in table and json.loads(Path(out).read_text())["ranking"]
+    assert "Blue" in table and json.loads(Path(out).read_text(encoding="utf-8"))["ranking"]
     assert "speed" in run("sensitivity", f, "--criterion", "speed")
     assert "looks" in run("sensitivity", f, "--all")
     run("sensitivity", f, ok=False)  # needs --criterion or --all

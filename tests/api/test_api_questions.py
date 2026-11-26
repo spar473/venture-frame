@@ -58,7 +58,7 @@ def test_questions_route_keeps_context_and_missing_measurements(client: TestClie
 
 def test_questions_route_reports_claims_without_accepting_them(client: TestClient) -> None:
     p = dump(repo.load(EXAMPLES / "nz_deeptech_vc" / "project.json"))
-    dossier = json.loads((EXAMPLES / "evidence_demo" / "vc.json").read_text())
+    dossier = json.loads((EXAMPLES / "evidence_demo" / "vc.json").read_text(encoding="utf-8"))
     response = client.post("/api/open-questions", json={"project": p, "dossier": dossier})
     assert response.status_code == 200
     body = response.json()
@@ -73,7 +73,7 @@ def test_questions_route_reports_claims_without_accepting_them(client: TestClien
 
 def test_reviewed_range_exposes_contacts_and_engine_witnesses(client: TestClient) -> None:
     p = dump(repo.load(EXAMPLES / "supplier_qualification" / "project.json"))
-    dossier = json.loads((EXAMPLES / "evidence_demo" / "supplier.json").read_text())
+    dossier = json.loads((EXAMPLES / "evidence_demo" / "supplier.json").read_text(encoding="utf-8"))
     dossier["claims"][0].update(value=42, uncertainty_lower=20, uncertainty_upper=60)
     response = client.post("/api/open-questions", json={"project": p, "dossier": dossier})
     assert response.status_code == 200

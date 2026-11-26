@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### The true conviction prior and samples in SMAA-2 (schema 8)
+
+- **The conviction prior.** `mcda calibrate prior` draws a profile's weights from Dirichlet(κ·w0)
+  per sibling group, with κ moment-matched to the DD3 conviction (555 / 136 / 47 on case 2's top
+  level) or stated. It writes a `weight-samples` sidecar with the new `basis: "prior"`.
+- **SMAA-2's `samples` weight source.** The new parameters `weight_source`, `weight_samples_sha256`
+  and `resample` let a run read its weights from a sidecar.
+  - S ≤ N uses distinct vectors; S > N is allowed only with `resample`, and every output says so.
+  - Every refusal has a code; the result records the source.
+  - A saved samples configuration is schema 8. Every other project keeps its version and bytes.
+  - `mcda evaluate --weight-samples`; `POST /api/evaluate` takes `weight_samples`.
+- **The Judgement tab.** The decision-confidence comparison gains a true-conviction column with
+  the κ used, and a "Weight uncertainty" choice.
+- **Byte identity.** All 969 existing outputs are byte-identical. Design:
+  [sampled weights in SMAA-2](docs/design/sampled-weights-in-smaa.md).
+
 ### Reference rating (deep dive 6)
 
 - A new opt-in sidecar, `rating-proposals` version 1: proposed labels for reference cases, each

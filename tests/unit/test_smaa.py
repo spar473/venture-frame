@@ -425,10 +425,10 @@ def test_oversized_requests_are_refused() -> None:
 def test_stated_uncertainty_makes_version_3_and_clearing_restores_the_bytes(tmp_path: Path) -> None:
     original = repo.load(SUPPLIER)
     project = stated(original, groups=[UNKNOWN_TOP])
-    raw = json.loads(repo.save(project, tmp_path / "p.json").read_text())
+    raw = json.loads(repo.save(project, tmp_path / "p.json").read_text(encoding="utf-8"))
     assert raw["schema_version"] == 3 and raw["smaa"]["groups"][0]["kind"] == "unknown"
     assert repo.load(tmp_path / "p.json") == project
-    assert to_json_text(ps.clear_smaa_model(project)) == SUPPLIER.read_text()
+    assert to_json_text(ps.clear_smaa_model(project)) == SUPPLIER.read_text(encoding="utf-8")
     raw["schema_version"] = 2
     with pytest.raises(ProjectLoadError, match="schema version 2 cannot contain 'smaa'"):
         repo.from_dict(raw)

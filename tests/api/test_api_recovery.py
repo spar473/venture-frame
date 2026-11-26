@@ -23,10 +23,10 @@ def test_unreadable_entry_visible_without_mutation(client, store_dir):
     trash = store_dir / ".trash"
     trash.mkdir(parents=True)
     entry = trash / "bad.20261026T000000000000Z.json"
-    entry.write_text("malformed")
+    entry.write_text("malformed", encoding="utf-8")
     rows = client.get("/api/trash").json()
     assert not rows[0]["readable"] and rows[0]["error"]
     response = client.post(f"/api/trash/{entry.name}/restore", json={})
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "TRASH_ENTRY_UNREADABLE"
-    assert entry.read_text() == "malformed"
+    assert entry.read_text(encoding="utf-8") == "malformed"

@@ -46,7 +46,7 @@ verification records kept in the private development repository; those are not i
 - [Reference cases](design/reference-cases.md)
 - [Reference rating: reviewed ratings for reference cases](design/reference-rating.md)
 - [Results, dominance and reproducible exports](design/results-and-exports.md)
-- [Sampled weights in SMAA-2 (proposal)](design/sampled-weights-in-smaa.md)
+- [Sampled weights in SMAA-2: the conviction prior and the samples weight source](design/sampled-weights-in-smaa.md)
 - [Scenarios and comparison](design/scenarios.md)
 - [Screening report export (share-readiness)](design/screening-report.md)
 - [Screening summary: one row per alternative at the top of Results](design/screening-summary.md)

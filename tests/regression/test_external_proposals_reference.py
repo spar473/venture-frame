@@ -19,10 +19,14 @@ DEMO = ROOT / "examples/external_proposals"
 @pytest.mark.parametrize("name", ["screening", "supplier"])
 def test_invented_demos_match_oracle_interchange_and_reproducible_history(name, tmp_path):
     project = JsonProjectRepository().load(DEMO / f"{name}-project.json")
-    intake = ProposalIntake.model_validate_json((DEMO / f"{name}-intake.json").read_text())
-    workspace = ExternalProposals.model_validate_json((DEMO / f"{name}-workspace.json").read_text())
+    intake = ProposalIntake.model_validate_json(
+        (DEMO / f"{name}-intake.json").read_text(encoding="utf-8")
+    )
+    workspace = ExternalProposals.model_validate_json(
+        (DEMO / f"{name}-workspace.json").read_text(encoding="utf-8")
+    )
     bundle = svc.ProposalCompilation.model_validate_json(
-        (DEMO / f"{name}-compilation.json").read_text()
+        (DEMO / f"{name}-compilation.json").read_text(encoding="utf-8")
     )
     raw = workspace.model_dump(mode="json")
     assert len(reviewed_cells(raw)) == 2
@@ -35,9 +39,9 @@ def test_invented_demos_match_oracle_interchange_and_reproducible_history(name, 
     assert len([r for r in inspected.rows if r.review is None]) == 2
     assert imports.parse(project, intake.model_dump_json()) == imports.parse(
         project,
-        (DEMO / f"{name}-proposals.csv").read_text(),
+        (DEMO / f"{name}-proposals.csv").read_text(encoding="utf-8"),
         "csv",
-        (DEMO / f"{name}-registries.json").read_text(),
+        (DEMO / f"{name}-registries.json").read_text(encoding="utf-8"),
     )
     original = {f.name: f.read_bytes() for f in DEMO.iterdir() if f.suffix in {".json", ".csv"}}
     script = runpy.run_path(str(DEMO / "build.py"))
@@ -48,13 +52,13 @@ def test_invented_demos_match_oracle_interchange_and_reproducible_history(name, 
         for filename, data in original.items()
         if filename.startswith(name + "-")
     )
-    assert to_json_text(project) == (DEMO / f"{name}-project.json").read_text()
+    assert to_json_text(project) == (DEMO / f"{name}-project.json").read_text(encoding="utf-8")
 
 
 def test_published_proposal_schemas_match_models_and_old_contract_is_not_rewritten():
     script = runpy.run_path(str(ROOT / "scripts/export_proposal_schemas.py"))
     for name, model in script["MODELS"].items():
-        actual = json.loads((ROOT / "docs/schemas" / name).read_text())
+        actual = json.loads((ROOT / "docs/schemas" / name).read_text(encoding="utf-8"))
         assert actual == {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             **model.model_json_schema(mode="validation"),
@@ -64,4 +68,4 @@ def test_published_proposal_schemas_match_models_and_old_contract_is_not_rewritt
 def test_component_contract_snapshots_match_python():
     script = runpy.run_path(str(ROOT / "scripts/export_proposal_test_fixtures.py"))
     for name, text in script["texts"]().items():
-        assert (ROOT / "frontend/tests/fixtures" / name).read_text() == text
+        assert (ROOT / "frontend/tests/fixtures" / name).read_text(encoding="utf-8") == text

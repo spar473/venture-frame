@@ -18,7 +18,7 @@ ROOT = Path(__file__).parents[2]
 def inputs():
     p = JsonProjectRepository().load(ROOT / "examples/supplier_qualification/project.json")
     d = EvidenceDossier.model_validate_json(
-        (ROOT / "examples/evidence_demo/supplier.json").read_text()
+        (ROOT / "examples/evidence_demo/supplier.json").read_text(encoding="utf-8")
     )
     return p, d
 
@@ -47,8 +47,10 @@ def test_review_append_replay_reopen_and_cli_compatible_compilation(tmp_path):
     assert proposed.dossier.claims[1].review.status == "rejected"
     assert proposed.preview.conflicting_cells == []
     path = tmp_path / "workspace.json"
-    path.write_text(proposed.workspace.model_dump_json())
-    reopened = svc.inspect(p, EvidenceWorkspace.model_validate_json(path.read_text()))
+    path.write_text(proposed.workspace.model_dump_json(), encoding="utf-8")
+    reopened = svc.inspect(
+        p, EvidenceWorkspace.model_validate_json(path.read_text(encoding="utf-8"))
+    )
     assert reopened == proposed
     corrected = svc.propose_review(
         p,

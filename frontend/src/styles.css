@@ -128,6 +128,8 @@ textarea { resize: vertical; }
 table.grid { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); }
 table.grid th, table.grid td { padding: 5px 8px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
 table.grid thead th { background: var(--surface-2); font-weight: 600; border-bottom: 1px solid var(--border-strong); white-space: nowrap; }
+table.grid thead th.chosen { box-shadow: inset 0 -3px 0 var(--accent); }
+.weight-uncertainty-choice label { margin-right: 1rem; }
 table.grid tbody th[scope="row"] { font-weight: 500; }
 table.grid .num { text-align: right; font-variant-numeric: tabular-nums; }
 table.grid .actions { white-space: nowrap; text-align: right; }

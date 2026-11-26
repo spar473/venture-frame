@@ -111,9 +111,9 @@ def test_cli_import_review_confirmation_compile_verify_and_exclusive_output(tmp_
             "bundle.json",
         )
     ]
-    project.write_text(to_json_text(p))
-    source.write_text(intake.model_dump_json())
-    events_file.write_text(json.dumps([event().model_dump(mode="json")]))
+    project.write_text(to_json_text(p), encoding="utf-8")
+    source.write_text(intake.model_dump_json(), encoding="utf-8")
+    events_file.write_text(json.dumps([event().model_dump(mode="json")]), encoding="utf-8")
     runner = CliRunner()
     result = runner.invoke(
         app, ["proposals", "import", str(project), str(source), "--output", str(workspace_file)]
@@ -139,7 +139,7 @@ def test_cli_import_review_confirmation_compile_verify_and_exclusive_output(tmp_
     assert result.exit_code == 0, result.output
     from mcda_studio.domain.external_proposals import ExternalProposals
 
-    reviewed = ExternalProposals.model_validate_json(reviewed_file.read_text())
+    reviewed = ExternalProposals.model_validate_json(reviewed_file.read_text(encoding="utf-8"))
     current = svc.inspect(p, reviewed)
     command = [
         "proposals",
@@ -155,8 +155,10 @@ def test_cli_import_review_confirmation_compile_verify_and_exclusive_output(tmp_
     ]
     result = runner.invoke(app, command)
     assert result.exit_code == 0, result.output
-    assert json.loads(bundle_file.read_text()) == compile_(p, reviewed).model_dump(mode="json")
+    assert json.loads(bundle_file.read_text(encoding="utf-8")) == compile_(p, reviewed).model_dump(
+        mode="json"
+    )
     assert runner.invoke(app, ["proposals", "verify", str(bundle_file)]).exit_code == 0
     before = bundle_file.read_bytes()
     assert runner.invoke(app, command).exit_code != 0 and bundle_file.read_bytes() == before
-    assert project.read_text() == to_json_text(p)
+    assert project.read_text(encoding="utf-8") == to_json_text(p)

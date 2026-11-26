@@ -30,7 +30,7 @@ def supplier():
 def evidence_bundle(p=None):
     p = p or supplier()
     d = EvidenceDossier.model_validate_json(
-        (ROOT / "examples/evidence_demo/supplier.json").read_text()
+        (ROOT / "examples/evidence_demo/supplier.json").read_text(encoding="utf-8")
     )
     current = workspaces.inspect(p, d)
     review = Review(status="rejected", reviewer="Analyst", reviewed_at=WHEN)
@@ -116,8 +116,8 @@ def test_record_traces_evidence_and_reopens(tmp_path):
     assert apex.artifact_digest == bundle.digest
     assert traced[("brightline", "unit_price")].origin == "entered"
     path = tmp_path / "record.json"
-    path.write_text(record.model_dump_json())
-    reopened = svc.DecisionRecordV2.model_validate_json(path.read_text())
+    path.write_text(record.model_dump_json(), encoding="utf-8")
+    reopened = svc.DecisionRecordV2.model_validate_json(path.read_text(encoding="utf-8"))
     assert svc.verify(reopened) == record
     assert svc.inspect(project, reopened).current_project_matches
 

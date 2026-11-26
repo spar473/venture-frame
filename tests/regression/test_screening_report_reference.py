@@ -40,7 +40,9 @@ repo = JsonProjectRepository()
 
 def study():
     project = repo.load(STUDY / "project.json")
-    dossier = EvidenceDossier.model_validate_json((STUDY / "evidence.json").read_text())
+    dossier = EvidenceDossier.model_validate_json(
+        (STUDY / "evidence.json").read_text(encoding="utf-8")
+    )
     return project, dossier
 
 

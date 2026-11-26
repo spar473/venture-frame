@@ -195,15 +195,40 @@ function Proposals({ check, busy, apply }: { check: ElicitationCheck; busy: bool
   </section>;
 }
 
+type PreviewMode = ElicitationPreview["previews"][number]["mode"];
+const WEIGHT_CHOICES: { mode: PreviewMode; label: string }[] = [
+  { mode: "conviction", label: "Conviction bands" },
+  { mode: "ranking", label: "Ranking only" },
+  { mode: "dirichlet", label: "True conviction (Dirichlet κ)" },
+];
+
 function PreviewTable({ preview }: { preview: ElicitationPreview }) {
+  const offered = WEIGHT_CHOICES.filter((c) => preview.previews.some((p) => p.mode === c.mode));
+  const [chosen, setChosen] = useState<PreviewMode | null>(null);
+  const selected = chosen ?? offered[0]?.mode ?? null;
   const available = preview.previews.filter((p) => p.robustness.available);
+  const unavailable = preview.previews.filter((p) => !p.robustness.available);
   const first = available[0]?.robustness;
-  if (!first) return <p>{preview.previews[0]?.robustness.reason ?? "Decision confidence is unavailable."}</p>;
+  const description = preview.previews.find((p) => p.mode === selected);
+  const dirichlet = preview.previews.find((p) => p.mode === "dirichlet");
+  const choice = offered.length > 0 && <fieldset className="weight-uncertainty-choice" aria-label="Weight uncertainty">
+    <legend>Weight uncertainty</legend>
+    {offered.map((c) => <label key={c.mode}><input type="radio" name="weight-uncertainty" value={c.mode}
+      checked={selected === c.mode} onChange={() => setChosen(c.mode)}/> {c.label}</label>)}
+    {description && <p className="small" aria-label="Chosen weight uncertainty">{description.label}. {description.robustness.basis}</p>}
+    {selected === "dirichlet" && dirichlet && (dirichlet.kappas ?? []).length > 0 &&
+      <p className="small" aria-label="Concentration used">κ used: {(dirichlet.kappas ?? []).map((k) => `${k.name} ${k.kappa}`).join(", ")}.
+        Each sibling group’s weights are drawn from a Dirichlet around this profile’s ratings, with κ matched to the conviction.</p>}
+  </fieldset>;
+  if (!first) return <>{choice}<p>{unavailable[0]?.robustness.reason ?? preview.previews[0]?.robustness.reason ?? "Decision confidence is unavailable."}</p></>;
   const best = first.rows[0]?.classes[0]?.name;
   return <>
+    {choice}
+    {unavailable.map((p) => <p key={p.mode} role="note">{p.label}: {p.robustness.reason}</p>)}
     <div className="table-scroll" tabIndex={0}><table className="grid compact" aria-label="Decision confidence by proposal">
       <thead>
-        <tr><th scope="col" rowSpan={2}>Alternative</th>{available.map((p) => <th key={p.mode} scope="colgroup" colSpan={best ? 2 : 1}>{p.label}</th>)}</tr>
+        <tr><th scope="col" rowSpan={2}>Alternative</th>{available.map((p) => <th key={p.mode} scope="colgroup" colSpan={best ? 2 : 1}
+          className={p.mode === selected ? "chosen" : undefined} aria-current={p.mode === selected ? "true" : undefined}>{p.label}</th>)}</tr>
         <tr>{available.map((p) => <Fragment key={p.mode}><th scope="col" className="num">First</th>{best && <th scope="col" className="num">{best}</th>}</Fragment>)}</tr>
       </thead>
       <tbody>{first.rows.map((row) => <tr key={row.alternative_id}>

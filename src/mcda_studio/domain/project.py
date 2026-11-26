@@ -24,13 +24,16 @@ from mcda_studio.domain.uncertainty import SmaaModel
 #: The newest schema this program reads and writes. A file is written with the *lowest* version
 #: that can represent it (``Project.required_schema_version``), so a project that uses no newer
 #: section keeps its bytes, its fingerprint and older installations' ability to open it.
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 8
 
 #: The first schema version of each optional method section.
 SECTION_VERSIONS = {"sorting": 2, "smaa": 3, "promethee": 4, "ahp": 5, "requirements": 6}
 #: Version 7 adds fields inside existing sections, not a section: a weight profile's
 #: ``elicitation`` and the SMAA-2 ``ranking`` kind and ``held`` children.
 STRUCTURED_JUDGEMENT_VERSION = 7
+#: Version 8 adds a parameter value, not a section: a saved SMAA-2 configuration whose weights come
+#: from a weight-samples sidecar (``weight_source: "samples"``).
+SAMPLES_WEIGHT_SOURCE_VERSION = 8
 
 
 class Project(DomainModel):
@@ -64,7 +67,13 @@ class Project(DomainModel):
         used = [v for name, v in SECTION_VERSIONS.items() if getattr(self, name) is not None]
         if self.uses_structured_judgement():
             used.append(STRUCTURED_JUDGEMENT_VERSION)
+        if self.uses_samples_weight_source():
+            used.append(SAMPLES_WEIGHT_SOURCE_VERSION)
         return max([1, *used])
+
+    def uses_samples_weight_source(self) -> bool:
+        """Whether the saved analysis configuration takes SMAA-2 weights from samples."""
+        return self.analysis.parameters.get("weight_source") == "samples"
 
     def uses_structured_judgement(self) -> bool:
         """Whether any schema-7 field is in use: an elicitation record, a ranking group or held

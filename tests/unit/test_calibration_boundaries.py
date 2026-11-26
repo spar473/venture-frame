@@ -3,6 +3,7 @@ neither the API nor the interface can reach it (only the command line imports it
 """
 
 import ast
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -63,9 +64,21 @@ def test_the_api_never_loads_calibration() -> None:
     assert result.stdout.strip() == "[]"
 
 
-def test_the_interface_never_mentions_calibration() -> None:
+def test_the_interface_never_requests_a_calibration() -> None:
+    """The app never fits the outcome model: no API path or operation for it, and no hand-written
+    interface code that mentions it. Since DD7 (approved by the owner) the API accepts a
+    weight-samples sidecar as SMAA-2's weight source, so the sidecar model, whose basis can be
+    "calibrated", appears in the published schema and in the generated types (src/api/schema.ts)."""
+    generated = ROOT / "frontend" / "src" / "api" / "schema.ts"
     for path in (ROOT / "frontend" / "src").rglob("*"):
+        if path == generated:
+            continue
         if path.is_file() and path.suffix in {".ts", ".tsx", ".js", ".jsx", ".json", ".css"}:
             assert "calibrat" not in path.read_text(encoding="utf-8").lower(), path
-    openapi = (ROOT / "docs" / "api" / "openapi.json").read_text(encoding="utf-8").lower()
-    assert "calibrat" not in openapi and "weight-samples" not in openapi
+    openapi = json.loads((ROOT / "docs" / "api" / "openapi.json").read_text(encoding="utf-8"))
+    for route, operations in openapi["paths"].items():
+        assert "calibrat" not in route.lower(), route
+        for operation in operations.values():
+            text = json.dumps(operation).lower()
+            assert "calibrat" not in str(operation.get("operationId", "")).lower(), route
+            assert "calibrate fit" not in text and "calibrate_fit" not in text, route

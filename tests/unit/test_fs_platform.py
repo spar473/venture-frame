@@ -106,6 +106,7 @@ def test_second_owner_is_refused_while_the_first_holds_the_lock(tmp_path):
             capture_output=True,
             text=True,
             timeout=30,
+            encoding="utf-8",
         )
         assert read.returncode == 0, read.stderr
         assert read.stdout.strip() == "4321"
@@ -161,6 +162,7 @@ def test_lock_is_released_after_the_owning_subprocess_ends(tmp_path, ending):
         stdout=subprocess.PIPE,
         text=True,
         env=env,
+        encoding="utf-8",
     )
     try:
         assert child.stdout is not None

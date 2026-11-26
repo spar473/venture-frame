@@ -19,7 +19,9 @@ STUDY = EXAMPLES / "nz_venture_screening"
 
 
 def dossier() -> EvidenceDossier:
-    return EvidenceDossier.model_validate_json((STUDY / "evidence.json").read_text())
+    return EvidenceDossier.model_validate_json(
+        (STUDY / "evidence.json").read_text(encoding="utf-8")
+    )
 
 
 def test_the_route_equals_the_service_and_leaves_open_questions_alone(client: TestClient) -> None:
@@ -100,7 +102,7 @@ def test_the_command_prints_the_services_json_and_open_questions_is_unchanged() 
 def test_the_command_rejects_bad_files_and_unknown_scenarios(tmp_path: Path) -> None:
     project = str(STUDY / "project.json")
     broken = tmp_path / "e.json"
-    broken.write_text("{}")
+    broken.write_text("{}", encoding="utf-8")
     assert run(project, "--evidence", str(broken)).exit_code != 0
     assert run(project, "--proposals", str(broken)).exit_code != 0
     assert run(str(tmp_path / "missing.json")).exit_code != 0

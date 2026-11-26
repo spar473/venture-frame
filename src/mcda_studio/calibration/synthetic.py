@@ -21,9 +21,9 @@ from numpy.typing import NDArray
 
 from mcda_studio.calibration import report
 from mcda_studio.calibration.likelihood import Observation, OutcomeData, encode
-from mcda_studio.calibration.prior import NestedDirichletPrior, make_prior
 from mcda_studio.calibration.sampler import Problem, SamplerSettings, alpha_prior_mean, run
 from mcda_studio.domain.common import DomainModel
+from mcda_studio.methods.nested_dirichlet import NestedDirichletPrior, make_prior
 
 Array = NDArray[np.float64]
 Censoring = Literal["none", "independent", "score"]

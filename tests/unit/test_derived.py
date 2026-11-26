@@ -24,7 +24,9 @@ EXAMPLE = ROOT / "examples/derived_measurements"
 
 def example(name="venture"):
     project = JsonProjectRepository().load(EXAMPLE / f"{name}-project.json")
-    model = DerivedModel.model_validate_json((EXAMPLE / f"{name}-model.json").read_text())
+    model = DerivedModel.model_validate_json(
+        (EXAMPLE / f"{name}-model.json").read_text(encoding="utf-8")
+    )
     return project, model
 
 
