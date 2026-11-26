@@ -357,7 +357,7 @@ def test_weights_round_to_the_report_at_every_level(
     for parent, printed in REPORT_PARENT_WEIGHTS.items():
         assert rounds_to(base_result.local_weights[parent], printed, 4), parent
     assert sum(base_result.global_weights.values()) == pytest.approx(1.0, abs=1e-12)
-    expected_file = json.loads((EXAMPLE_DIR / "expected_weights.json").read_text())
+    expected_file = json.loads((EXAMPLE_DIR / "expected_weights.json").read_text(encoding="utf-8"))
     assert expected_file == REPORT_GLOBAL
 
 

@@ -32,7 +32,9 @@ def details(**changes):
 
 
 def test_preview_inspect_and_revise_without_library_writes(client):
-    raw = json.loads((ROOT / "examples/supplier_qualification/project.json").read_text())
+    raw = json.loads(
+        (ROOT / "examples/supplier_qualification/project.json").read_text(encoding="utf-8")
+    )
     imported = client.post("/api/projects/import", json=raw)
     project = imported.json()["project"]
     saved = client.get(f"/api/projects/{project['id']}/file").content
@@ -62,7 +64,9 @@ def test_preview_inspect_and_revise_without_library_writes(client):
 
 
 def test_invalid_tampered_and_unrelated_inputs_are_refused(client):
-    raw = json.loads((ROOT / "examples/supplier_qualification/project.json").read_text())
+    raw = json.loads(
+        (ROOT / "examples/supplier_qualification/project.json").read_text(encoding="utf-8")
+    )
     record = client.post(
         "/api/decisions/preview", json={"project": raw, "details": details()}
     ).json()
@@ -93,7 +97,9 @@ def resigned(record: dict) -> dict:
 
 @pytest.mark.parametrize("requirements", [False, True])
 def test_invalid_references_and_snapshots_are_422_not_server_errors(client, requirements):
-    raw = json.loads((ROOT / "examples/supplier_qualification/project.json").read_text())
+    raw = json.loads(
+        (ROOT / "examples/supplier_qualification/project.json").read_text(encoding="utf-8")
+    )
     if requirements:
         cap = {"kind": "bound", "id": "cap", "name": "Cap", "criterion_id": "unit_price"}
         raw["requirements"] = [{**cap, "unit": "NZD", "maximum": 50}]
@@ -136,7 +142,9 @@ def test_invalid_references_and_snapshots_are_422_not_server_errors(client, requ
 @pytest.mark.parametrize("value", ["nan", "1e999", "-Infinity"])
 @pytest.mark.parametrize("role", ["record", "predecessor"])
 def test_nonfinite_numbers_in_supplied_records_are_refused_not_server_errors(client, value, role):
-    raw = json.loads((ROOT / "examples/supplier_qualification/project.json").read_text())
+    raw = json.loads(
+        (ROOT / "examples/supplier_qualification/project.json").read_text(encoding="utf-8")
+    )
     record = client.post(
         "/api/decisions/preview", json={"project": raw, "details": details()}
     ).json()
@@ -159,7 +167,9 @@ def test_nonfinite_numbers_in_supplied_records_are_refused_not_server_errors(cli
 
 
 def test_nonfinite_numbers_in_version_one_records_are_refused(client):
-    raw = json.loads((ROOT / "examples/supplier_qualification/project.json").read_text())
+    raw = json.loads(
+        (ROOT / "examples/supplier_qualification/project.json").read_text(encoding="utf-8")
+    )
     from mcda_studio.domain.decision import DecisionDraft
     from mcda_studio.services import decision_service
 

@@ -112,8 +112,10 @@ def test_project_schema_and_reference_fixtures_remain_unchanged():
     from pathlib import Path
 
     root = Path(__file__).parents[2]
-    baseline = json.loads((root / "tests/fixtures/contract_baseline.json").read_text())
-    current = json.loads((root / "docs/api/openapi.json").read_text())
+    baseline = json.loads(
+        (root / "tests/fixtures/contract_baseline.json").read_text(encoding="utf-8")
+    )
+    current = json.loads((root / "docs/api/openapi.json").read_text(encoding="utf-8"))
     for key, schema in baseline["schemas"].items():
         assert schema == current["components"]["schemas"][key]
     for relative, sha in baseline["sha256"].items():

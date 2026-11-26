@@ -169,19 +169,19 @@ def tree_bytes(directory: Path) -> dict[str, bytes]:
 
 def test_cells_are_the_labelled_leaves_by_the_companies_and_nothing_else(study, tmp_path):
     make(study, tmp_path / "kit")
-    items = json.loads((tmp_path / "kit" / "items.json").read_text())
+    items = json.loads((tmp_path / "kit" / "items.json").read_text(encoding="utf-8"))
     assert len(items["cells"]) == len(COMPANIES) * (len(FIVE_LEAVES) + len(FOUR_LEAVES))
     assert {c["criterion_id"] for c in items["cells"]} == set(FIVE_LEAVES + FOUR_LEAVES)
     assert "size" in items["excluded_leaf_ids"] and "hq" in items["excluded_leaf_ids"]
     assert [t["levels"] for t in items["tasks"]] == [4, 5]
-    packet = (tmp_path / "kit" / "rater-packet.html").read_text()
+    packet = (tmp_path / "kit" / "rater-packet.html").read_text(encoding="utf-8")
     assert packet.count('class="cell"') == len(items["cells"])
     assert "Cannot tell" in packet and "Save answers" in packet
 
 
 def test_the_packet_is_self_contained_and_uses_no_network_storage_or_server(study, tmp_path):
     make(study, tmp_path / "kit")
-    packet = (tmp_path / "kit" / "rater-packet.html").read_text()
+    packet = (tmp_path / "kit" / "rater-packet.html").read_text(encoding="utf-8")
     script = packet.split("<script>")[1].split("</script>")[0]
     for forbidden in (
         "fetch(",
@@ -217,8 +217,8 @@ def test_the_same_seed_gives_identical_bytes_and_another_seed_a_new_order(study,
     make(study, tmp_path / "b", seed=7)
     make(study, tmp_path / "c", seed=8)
     assert tree_bytes(tmp_path / "a") == tree_bytes(tmp_path / "b")
-    first = json.loads((tmp_path / "a" / "items.json").read_text())
-    other = json.loads((tmp_path / "c" / "items.json").read_text())
+    first = json.loads((tmp_path / "a" / "items.json").read_text(encoding="utf-8"))
+    other = json.loads((tmp_path / "c" / "items.json").read_text(encoding="utf-8"))
     assert first["company_order"] != other["company_order"]
     assert first["leaf_order"] != other["leaf_order"]
     assert sorted(first["company_order"]) == sorted(other["company_order"])
@@ -226,8 +226,10 @@ def test_the_same_seed_gives_identical_bytes_and_another_seed_a_new_order(study,
 
 def test_the_form_has_the_same_cells_and_neutralises_spreadsheet_formulas(study, tmp_path):
     make(study, tmp_path / "kit")
-    rows = list(csv.DictReader((tmp_path / "kit" / "rater-form.csv").open(newline="")))
-    items = json.loads((tmp_path / "kit" / "items.json").read_text())
+    rows = list(
+        csv.DictReader((tmp_path / "kit" / "rater-form.csv").open(newline="", encoding="utf-8"))
+    )
+    items = json.loads((tmp_path / "kit" / "items.json").read_text(encoding="utf-8"))
     assert [r["item_id"] for r in rows] == [c["item_id"] for c in items["cells"]]
     assert all(r["answer"] == "" and r["note"] == "" for r in rows)
     assert kit.spreadsheet_safe("=1+1") == "'=1+1"
@@ -324,7 +326,7 @@ def test_nothing_is_overwritten(study, tmp_path):
 
 
 def answers_json(kit_dir: Path, choose, saved_at="2026-11-09T10:00:00.000Z") -> Path:
-    items = json.loads((kit_dir / "items.json").read_text())
+    items = json.loads((kit_dir / "items.json").read_text(encoding="utf-8"))
     answers = [
         {"item_id": c["item_id"], "answer": choose(c) or "", "note": ""} for c in items["cells"]
     ]
@@ -374,8 +376,8 @@ def test_convert_maps_labels_to_positional_levels_and_cannot_tell_to_an_abstenti
 
     code, out = convert(tmp_path / "kit", answers_json(tmp_path / "kit", choose))
     assert code == 0
-    five = json.loads((out / "human_labels.invented-5-level.R2.json").read_text())
-    four = json.loads((out / "human_labels.invented-4-level.R2.json").read_text())
+    five = json.loads((out / "human_labels.invented-5-level.R2.json").read_text(encoding="utf-8"))
+    four = json.loads((out / "human_labels.invented-4-level.R2.json").read_text(encoding="utf-8"))
     by_id = {r["item_id"]: r for r in five + four}
     assert by_id["co0__f1"]["label"] is None  # an abstention, not a nominal class
     assert "co0__f2" not in by_id  # unanswered rows are absent, not guessed
@@ -388,19 +390,21 @@ def test_convert_maps_labels_to_positional_levels_and_cannot_tell_to_an_abstenti
 def test_convert_accepts_a_number_and_the_csv_and_refuses_nonsense(study, tmp_path):
     make(study, tmp_path / "kit")
     form = tmp_path / "kit" / "rater-form.csv"
-    rows = list(csv.DictReader(form.open(newline="")))
+    rows = list(csv.DictReader(form.open(newline="", encoding="utf-8")))
     rows[0]["answer"] = "3"
     rows[1]["answer"] = rows[1]["labels"].split(" | ")[0].split(") ", 1)[1]
     rows[2]["answer"] = "Cannot Tell"
     filled = tmp_path / "filled.csv"
-    with filled.open("w", newline="") as handle:
+    with filled.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=kit.CSV_HEADER)
         writer.writeheader()
         writer.writerows(rows)
     code, out = convert(tmp_path / "kit", filled, reviewed_at="2026-11-09T00:00:00+13:00")
     assert code == 0
     labelled = {
-        r["item_id"]: r for f in out.glob("human_labels.*.json") for r in json.loads(f.read_text())
+        r["item_id"]: r
+        for f in out.glob("human_labels.*.json")
+        for r in json.loads(f.read_text(encoding="utf-8"))
     }
     assert labelled[rows[0]["item_id"]]["label"] == "level_3"
     assert labelled[rows[1]["item_id"]]["label"] == "level_1"
@@ -408,7 +412,7 @@ def test_convert_accepts_a_number_and_the_csv_and_refuses_nonsense(study, tmp_pa
     assert labelled[rows[0]["item_id"]]["reviewed_at"] == "2026-11-08T11:00:00Z"
     rows[3]["answer"] = "nonsense"
     bad = tmp_path / "bad.csv"
-    with bad.open("w", newline="") as handle:
+    with bad.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=kit.CSV_HEADER)
         writer.writeheader()
         writer.writerows(rows)
@@ -418,17 +422,19 @@ def test_convert_accepts_a_number_and_the_csv_and_refuses_nonsense(study, tmp_pa
 def test_answers_from_another_packet_a_duplicate_or_a_missing_time_are_refused(study, tmp_path):
     make(study, tmp_path / "kit")
     path = answers_json(tmp_path / "kit", lambda c: c["labels"][0])
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding="utf-8"))
     data["kit_digest"] = "0" * 64
-    path.write_text(json.dumps(data))
+    path.write_text(json.dumps(data), encoding="utf-8")
     assert convert(tmp_path / "kit", path, token="R3")[0] == 2
-    data["kit_digest"] = json.loads((tmp_path / "kit" / "items.json").read_text())["kit_digest"]
+    data["kit_digest"] = json.loads((tmp_path / "kit" / "items.json").read_text(encoding="utf-8"))[
+        "kit_digest"
+    ]
     data["answers"].append(data["answers"][0])
-    path.write_text(json.dumps(data))
+    path.write_text(json.dumps(data), encoding="utf-8")
     assert convert(tmp_path / "kit", path, token="R4")[0] == 2
     del data["answers"][-1]
     del data["saved_at"]
-    path.write_text(json.dumps(data))
+    path.write_text(json.dumps(data), encoding="utf-8")
     assert convert(tmp_path / "kit", path, token="R5")[0] == 2  # no time anywhere
 
 
@@ -459,9 +465,9 @@ def test_author_labels_are_the_projects_ratings_as_positional_levels(study, tmp_
     rows = {
         r["item_id"]: r["label"]
         for f in out.glob("human_labels.*.json")
-        for r in json.loads(f.read_text())
+        for r in json.loads(f.read_text(encoding="utf-8"))
     }
-    project = json.loads(study["project"].read_text())
+    project = json.loads(study["project"].read_text(encoding="utf-8"))
     for p in project["performances"]:
         item = f"{p['alternative_id']}__{p['criterion_id']}"
         if p["criterion_id"] in FIVE_LEAVES:
@@ -501,9 +507,11 @@ def test_the_frozen_protocol_has_one_task_per_vocabulary_and_records_its_mapping
     make(study, tmp_path / "kit")
     code, out = freeze(tmp_path / "kit", study)
     assert code == 0
-    digests = json.loads((out / "frozen-digests.json").read_text())
+    digests = json.loads((out / "frozen-digests.json").read_text(encoding="utf-8"))
     assert set(digests) == {"invented-4-level", "invented-5-level"}
-    five = json.loads((out / "invented-5-level" / "frozen-protocol.json").read_text())
+    five = json.loads(
+        (out / "invented-5-level" / "frozen-protocol.json").read_text(encoding="utf-8")
+    )
     core = five["core"]
     assert core["labels"] == [f"level_{i}" for i in range(1, 6)]
     assert core["panel"] == ["R1", "R2"] and core["data_kind"] == "public"
@@ -515,9 +523,9 @@ def test_the_frozen_protocol_has_one_task_per_vocabulary_and_records_its_mapping
     assert "conservative" in core["data_provenance"]["description"]
     assert (
         "UNDERPOWERED"
-        in json.loads((out / "invented-4-level" / "frozen-protocol.json").read_text())["core"][
-            "data_provenance"
-        ]["description"]
+        in json.loads(
+            (out / "invented-4-level" / "frozen-protocol.json").read_text(encoding="utf-8")
+        )["core"]["data_provenance"]["description"]
     )
     assert "UNDERPOWERED" not in core["data_provenance"]["description"]
     assert digests["invented-5-level"] == five["digest"]
@@ -547,7 +555,8 @@ def tool_files(
     half[-1] = f"{2 ** -(len(labels) - 1)}"
     card = directory / "card.json"
     card.write_text(
-        json.dumps({"model_version": "m-1", "purpose": "invented", "limitations": "none"})
+        json.dumps({"model_version": "m-1", "purpose": "invented", "limitations": "none"}),
+        encoding="utf-8",
     )
     digest = hashlib.sha256(card.read_bytes()).hexdigest()
     rows = []
@@ -571,7 +580,7 @@ def tool_files(
     # decimals as numbers (the benchmark parses exact decimals from the text)
     for value in set(half):
         text = text.replace(f'"{value}"', value)
-    outputs.write_text(text)
+    outputs.write_text(text, encoding="utf-8")
     return outputs, card
 
 
@@ -586,7 +595,7 @@ def test_converted_two_rater_labels_run_through_the_benchmark_itself(
     _, r1 = author(tmp_path / "kit", study["project"])
     # the second rater agrees with the author except on three cells
     flip = {"co0__" + leaves[0], "co3__" + leaves[0], "co5__" + leaves[-1]}
-    project = json.loads(study["project"].read_text())
+    project = json.loads(study["project"].read_text(encoding="utf-8"))
     truth = {
         f"{p['alternative_id']}__{p['criterion_id']}": p["value"] for p in project["performances"]
     }
@@ -600,7 +609,7 @@ def test_converted_two_rater_labels_run_through_the_benchmark_itself(
     code, bench_dir = freeze(tmp_path / "kit", study)
     assert code == 0
     task = bench_dir / task_id
-    ids = [i["id"] for i in json.loads((task / "items.json").read_text())]
+    ids = [i["id"] for i in json.loads((task / "items.json").read_text(encoding="utf-8"))]
     outputs, card = tool_files(tmp_path, task_id, ids, [f"level_{i}" for i in range(1, labels + 1)])
     final = tmp_path / f"final-{task_id}"
     assert (
@@ -642,10 +651,10 @@ def test_finalize_refuses_a_protocol_changed_after_it_was_frozen(study, tmp_path
     _, r1 = author(tmp_path / "kit", study["project"])
     code, bench_dir = freeze(tmp_path / "kit", study)
     task = bench_dir / "invented-5-level"
-    protocol = json.loads((task / "frozen-protocol.json").read_text())
+    protocol = json.loads((task / "frozen-protocol.json").read_text(encoding="utf-8"))
     protocol["core"]["protocol"]["lower_kappa"] = "0.10"  # a quietly relaxed gate
-    (task / "frozen-protocol.json").write_text(json.dumps(protocol))
-    ids = [i["id"] for i in json.loads((task / "items.json").read_text())]
+    (task / "frozen-protocol.json").write_text(json.dumps(protocol), encoding="utf-8")
+    ids = [i["id"] for i in json.loads((task / "items.json").read_text(encoding="utf-8"))]
     outputs, card = tool_files(tmp_path, "t", ids, [f"level_{i}" for i in range(1, 6)])
     assert (
         kit.main(

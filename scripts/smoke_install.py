@@ -49,7 +49,9 @@ def venv_scripts(target: Path) -> Path:
 
 
 def run(*command: str, cwd: Path, env: dict[str, str]) -> str:
-    result = subprocess.run(command, cwd=cwd, env=env, capture_output=True, text=True)
+    result = subprocess.run(
+        command, cwd=cwd, env=env, capture_output=True, text=True, encoding="utf-8"
+    )
     if result.returncode:
         raise RuntimeError(
             f"{command[0]} failed ({result.returncode}):\n{result.stdout}\n{result.stderr}"
@@ -85,7 +87,7 @@ def server(command: Path, work: Path, env: dict[str, str]):
         port = probe.getsockname()[1]
     url = f"http://127.0.0.1:{port}"
     log = work / "server.log"
-    with log.open("w", newline="\n") as output:
+    with log.open("w", newline="\n", encoding="utf-8") as output:
         process = subprocess.Popen(
             [
                 str(command),
@@ -104,14 +106,14 @@ def server(command: Path, work: Path, env: dict[str, str]):
         try:
             for _ in range(200):
                 if process.poll() is not None:
-                    raise RuntimeError(log.read_text())
+                    raise RuntimeError(log.read_text(encoding="utf-8"))
                 try:
                     request(url + "/api/health")
                     break
                 except OSError:
                     time.sleep(0.05)
             else:
-                raise RuntimeError(f"Server not ready: {log.read_text()}")
+                raise RuntimeError(f"Server not ready: {log.read_text(encoding='utf-8')}")
             yield url
         finally:
             process.terminate()
@@ -159,6 +161,7 @@ def exercise(command: Path, python: Path, work: Path, env: dict[str, str], brows
             capture_output=True,
             text=True,
             timeout=10,
+            encoding="utf-8",
         )
         assert blocked.returncode == 1 and "owned by another process" in " ".join(
             blocked.stderr.split()
@@ -179,7 +182,7 @@ def exercise(command: Path, python: Path, work: Path, env: dict[str, str], brows
             assert "require your review" in material["project"]["description"]
             input_file = work / (starter["id"] + "-starter-request.json")
             output_file = work / (starter["id"] + "-starter-materials.json")
-            input_file.write_text(json.dumps(body), newline="\n")
+            input_file.write_text(json.dumps(body), newline="\n", encoding="utf-8")
             run(
                 str(command),
                 "starter-templates",
@@ -190,7 +193,7 @@ def exercise(command: Path, python: Path, work: Path, env: dict[str, str], brows
                 cwd=work,
                 env=env,
             )
-            assert json.loads(output_file.read_text()) == material
+            assert json.loads(output_file.read_text(encoding="utf-8")) == material
         examples = request(url + "/api/examples")
         assert {e["name"] for e in examples} == EXAMPLES
         if browser:
@@ -211,14 +214,14 @@ def exercise(command: Path, python: Path, work: Path, env: dict[str, str], brows
             },
         )
         source = work / "exported-project.json"
-        source.write_text(json.dumps(exported["source_project"]), newline="\n")
+        source.write_text(json.dumps(exported["source_project"]), newline="\n", encoding="utf-8")
         run(str(command), "validate", str(source), cwd=work, env=env)
         repeated = json.loads(
             run(str(command), "evaluate", str(source), "--json", cwd=work, env=env)
         )
         assert repeated == exported["record"]["result"]
         if browser:
-            document = json.loads((work / "browser-analysis.json").read_text())
+            document = json.loads((work / "browser-analysis.json").read_text(encoding="utf-8"))
             assert document["record"]["result"] == repeated
     # A fresh process reopens the actual saved library.
     with server(command, work, env) as url:
@@ -310,7 +313,12 @@ def main() -> None:
         engine_mcda = executable(venv_scripts(target), "mcda")
         run(str(engine_mcda), "--help", cwd=work, env=env)
         result = subprocess.run(
-            [str(engine_mcda), "serve"], cwd=work, env=env, capture_output=True, text=True
+            [str(engine_mcda), "serve"],
+            cwd=work,
+            env=env,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
         )
         assert result.returncode == 1 and "whl[api]" in result.stderr.replace("\n", "")
         run(
@@ -366,6 +374,7 @@ def main() -> None:
         )
         + "\n",
         newline="\n",
+        encoding="utf-8",
     )
     print(f"Installed smoke passed; evidence: {output}")
 

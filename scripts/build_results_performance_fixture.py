@@ -124,6 +124,7 @@ def main() -> None:
     path.write_text(
         json.dumps(build_project().model_dump(mode="json"), sort_keys=True, indent=2) + "\n",
         newline="\n",
+        encoding="utf-8",
     )
     print(path)
 

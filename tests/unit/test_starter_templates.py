@@ -107,36 +107,36 @@ def test_manifest_and_artifact_hashes_versions_and_paths_are_verified_before_mat
 ):
     shutil.copytree(ROOT / "starter_templates", tmp_path / "starter_templates")
     file = tmp_path / "starter_templates/blank/manifest.json"
-    original = file.read_text()
+    original = file.read_text(encoding="utf-8")
     template = json.loads(original)
     template["description"] = "Changed without its digest"
-    file.write_text(json.dumps(template))
+    file.write_text(json.dumps(template), encoding="utf-8")
     with pytest.raises(ModelEditError, match="STARTER_DIGEST"):
         starters.list_templates(tmp_path)
-    file.write_text(original)
+    file.write_text(original, encoding="utf-8")
     project = file.parent / "project.json"
-    original_project = project.read_text()
-    project.write_text(original_project + " ")
+    original_project = project.read_text(encoding="utf-8")
+    project.write_text(original_project + " ", encoding="utf-8")
     with pytest.raises(ModelEditError, match="STARTER_ARTIFACT_CHANGED"):
         starters.list_templates(tmp_path)
-    project.write_text(original_project)
+    project.write_text(original_project, encoding="utf-8")
     for path in ("../project.json", "/outside.json", "bad\\path.json"):
         template = json.loads(original)
         template["artifacts"][0]["path"] = path
         template["digest"] = derived._digest({k: v for k, v in template.items() if k != "digest"})
-        file.write_text(json.dumps(template))
+        file.write_text(json.dumps(template), encoding="utf-8")
         with pytest.raises(ModelEditError, match="STARTER_PATH"):
             starters.list_templates(tmp_path)
-    file.write_text(original)
+    file.write_text(original, encoding="utf-8")
     raw = json.loads(original_project)
     raw["schema_version"] = 999
-    project.write_text(json.dumps(raw))
+    project.write_text(json.dumps(raw), encoding="utf-8")
     template = json.loads(original)
     template["artifacts"][0].update(
         schema_version=999, sha256=hashlib.sha256(project.read_bytes()).hexdigest()
     )
     template["digest"] = derived._digest({k: v for k, v in template.items() if k != "digest"})
-    file.write_text(json.dumps(template))
+    file.write_text(json.dumps(template), encoding="utf-8")
     with pytest.raises(ModelEditError, match="STARTER_VERSION"):
         starters.list_templates(tmp_path)
 
@@ -154,12 +154,12 @@ def test_worked_example_overrides_and_changed_receipts_are_refused():
 def test_loader_never_dispatches_on_template_id_or_description(tmp_path):
     shutil.copytree(ROOT / "starter_templates/blank", tmp_path / "starter_templates/arbitrary")
     manifest = tmp_path / "starter_templates/arbitrary/manifest.json"
-    raw = json.loads(manifest.read_text())
+    raw = json.loads(manifest.read_text(encoding="utf-8"))
     raw.update(
         id="arbitrary", title="Wholly different task", description="No engine vocabulary needed"
     )
     raw["digest"] = derived._digest({k: v for k, v in raw.items() if k != "digest"})
-    manifest.write_text(json.dumps(raw))
+    manifest.write_text(json.dumps(raw), encoding="utf-8")
     output = starters.instantiate(request("arbitrary", project_id="new_id"), tmp_path)
     assert output.project.title == "Wholly different task"
     assert output.project.criteria == [] and output.receipt.template_id == "arbitrary"
@@ -210,6 +210,7 @@ print(json.dumps(project.model_dump(mode='json', exclude={'id'}), sort_keys=True
         capture_output=True,
         text=True,
         check=True,
+        encoding="utf-8",
     )
     assert json.loads(result.stdout) == from_template(
         "supplier-selection", "Configured"

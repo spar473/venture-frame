@@ -15,7 +15,9 @@ EXAMPLES = Path(__file__).parents[2] / "examples/derived_measurements"
 
 def inputs(name="supplier"):
     p = JsonProjectRepository().load(EXAMPLES / f"{name}-project.json")
-    model = DerivedModel.model_validate_json((EXAMPLES / f"{name}-model.json").read_text())
+    model = DerivedModel.model_validate_json(
+        (EXAMPLES / f"{name}-model.json").read_text(encoding="utf-8")
+    )
     return p, model
 
 
@@ -31,8 +33,8 @@ def test_bundle_preserves_original_inputs_and_reproduces_after_reopening(name, t
     assert to_json_text(p) == source and model.model_dump_json() == original_model
     assert bundle.digest
     path = tmp_path / "bundle.json"
-    path.write_text(bundle.model_dump_json())
-    reopened = svc.DerivedCompilation.model_validate_json(path.read_text())
+    path.write_text(bundle.model_dump_json(), encoding="utf-8")
+    reopened = svc.DerivedCompilation.model_validate_json(path.read_text(encoding="utf-8"))
     assert svc.preview_document(p, reopened) == report
     # Static output is a normal project and survives the existing persistence path.
     output = tmp_path / "static.json"

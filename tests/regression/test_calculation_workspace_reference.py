@@ -49,8 +49,10 @@ def leader(name: str, project_raw: dict, values: dict[str, Fraction]) -> str:
 def test_edited_factors_recalculate_apply_and_reproduce(name, tmp_path):
     repo = JsonProjectRepository()
     project = repo.load(EXAMPLE / f"{name}-project.json")
-    project_raw = json.loads((EXAMPLE / f"{name}-project.json").read_text())
-    model = DerivedModel.model_validate_json((EXAMPLE / f"{name}-model.json").read_text())
+    project_raw = json.loads((EXAMPLE / f"{name}-project.json").read_text(encoding="utf-8"))
+    model = DerivedModel.model_validate_json(
+        (EXAMPLE / f"{name}-model.json").read_text(encoding="utf-8")
+    )
     current = cw.inspect(project, model)
     first = cw.apply(project, current.workspace, current.preview.review_digest, "Analyst", WHEN)
     project = first.bundle.project
@@ -93,16 +95,22 @@ def test_edited_factors_recalculate_apply_and_reproduce(name, tmp_path):
     assert provenance.bind(applied.bundle.project, applied.bundle).relationship == "compiled"
     stored = tmp_path / "project.json"
     repo.save(applied.bundle.project, stored)
-    (tmp_path / "workspace.json").write_text(applied.inspection.workspace.model_dump_json())
+    (tmp_path / "workspace.json").write_text(
+        applied.inspection.workspace.model_dump_json(), encoding="utf-8"
+    )
     reopened_project = repo.load(stored)
     reopened = cw.inspect(
         reopened_project,
-        CalculationWorkspace.model_validate_json((tmp_path / "workspace.json").read_text()),
+        CalculationWorkspace.model_validate_json(
+            (tmp_path / "workspace.json").read_text(encoding="utf-8")
+        ),
     )
     assert reopened.relationship == "bound" and not any(c.changed for c in reopened.changes)
     assert len(reopened.bindings) == 3
     ranking = evaluate_mavt(reopened_project).ranking
     assert ranking[0].alternative_id == leader(name, project_raw, expected)
     # The original example leader differs, so recalculation is decision-relevant here.
-    original = answers(name, json.loads((EXAMPLE / f"{name}-model.json").read_text()))
+    original = answers(
+        name, json.loads((EXAMPLE / f"{name}-model.json").read_text(encoding="utf-8"))
+    )
     assert leader(name, project_raw, original) != ranking[0].alternative_id

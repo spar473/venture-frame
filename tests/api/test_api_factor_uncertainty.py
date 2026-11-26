@@ -19,7 +19,9 @@ ROOT = Path(__file__).parents[2]
 def inputs():
     root = ROOT / "examples/derived_measurements"
     project = JsonProjectRepository().load(root / "supplier-project.json")
-    model = DerivedModel.model_validate_json((root / "supplier-model.json").read_text())
+    model = DerivedModel.model_validate_json(
+        (root / "supplier-model.json").read_text(encoding="utf-8")
+    )
     source = next(s for s in model.sources if s.id == "annual_units")
     uncertainty = FactorUncertaintyModel(
         project_fingerprint=project.fingerprint(),
@@ -67,7 +69,7 @@ def test_api_cli_service_are_identical_and_do_not_write_project(client, tmp_path
     files = []
     for name, value in [("project", p), ("model", model), ("uncertainty", spec)]:
         path = tmp_path / f"{name}.json"
-        path.write_text(value.model_dump_json())
+        path.write_text(value.model_dump_json(), encoding="utf-8")
         files.append(str(path))
     output = tmp_path / "run.json"
     result = CliRunner().invoke(
@@ -85,14 +87,14 @@ def test_api_cli_service_are_identical_and_do_not_write_project(client, tmp_path
         ],
     )
     assert result.exit_code == 0, result.output
-    assert json.loads(output.read_text()) == expected
+    assert json.loads(output.read_text(encoding="utf-8")) == expected
     verified = CliRunner().invoke(app, ["derived", "verify-uncertainty", str(output), "--replay"])
     assert verified.exit_code == 0, verified.output
     again = CliRunner().invoke(
         app, ["derived", "uncertainty-run", *files, "--draws", "24", "--output", str(output)]
     )
     assert again.exit_code == 1
-    assert json.loads(output.read_text()) == expected
+    assert json.loads(output.read_text(encoding="utf-8")) == expected
     assert client.get(f"/api/projects/{p.id}/file").content == before
 
 

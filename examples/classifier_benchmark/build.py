@@ -17,7 +17,9 @@ SPEC.loader.exec_module(benchmark)
 
 
 def write(path, value):
-    path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", newline="\n")
+    path.write_text(
+        json.dumps(value, indent=2, sort_keys=True) + "\n", newline="\n", encoding="utf-8"
+    )
     return {"path": path.name, "sha256": benchmark.sha(path.read_bytes())}
 
 
@@ -222,7 +224,9 @@ def build(destination=None):
         rejected["files"][key] = write(refused / (key + ".json"), value)
     for tool in rejected["tools"]:
         original = target / tool["model_card"]["path"]
-        tool["model_card"] = write(refused / original.name, json.loads(original.read_text()))
+        tool["model_card"] = write(
+            refused / original.name, json.loads(original.read_text(encoding="utf-8"))
+        )
     write(refused / "manifest.json", rejected)
     assert benchmark.evaluate(refused / "manifest.json")["status"] == "reference refused"
     return path
