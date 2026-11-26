@@ -202,8 +202,13 @@ id and a date per decision). Both are stored formats and both wait for approval.
 5. **Simulation-based calibration** for one weight, `α` and `β`: ranks uniform by a chi-square test
    at the 0.01 level (`slow`).
 6. **Label noise:** a stated share of decisions flipped. `β` attenuates (its noisy posterior lies
-   below the clean fit's) while the weights' noisy point estimates stay within the clean fit's
-   intervals; both are reported.
+   below the clean fit's). For the weights, a **multi-seed coverage test under noise** (DD9,
+   approved by the owner after the single-seed check failed; see "Verification history" below):
+   40 truths drawn from the prior (`κ = 20`, as test 4), 20% of `K = 200` decisions flipped, seeds
+   from a new base fixed before the first run (data stream 31 000 + sim, sampler 31 500 + sim);
+   the 90% intervals of every weight cover the truth at a rate whose 99% Clopper–Pearson interval
+   contains 0.90, the same rule as test 4. `β`'s coverage is printed, not asserted (it is expected
+   to attenuate).
 7. **Convergence gate:** a 50-iteration run is labelled not converged.
 8. **Read-only:** fitting synthetic decisions against a real example project leaves the project's
    bytes and fingerprint unchanged.
@@ -213,3 +218,36 @@ id and a date per decision). Both are stored formats and both wait for approval.
 
 Mutant group `revealed` (`python scripts/mutation_check.py --revealed-only --skip-control`):
 at least 10 mutants, all of which must be killed.
+
+### Verification history
+
+**DD8 (26 Nov 2026): the single-seed weight check under label noise failed as written.** The
+original test 6 asserted that every planted weight stays inside the noisy fit's 99% interval, on one
+log: the planted profile on the bench (`κ = 10`), `K = 1000`, data seed **77** (sampler seed 7),
+20% of decisions flipped (180 calls).
+
+- **Weight a1:** planted **0.090**, clean fit **0.105**, noisy fit **0.189**, outside the noisy
+  fit's 99% interval (0.111 to 0.264), and outside the clean fit's 90% interval. Weight error 0.020
+  clean, 0.049 noisy.
+- **`β`:** **11.6** clean → **5.7** noisy (99% 4.36 to 6.99), planted **10**. The attenuation check
+  passed and is kept unchanged.
+- **24-seed diagnostic** (scratch, not in the repository; 24 further seeds, `K = 1000`, 20%
+  flipped): the 90% weight intervals covered **104 of 120** (24 seeds × 5 weights) = **0.87**
+  (99% Clopper–Pearson 0.768 to 0.935), against 112 of 120 (0.93) clean. Weight error 0.034 against
+  0.016 clean, with a small systematic pull toward the stated weights. The seeds themselves were not
+  recorded.
+- **A model given the true flip rate did not fix it:** a lapse (label-noise) likelihood that knew the
+  true 20% still put a1 near 0.17 on seed 77, and over the 24 seeds covered 98 of 120 (0.82).
+- **Reading:** seed 77 is an unlucky draw on top of a real, modest effect. Flipped labels carry no
+  information, so the prior counts for more and the weights drift toward the stated ones. Nothing
+  was weakened: the failing test was kept as a local commit (a240bc2) and reported to the owner.
+
+**DD9 (26 Nov 2026): replaced by the multi-seed coverage test** (test 6 above), with the owner's
+approval, written with every number fixed before it was run, and run once (normal cp949 mode,
+125 s). **It passed:** the 90% weight intervals covered **176 of 200** (40 logs × 5 weights) =
+**0.880**, 99% Clopper–Pearson **0.809 to 0.932**, which contains 0.90. Per weight: a1 38, a2 36,
+a3 36, b1 31, b2 35 of 40. Every fit converged. `β`'s 90% interval covered its truth in only 13 of
+40 logs (printed, not asserted), as expected when 20% of labels are flipped: the slope attenuates
+while the weights stay calibrated across logs. Seed 77's single miss is therefore read as an
+unlucky draw at `K = 1000`, not a failure of weight calibration under this noise level; the noise
+does cost information (DD8: weight error roughly doubles).

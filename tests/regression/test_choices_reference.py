@@ -8,9 +8,11 @@
 - Simulation-based calibration (Talts et al. 2018): the rank of the truth among thinned posterior
   draws is uniform (chi-square, alpha = 0.01) for one weight, alpha and beta.
 - Label noise: with a stated share of decisions flipped, beta attenuates (its 99% interval lies
-  below the planted value and the clean fit's mean) while the weights are not biased (every planted
-  weight stays inside the noisy fit's 99% interval). The noisy point estimates against the clean
-  fit's 90% intervals are printed, not asserted.
+  below the planted value and the clean fit's mean). For the weights, a multi-seed coverage test
+  under noise replaces DD8's single-seed check (which failed on seed 77; see the design note,
+  section 6, "Verification history"): 40 truths drawn from the prior, 20% of K = 200 decisions
+  flipped, seeds from a new base fixed in advance; the 90% intervals of every weight cover the
+  truth at a rate whose 99% Clopper-Pearson interval contains 0.90 (the clean test's rule).
 
 Every run uses fixed seeds. These claims are about the method on synthetic data only; they say
 nothing about any real decider.
@@ -138,19 +140,39 @@ def test_label_noise_attenuates_beta(noise_fits) -> None:
     assert high < clean_mean
 
 
-def test_label_noise_leaves_the_weights_unbiased(noise_fits) -> None:
-    prior, truth, _noisy, clean_chains, noisy_chains = noise_fits
-    planted = truth.global_weights(prior)
-    for i, leaf in enumerate(prior.leaf_ids):
-        noisy_draws = noisy_chains.weights[:, :, i]
-        low99, high99 = np.quantile(noisy_draws, [0.005, 0.995])
-        clean_low, clean_high = np.quantile(clean_chains.weights[:, :, i], [0.05, 0.95])
-        point = float(noisy_draws.mean())
-        clean_mean = float(clean_chains.weights[:, :, i].mean())
-        print(
-            f"\n{leaf}: planted {planted[leaf]:.3f}, clean mean "
-            f"{clean_mean:.3f} (90% {clean_low:.3f} to {clean_high:.3f}), "
-            f"noisy mean {point:.3f} ({'inside' if clean_low <= point <= clean_high else 'outside'}"
-            f" the clean 90% interval; noisy 99% {low99:.3f} to {high99:.3f})"
-        )
-        assert low99 <= planted[leaf] <= high99, leaf
+# Fixed before the first run (DD9). The base is new: no other test and not the DD8 bench uses it.
+# (The 24 DD8 scratch seeds were not recorded; they were run at K = 1000, this test at K = 200.)
+# Data stream NOISE_BASE_SEED + sim; sampler seed NOISE_BASE_SEED + 500 + sim.
+NOISE_BASE_SEED = 31_000
+NOISE_SIMS = 40  # as the clean coverage test
+NOISE_K = 200
+
+
+def test_ninety_percent_weight_intervals_cover_under_label_noise() -> None:
+    prior = sy.bench_prior(20.0)  # as the clean coverage test
+    hits = trials = 0
+    per_leaf = dict.fromkeys(prior.leaf_ids, 0)
+    beta_hits = 0
+    for sim in range(NOISE_SIMS):
+        rng = stream(NOISE_BASE_SEED + sim)
+        truth = sy.draw_choice_truth(prior, rng)
+        dset = sy.simulate_decisions(prior, truth, NOISE_K, rng, flip_share=FLIP_SHARE)
+        assert dset.flipped > 0, sim
+        chains = fit(prior, dset.data, NOISE_BASE_SEED + 500 + sim)
+        assert report.diagnose(prior, chains).converged, sim
+        planted = truth.global_weights(prior)
+        for i, leaf in enumerate(prior.leaf_ids):
+            low, high = np.quantile(chains.weights[:, :, i], [0.05, 0.95])
+            hit = int(low <= planted[leaf] <= high)
+            hits += hit
+            per_leaf[leaf] += hit
+            trials += 1
+        low, high = np.quantile(chains.beta, [0.05, 0.95])
+        beta_hits += int(low <= truth.beta <= high)  # printed only: beta attenuates under noise
+    low, high = clopper_pearson(hits, trials, 0.99)
+    print(
+        f"\nweight coverage under {FLIP_SHARE:.0%} label noise (K = {NOISE_K}): {hits}/{trials} = "
+        f"{hits / trials:.3f} (99% CI {low:.3f} to {high:.3f}); per leaf {per_leaf}; "
+        f"beta (not asserted) {beta_hits}/{NOISE_SIMS}"
+    )
+    assert low <= 0.90 <= high, (hits, trials, low, high)
