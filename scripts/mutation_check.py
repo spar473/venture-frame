@@ -36,6 +36,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+# Every runner decodes a child's output as UTF-8, so every Python child must write UTF-8 too. On
+# Windows a piped child otherwise writes the locale's code page (cp949, cp1252, ...) and the first
+# non-ASCII character in a failure message stops the run. Runner environments copy os.environ.
+os.environ["PYTHONIOENCODING"] = "utf-8"
 
 
 @dataclass(frozen=True)
