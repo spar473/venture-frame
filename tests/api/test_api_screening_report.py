@@ -17,7 +17,9 @@ STUDY = EXAMPLES / "nz_venture_screening"
 
 
 def dossier() -> EvidenceDossier:
-    return EvidenceDossier.model_validate_json((STUDY / "evidence.json").read_text())
+    return EvidenceDossier.model_validate_json(
+        (STUDY / "evidence.json").read_text(encoding="utf-8")
+    )
 
 
 def test_the_route_returns_the_services_report_as_an_html_attachment(client: TestClient) -> None:
@@ -114,7 +116,7 @@ def test_the_command_rejects_a_bad_date_profile_or_evidence_file(tmp_path: Path)
     assert run(project, "--profile", "nope").exit_code != 0
     assert run(project, "--scenario", "missing").exit_code != 0
     broken = tmp_path / "e.json"
-    broken.write_text("{}")
+    broken.write_text("{}", encoding="utf-8")
     assert run(project, "--evidence", str(broken)).exit_code != 0
     assert run(str(tmp_path / "missing.json")).exit_code != 0
 

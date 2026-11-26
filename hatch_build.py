@@ -61,18 +61,18 @@ class ReleaseAssetsHook(BuildHookInterface):
         starters = starter_assets(root)
         archived = root / "src/mcda_studio/_build_info.json"
         if archived.is_file():
-            identity = json.loads(archived.read_text())
+            identity = json.loads(archived.read_text(encoding="utf-8"))
             if identity["frontend_index_sha256"] != hashlib.sha256(index.read_bytes()).hexdigest():
                 raise RuntimeError("Archived frontend does not match its build identity")
         else:
             revision, dirty = None, None
             if (root / ".git").exists():
                 revision = subprocess.check_output(
-                    ["git", "rev-parse", "HEAD"], cwd=root, text=True
+                    ["git", "rev-parse", "HEAD"], cwd=root, text=True, encoding="utf-8"
                 ).strip()
                 dirty = bool(
                     subprocess.check_output(
-                        ["git", "status", "--porcelain"], cwd=root, text=True
+                        ["git", "status", "--porcelain"], cwd=root, text=True, encoding="utf-8"
                     ).strip()
                 )
             identity = {
@@ -82,7 +82,9 @@ class ReleaseAssetsHook(BuildHookInterface):
             }
         self._staging = tempfile.TemporaryDirectory(prefix="mcda-build-")
         manifest = Path(self._staging.name) / "build-info.json"
-        manifest.write_text(json.dumps(identity, indent=2, sort_keys=True) + "\n", newline="\n")
+        manifest.write_text(
+            json.dumps(identity, indent=2, sort_keys=True) + "\n", newline="\n", encoding="utf-8"
+        )
         included = build_data.setdefault("force_include", {})
         if self.target_name == "wheel":
             included[str(frontend)] = "mcda_studio/_frontend"

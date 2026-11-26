@@ -159,7 +159,7 @@ def weights_for(question, index, top=8):
 def replay_file(path: Path, doc, choose=None):
     choose = choose or (lambda q: int(q["digest"][:4], 16) % len(q["labels"]))
     responses = {q["digest"]: weights_for(q, choose(q)) for q in doc["questions"]}
-    path.write_text(json.dumps({"responses": responses}))
+    path.write_text(json.dumps({"responses": responses}), encoding="utf-8")
     return path
 
 
@@ -169,7 +169,7 @@ def pipeline(tmp_path, study, site):
     assert snapshot(study, snaps) == 0
     qpath = tmp_path / "questions.json"
     assert questions(study, snaps, qpath) == 0
-    doc = json.loads(qpath.read_text())
+    doc = json.loads(qpath.read_text(encoding="utf-8"))
     replay = replay_file(tmp_path / "replay.json", doc)
     out = tmp_path / "run"
     assert (
@@ -184,7 +184,7 @@ def pipeline(tmp_path, study, site):
 
 def test_snapshot_saves_pages_with_hashes_text_and_the_generic_client_name(tmp_path, study, site):
     assert snapshot(study, tmp_path / "s") == 0
-    data = json.loads((tmp_path / "s" / "snapshots.json").read_text())
+    data = json.loads((tmp_path / "s" / "snapshots.json").read_text(encoding="utf-8"))
     assert data["licence"] == "unknown — private research copy, not for redistribution"
     assert "4 November 2026" in data["note"] and "later" in data["note"]
     rows = {row["url"]: row for row in data["snapshots"]}
@@ -196,7 +196,7 @@ def test_snapshot_saves_pages_with_hashes_text_and_the_generic_client_name(tmp_p
         assert hashlib.sha256(raw).hexdigest() == row["raw_sha256"]
         assert hashlib.sha256(text).hexdigest() == row["text_sha256"]
         assert row["final_url"] == row["url"] and row["retrieved_at"].endswith("Z")
-    text = (tmp_path / "s" / rows[f"{site.url}/co0/0"]["text_file"]).read_text()
+    text = (tmp_path / "s" / rows[f"{site.url}/co0/0"]["text_file"]).read_text(encoding="utf-8")
     assert "Company A builds machines" in text and "Title of the page" in text
     for dropped in ("SCRIPT-TEXT", "NAVIGATION-TEXT", "ROLE-NAV", "color:red"):
         assert dropped not in text
@@ -217,7 +217,7 @@ def test_snapshot_is_polite_it_waits_between_requests_and_reads_robots_txt_first
             {"alternative_id": "x", "criterion_id": "y", "source": {"reference": f"{s.url}{p}"}}
             for p in ("/a", "/b", "/c")
         ]
-        evidence.write_text(json.dumps({"claims": claims}))
+        evidence.write_text(json.dumps({"claims": claims}), encoding="utf-8")
         assert run(["snapshot", "--evidence", evidence, "--out", tmp_path / "s"]) == 0
         paths = [hit[0] for hit in s.hits]
         assert paths[0] == "/robots.txt" and "/b" not in paths and paths.count("/robots.txt") == 1
@@ -227,7 +227,9 @@ def test_snapshot_is_polite_it_waits_between_requests_and_reads_robots_txt_first
         )
         rows = {
             r["url"].rsplit("/", 1)[1]: r
-            for r in json.loads((tmp_path / "s" / "snapshots.json").read_text())["snapshots"]
+            for r in json.loads((tmp_path / "s" / "snapshots.json").read_text(encoding="utf-8"))[
+                "snapshots"
+            ]
         }
         assert rows["b"]["outcome"] == "blocked_by_robots" and rows["b"]["raw_file"] is None
         assert rows["a"]["outcome"] == rows["c"]["outcome"] == "saved"
@@ -260,12 +262,15 @@ def test_snapshot_skips_login_and_paywall_pages_and_records_errors_and_other_typ
                         for n in names
                     ]
                 }
-            )
+            ),
+            encoding="utf-8",
         )
         assert run(["snapshot", "--evidence", evidence, "--out", tmp_path / "s"]) == 0
         rows = {
             r["url"].rsplit("/", 1)[1]: r
-            for r in json.loads((tmp_path / "s" / "snapshots.json").read_text())["snapshots"]
+            for r in json.loads((tmp_path / "s" / "snapshots.json").read_text(encoding="utf-8"))[
+                "snapshots"
+            ]
         }
         assert rows["login"]["outcome"] == rows["paywall"]["outcome"] == "skipped_login_or_paywall"
         assert rows["login"]["status"] == 401 and rows["paywall"]["raw_file"] is None
@@ -275,7 +280,9 @@ def test_snapshot_skips_login_and_paywall_pages_and_records_errors_and_other_typ
             and rows["file.pdf"]["text_file"] is None
         )
         assert rows["plain"]["outcome"] == "saved"
-        assert (tmp_path / "s" / rows["plain"]["text_file"]).read_text() == "Plain text body"
+        assert (tmp_path / "s" / rows["plain"]["text_file"]).read_text(
+            encoding="utf-8"
+        ) == "Plain text body"
     finally:
         s.close()
 
@@ -322,7 +329,7 @@ def test_one_choice_question_per_company_and_criterion_with_all_cited_sources(pi
 
 
 def test_nothing_the_author_wrote_reaches_the_questions(pipeline):
-    text = pipeline["questions"].read_text()
+    text = pipeline["questions"].read_text(encoding="utf-8")
     for canary in CANARIES:
         assert canary not in text
     assert "performances" not in text and "Strong" in text  # labels are offered, ratings are not
@@ -331,7 +338,7 @@ def test_nothing_the_author_wrote_reaches_the_questions(pipeline):
 def test_the_budget_truncates_and_records_it(tmp_path, study, pipeline):
     out = tmp_path / "small.json"
     assert questions(study, pipeline["snaps"], out, "--budget-chars", "300") == 0
-    doc = json.loads(out.read_text())
+    doc = json.loads(out.read_text(encoding="utf-8"))
     assert doc["budget_chars"] == 300 and doc["truncations"]
     for state in doc["states"].values():
         assert all(s["chars_used"] <= 150 for s in state["sources"])
@@ -342,10 +349,10 @@ def test_the_budget_truncates_and_records_it(tmp_path, study, pipeline):
 
 def test_redaction_replaces_listed_names_with_neutral_tokens(tmp_path, study, pipeline):
     names = tmp_path / "names.txt"
-    names.write_text("Company A\ncompany b\n")
+    names.write_text("Company A\ncompany b\n", encoding="utf-8")
     out = tmp_path / "red.json"
     assert questions(study, pipeline["snaps"], out, "--redact", names) == 0
-    doc = json.loads(out.read_text())
+    doc = json.loads(out.read_text(encoding="utf-8"))
     text = doc["states"]["co0"]["state_text"]
     assert "Company A" not in text and "[NAME-1]" in text
     assert doc["states"]["co0"]["name"] == "[NAME-1]" and doc["states"]["co1"]["name"] == "[NAME-2]"
@@ -361,10 +368,12 @@ def test_questions_are_deterministic(tmp_path, study, pipeline):
 def test_a_snapshot_changed_on_disk_is_refused(tmp_path, study, pipeline):
     # A page the questions read: a company's own page, never the market report they skip. The
     # first file a directory lists depends on the filesystem, so it is not used to choose.
-    rows = json.loads((pipeline["snaps"] / "snapshots.json").read_text())["snapshots"]
+    rows = json.loads((pipeline["snaps"] / "snapshots.json").read_text(encoding="utf-8"))[
+        "snapshots"
+    ]
     row = min((r for r in rows if "/co0/" in r["url"]), key=lambda r: r["url"])
     first = pipeline["snaps"] / row["text_file"]
-    first.write_text(first.read_text() + " tampered")
+    first.write_text(first.read_text(encoding="utf-8") + " tampered", encoding="utf-8")
     assert questions(study, pipeline["snaps"], tmp_path / "x.json") == 2
 
 
@@ -418,7 +427,7 @@ def test_negative_and_zero_scores_are_refused():
 
 def test_replay_run_writes_responses_probabilities_and_a_complete_manifest(pipeline):
     out = pipeline["run"]
-    manifest = json.loads((out / "run-manifest.json").read_text())
+    manifest = json.loads((out / "run-manifest.json").read_text(encoding="utf-8"))
     for key in (
         "backend",
         "model",
@@ -437,11 +446,13 @@ def test_replay_run_writes_responses_probabilities_and_a_complete_manifest(pipel
         hashlib.sha256((out / "probabilities.json").read_bytes()).hexdigest()
         == manifest["probabilities_sha256"]
     )
-    rows = json.loads((out / "probabilities.json").read_text(), parse_float=Decimal)["rows"]
+    rows = json.loads(
+        (out / "probabilities.json").read_text(encoding="utf-8"), parse_float=Decimal
+    )["rows"]
     assert len(rows) == 60
     for row in rows.values():
         assert sum(row["probabilities"].values()) == Decimal(1)
-    lines = (out / "raw_responses.jsonl").read_text().splitlines()
+    lines = (out / "raw_responses.jsonl").read_text(encoding="utf-8").splitlines()
     assert len(lines) == 60 and json.loads(lines[0])["backend"] == "replay"
 
 
@@ -471,9 +482,9 @@ def test_a_run_needs_a_new_directory_its_recording_and_an_intact_question_file(t
         == 2
     )  # no --replay
     short = tmp_path / "short.json"
-    responses = json.loads(pipeline["replay"].read_text())["responses"]
+    responses = json.loads(pipeline["replay"].read_text(encoding="utf-8"))["responses"]
     responses.pop(next(iter(responses)))
-    short.write_text(json.dumps({"responses": responses}))
+    short.write_text(json.dumps({"responses": responses}), encoding="utf-8")
     assert (
         run(
             [
@@ -490,12 +501,12 @@ def test_a_run_needs_a_new_directory_its_recording_and_an_intact_question_file(t
         )
         == 2
     )
-    tampered = json.loads(pipeline["questions"].read_text())
+    tampered = json.loads(pipeline["questions"].read_text(encoding="utf-8"))
     tampered["questions"][0]["rubric"] = "something else"
     # keep the file's own digest valid, so only the per-question digest can notice the change
     tampered["digest"] = runner.digest({k: v for k, v in tampered.items() if k != "digest"})
     path = tmp_path / "tampered.json"
-    path.write_text(json.dumps(tampered))
+    path.write_text(json.dumps(tampered), encoding="utf-8")
     assert (
         run(
             [
@@ -636,18 +647,17 @@ def test_jev_client_sends_the_documented_request_with_a_bearer_key(
             "instructions",
             "criteria",
         }
-        doc = json.loads(jev_questions.read_text())
+        doc = json.loads(jev_questions.read_text(encoding="utf-8"))
         assert list(question["criteria"]) == doc["questions"][0]["options"]
         assert "Text about" in body["state"]
         for _, _, sent in mock.requests:  # the leakage canary, on every request body
             for canary in CANARIES:
                 assert canary not in json.dumps(sent)
-        manifest = json.loads((tmp_path / "j" / "run-manifest.json").read_text())
+        manifest = json.loads((tmp_path / "j" / "run-manifest.json").read_text(encoding="utf-8"))
         assert manifest["backend"] == "jev" and manifest["model"]["id"] == "jev-1.13.0"
-        assert (
-            "test-key-123"
-            not in json.dumps(manifest) + (tmp_path / "j" / "raw_responses.jsonl").read_text()
-        )
+        assert "test-key-123" not in json.dumps(manifest) + (
+            tmp_path / "j" / "raw_responses.jsonl"
+        ).read_text(encoding="utf-8")
     finally:
         mock.close()
 
@@ -782,11 +792,11 @@ def export(pipeline, out, project, threshold="0.5"):
 def test_export_writes_the_published_csv_with_metadata_only_confidence(tmp_path, study, pipeline):
     out = tmp_path / "export"
     assert export(pipeline, out, study["project"]) == 0
-    rows = list(csv.DictReader((out / "proposals.csv").open(newline="")))
+    rows = list(csv.DictReader((out / "proposals.csv").open(newline="", encoding="utf-8")))
     assert list(rows[0]) == runner.CSV_HEADER
-    registries = json.loads((out / "registries.json").read_text())
+    registries = json.loads((out / "registries.json").read_text(encoding="utf-8"))
     probabilities = json.loads(
-        (pipeline["run"] / "probabilities.json").read_text(), parse_float=Decimal
+        (pipeline["run"] / "probabilities.json").read_text(encoding="utf-8"), parse_float=Decimal
     )["rows"]
     fingerprint = runner.project_fingerprint(study["project"])
     card_digest = hashlib.sha256((out / "model-card.json").read_bytes()).hexdigest()
@@ -850,7 +860,7 @@ def test_cannot_tell_ties_and_low_confidence_make_no_proposal_and_are_listed(
     }
     responses[weak["digest"]] = {o: 1.0 for o in weak["options"]} | {weak["options"][2]: 1.2}
     path = tmp_path / "mixed.json"
-    path.write_text(json.dumps({"responses": responses}))
+    path.write_text(json.dumps({"responses": responses}), encoding="utf-8")
     assert (
         run(
             [
@@ -869,7 +879,7 @@ def test_cannot_tell_ties_and_low_confidence_make_no_proposal_and_are_listed(
     )
     mixed = {**pipeline, "run": tmp_path / "r"}
     assert export(mixed, tmp_path / "e", study["project"]) == 0
-    report = json.loads((tmp_path / "e" / "run-report.json").read_text())
+    report = json.loads((tmp_path / "e" / "run-report.json").read_text(encoding="utf-8"))
     reasons = {a["question_id"]: a["reason"] for a in report["abstention_list"]}
     assert reasons[cannot["question_id"]] == "cannot tell"
     assert reasons[tied["question_id"]] == "tie"
@@ -878,7 +888,9 @@ def test_cannot_tell_ties_and_low_confidence_make_no_proposal_and_are_listed(
     assert "Nothing here compares the tool with any rating" in report["note"]
     proposed = {
         r["proposal_id"]
-        for r in csv.DictReader((tmp_path / "e" / "proposals.csv").open(newline=""))
+        for r in csv.DictReader(
+            (tmp_path / "e" / "proposals.csv").open(newline="", encoding="utf-8")
+        )
     }
     assert not any(f"typed__{q['question_id']}" in proposed for q in (cannot, tied, weak))
     per_leaf = report["per_criterion"]["f1"]
@@ -892,7 +904,7 @@ def test_a_probability_exactly_at_the_threshold_still_proposes(tmp_path, study, 
         for q in doc["questions"]
     }
     path = tmp_path / "sure.json"
-    path.write_text(json.dumps({"responses": responses}))
+    path.write_text(json.dumps({"responses": responses}), encoding="utf-8")
     assert (
         run(
             [
@@ -911,7 +923,10 @@ def test_a_probability_exactly_at_the_threshold_still_proposes(tmp_path, study, 
     )
     sure = {**pipeline, "run": tmp_path / "r"}
     assert export(sure, tmp_path / "e", study["project"], threshold="1") == 0
-    assert json.loads((tmp_path / "e" / "run-report.json").read_text())["proposals"] == 60
+    assert (
+        json.loads((tmp_path / "e" / "run-report.json").read_text(encoding="utf-8"))["proposals"]
+        == 60
+    )
 
 
 def test_export_writes_benchmark_tables_in_the_shape_the_benchmark_validates(
@@ -923,12 +938,15 @@ def test_export_writes_benchmark_tables_in_the_shape_the_benchmark_validates(
         "tool_outputs.invented-4-level.json",
         "tool_outputs.invented-5-level.json",
     }
-    rows = json.loads((out / "tool_outputs.invented-5-level.json").read_text(), parse_float=Decimal)
+    rows = json.loads(
+        (out / "tool_outputs.invented-5-level.json").read_text(encoding="utf-8"),
+        parse_float=Decimal,
+    )
     assert len(rows) == 40
     card_digest = hashlib.sha256((out / "model-card.json").read_bytes()).hexdigest()
     proposed = {
         r["proposal_id"].removeprefix("typed__"): json.loads(r["payload_json"])["value"]
-        for r in csv.DictReader((out / "proposals.csv").open(newline=""))
+        for r in csv.DictReader((out / "proposals.csv").open(newline="", encoding="utf-8"))
     }
     labels_of = {q["question_id"]: q["labels"] for q in pipeline["doc"]["questions"]}
     for row in rows:
@@ -1036,10 +1054,10 @@ def _manifest_tables(final):
 def test_export_refuses_labels_that_are_not_the_projects_scale_and_in_repo_outputs(
     tmp_path, study, pipeline, monkeypatch
 ):
-    project = json.loads(Path(study["project"]).read_text())
+    project = json.loads(Path(study["project"]).read_text(encoding="utf-8"))
     project["criteria"][0]["scale"]["labels"] = ["A", "B", "C", "D", "E"]
     other = tmp_path / "other-project.json"
-    other.write_text(json.dumps(project))
+    other.write_text(json.dumps(project), encoding="utf-8")
     assert export(pipeline, tmp_path / "e1", other) == 2
     assert not (tmp_path / "e1").exists()
     fake = tmp_path / "fake-repo"
@@ -1067,7 +1085,7 @@ def test_the_real_study_proposals_import_and_preview_with_the_existing_commands(
     for n, url in enumerate(runner.all_references(study_dir / "evidence.json")):
         text = f"Invented page text number {n} for testing only. " * 20
         name = hashlib.sha256(url.encode()).hexdigest()[:16]
-        (snaps / "text" / f"{name}.txt").write_text(text)
+        (snaps / "text" / f"{name}.txt").write_text(text, encoding="utf-8")
         index.append(
             {
                 "url": url,
@@ -1076,7 +1094,9 @@ def test_the_real_study_proposals_import_and_preview_with_the_existing_commands(
                 "text_sha256": hashlib.sha256(text.encode()).hexdigest(),
             }
         )
-    (snaps / "snapshots.json").write_text(json.dumps({"version": 1, "snapshots": index}))
+    (snaps / "snapshots.json").write_text(
+        json.dumps({"version": 1, "snapshots": index}), encoding="utf-8"
+    )
     qpath = tmp_path / "q.json"
     assert (
         run(
@@ -1098,7 +1118,7 @@ def test_the_real_study_proposals_import_and_preview_with_the_existing_commands(
         )
         == 0
     )
-    doc = json.loads(qpath.read_text())
+    doc = json.loads(qpath.read_text(encoding="utf-8"))
     assert len(doc["questions"]) == 112 and len(rubrics["leaves"]) == 14
     replay = replay_file(
         tmp_path / "replay.json", doc, choose=lambda q: int(q["digest"][4:8], 16) % len(q["labels"])
@@ -1134,7 +1154,9 @@ def test_the_real_study_proposals_import_and_preview_with_the_existing_commands(
         )
         == 0
     )
-    count = len(list(csv.DictReader((export_dir / "proposals.csv").open(newline=""))))
+    count = len(
+        list(csv.DictReader((export_dir / "proposals.csv").open(newline="", encoding="utf-8")))
+    )
     assert count > 100
     workspace = tmp_path / "workspace.json"
 
@@ -1145,6 +1167,7 @@ def test_the_real_study_proposals_import_and_preview_with_the_existing_commands(
             text=True,
             cwd=ROOT,
             check=False,
+            encoding="utf-8",
         )
 
     project = str(study_dir / "project.json")
@@ -1175,7 +1198,7 @@ def test_swap_replaces_names_in_the_page_text_and_gives_a_paired_question_set(
     swap = write_swap(tmp_path / "swap.csv", [("Company A", "Person One"), ("Filler", "Padding")])
     out = tmp_path / "swapped.json"
     assert questions(study, pipeline["snaps"], out, "--swap", swap) == 0
-    doc, base = json.loads(out.read_text()), pipeline["doc"]
+    doc, base = json.loads(out.read_text(encoding="utf-8")), pipeline["doc"]
     text = doc["states"]["co0"]["state_text"]
     assert "Person One builds machines" in text and "Company A" not in text
     assert "Padding sentence" in text and "Filler" not in text
@@ -1211,7 +1234,7 @@ def test_a_swap_file_needs_its_header_and_unique_names(tmp_path, study, pipeline
         ]
     ):
         path = tmp_path / f"bad{index}.csv"
-        path.write_text(content)
+        path.write_text(content, encoding="utf-8")
         assert questions(study, pipeline["snaps"], tmp_path / f"o{index}.json", "--swap", path) == 2
 
 
@@ -1225,12 +1248,12 @@ def test_the_committed_swap_template_parses_and_names_no_real_person():
 def second_run(tmp_path, pipeline, changes):
     """A replay run whose answers equal the first run's, except where ``changes`` says otherwise."""
     doc = pipeline["doc"]
-    responses = json.loads(pipeline["replay"].read_text())["responses"]
+    responses = json.loads(pipeline["replay"].read_text(encoding="utf-8"))["responses"]
     for qid, weights in changes.items():
         digest_ = next(q["digest"] for q in doc["questions"] if q["question_id"] == qid)
         responses[digest_] = weights
     path = tmp_path / "second.json"
-    path.write_text(json.dumps({"responses": responses}))
+    path.write_text(json.dumps({"responses": responses}), encoding="utf-8")
     out = tmp_path / "run2"
     argv = [
         "run",
@@ -1254,7 +1277,7 @@ def compare(a, b, out, *extra):
 def test_identical_runs_have_no_differences(tmp_path, pipeline):
     same = second_run(tmp_path, pipeline, {})
     assert compare(pipeline["run"], same, tmp_path / "c.json") == 0
-    report = json.loads((tmp_path / "c.json").read_text(), parse_float=Decimal)
+    report = json.loads((tmp_path / "c.json").read_text(encoding="utf-8"), parse_float=Decimal)
     assert report["cells"] == 60 and report["top_label_changed"] == 0
     assert all(
         not c["top_changed"] and all(s == 0 for s in c["shifts"].values())
@@ -1266,7 +1289,9 @@ def test_identical_runs_have_no_differences(tmp_path, pipeline):
 def test_an_injected_change_is_detected_with_its_exact_shift(tmp_path, pipeline):
     doc = pipeline["doc"]
     target = next(q for q in doc["questions"] if q["question_id"] == "co2__f1")
-    original = json.loads(pipeline["replay"].read_text())["responses"][target["digest"]]
+    original = json.loads(pipeline["replay"].read_text(encoding="utf-8"))["responses"][
+        target["digest"]
+    ]
     top = max(original, key=original.get)
     other = next(o for o in target["options"] if o != top)
     changed = second_run(
@@ -1275,7 +1300,7 @@ def test_an_injected_change_is_detected_with_its_exact_shift(tmp_path, pipeline)
         {"co2__f1": {o: (9.0 if o == other else 1.0) for o in target["options"]}},
     )
     assert compare(pipeline["run"], changed, tmp_path / "c.json", "--top", "3") == 0
-    report = json.loads((tmp_path / "c.json").read_text(), parse_float=Decimal)
+    report = json.loads((tmp_path / "c.json").read_text(encoding="utf-8"), parse_float=Decimal)
     assert report["top_label_changed"] == 1 and report["top_label_unchanged"] == 59
     cell = next(c for c in report["cell_detail"] if c["question_id"] == "co2__f1")
     assert cell["top_changed"] and cell["top_a"] == top and cell["top_b"] == other
@@ -1291,7 +1316,7 @@ def test_an_injected_change_is_detected_with_its_exact_shift(tmp_path, pipeline)
 def test_runs_that_answered_different_questions_are_not_compared(tmp_path, study, pipeline):
     other_q = tmp_path / "other-q.json"
     assert questions(study, pipeline["snaps"], other_q, "--budget-chars", "300") == 0
-    other_doc = json.loads(other_q.read_text())
+    other_doc = json.loads(other_q.read_text(encoding="utf-8"))
     replay = replay_file(tmp_path / "other-replay.json", other_doc)
     assert (
         run(
@@ -1469,7 +1494,7 @@ def test_the_averaged_path_records_every_rotation_and_the_longest_prompt():
 
 
 def test_the_scoring_is_named_in_the_manifest_card_and_options(tmp_path, pipeline):
-    manifest = json.loads((pipeline["run"] / "run-manifest.json").read_text())
+    manifest = json.loads((pipeline["run"] / "run-manifest.json").read_text(encoding="utf-8"))
     assert manifest["scoring_version"] == "backend-probabilities.v1"  # a replay is not rescored
     averaged = runner.SCORING_TEXT_AVERAGED
     assert "first-token letter log-likelihood, averaged over n cyclic option orders" in averaged
@@ -1591,7 +1616,8 @@ def menu_pipeline(tmp_path, menu_site):
     evidence = Path(study["evidence"])
     other = menu_site.url.replace("127.0.0.1", "localhost")
     evidence.write_text(
-        evidence.read_text().replace(f"{menu_site.url}/co1/", f"{other}/co1/"), encoding="utf-8"
+        evidence.read_text(encoding="utf-8").replace(f"{menu_site.url}/co1/", f"{other}/co1/"),
+        encoding="utf-8",
     )
     snaps = tmp_path / "snaps"
     assert snapshot(study, snaps) == 0
@@ -1613,8 +1639,8 @@ def test_reextract_writes_a_new_index_and_text_and_never_touches_version_one(
     assert len(site.hits) == hits  # no request was made
     for path, data in before.items():  # version 1 is byte-for-byte what it was
         assert path.read_bytes() == data
-    index = json.loads((snaps / "snapshots.v2.json").read_text())
-    old = json.loads((snaps / "snapshots.json").read_text())
+    index = json.loads((snaps / "snapshots.v2.json").read_text(encoding="utf-8"))
+    old = json.loads((snaps / "snapshots.json").read_text(encoding="utf-8"))
     assert index["version"] == 2 and index["extractor_version"] == 2
     assert (
         index["source_index_sha256"]
@@ -1624,15 +1650,15 @@ def test_reextract_writes_a_new_index_and_text_and_never_touches_version_one(
     for row, original in zip(index["snapshots"], old["snapshots"], strict=True):
         assert row["raw_sha256"] == original["raw_sha256"] and row["url"] == original["url"]
         assert row["text_file"].startswith("text.v2/") and original["text_file"].startswith("text/")
-        text = (snaps / row["text_file"]).read_text()
+        text = (snaps / row["text_file"]).read_text(encoding="utf-8")
         assert hashlib.sha256(text.encode()).hexdigest() == row["text_sha256"]
         assert row["extractor_version"] == 2 and row["v1_text_rebuilt_identically"] is True
-        assert row["chars_before"] == len((snaps / original["text_file"]).read_text()) and row[
-            "chars_after"
-        ] == len(text)
+        assert row["chars_before"] == len(
+            (snaps / original["text_file"]).read_text(encoding="utf-8")
+        ) and row["chars_after"] == len(text)
         assert row["v1_text_sha256"] == original["text_sha256"]
     page_row = next(r for r in index["snapshots"] if r["url"].endswith("/co0/0"))
-    text = (snaps / page_row["text_file"]).read_text()
+    text = (snaps / page_row["text_file"]).read_text(encoding="utf-8")
     assert (
         text.count("Cookie notice repeated on this page") == 1
     )  # a repeat within the page, kept once
@@ -1642,11 +1668,13 @@ def test_reextract_writes_a_new_index_and_text_and_never_touches_version_one(
     other_host = next(
         r for r in index["snapshots"] if "localhost" in r["url"] and "co1/0" in r["url"]
     )
-    assert "Cross site link" in (snaps / other_host["text_file"]).read_text()
-    assert "About us" not in (snaps / other_host["text_file"]).read_text()  # its own host's menu
+    assert "Cross site link" in (snaps / other_host["text_file"]).read_text(encoding="utf-8")
+    assert "About us" not in (snaps / other_host["text_file"]).read_text(
+        encoding="utf-8"
+    )  # its own host's menu
     assert page_row["chars_after"] < page_row["chars_before"]
     market = next(r for r in index["snapshots"] if r["url"].endswith("/market-report"))
-    assert "Home" not in (snaps / market["text_file"]).read_text()
+    assert "Home" not in (snaps / market["text_file"]).read_text(encoding="utf-8")
 
 
 def test_reextract_refuses_to_overwrite_a_changed_page_and_the_repository(
@@ -1677,7 +1705,10 @@ def test_questions_take_either_index_and_the_version_one_questions_are_unchanged
     assert questions(study, snaps, two, "--extractor", "2") == 0
     assert questions(study, snaps, two_again, "--extractor", "2") == 0
     assert two.read_bytes() == two_again.read_bytes()  # deterministic
-    first, second = json.loads(one.read_text()), json.loads(two.read_text())
+    first, second = (
+        json.loads(one.read_text(encoding="utf-8")),
+        json.loads(two.read_text(encoding="utf-8")),
+    )
     assert "snapshot_index" not in first["inputs"]
     assert second["inputs"]["snapshot_index"] == "snapshots.v2.json"
     assert second["inputs"]["snapshots_sha256"] != first["inputs"]["snapshots_sha256"]
@@ -1789,7 +1820,8 @@ def checkpoint(tmp_path, repo="convaiinnovations/laya", name="laya"):
     directory = tmp_path / "models" / name
     directory.mkdir(parents=True)
     (directory / "mcda-model-revision.json").write_text(
-        json.dumps({"repo_id": repo, "revision": f"rev-{name}", "route": "own repository"})
+        json.dumps({"repo_id": repo, "revision": f"rev-{name}", "route": "own repository"}),
+        encoding="utf-8",
     )
     return directory
 
@@ -1966,7 +1998,7 @@ def test_a_laya_run_exports_exact_probabilities_refusals_and_a_card_per_checkpoi
         out = tmp_path / f"run-{name}"
         args = ["run", "--questions", qpath, "--backend", "laya", "--model-path", model]
         assert run([*args, "--limit", "4", "--out", out]) == 0
-        manifest = json.loads((out / "run-manifest.json").read_text())
+        manifest = json.loads((out / "run-manifest.json").read_text(encoding="utf-8"))
         assert manifest["backend"] == "laya" and manifest["scoring_version"] == (
             "laya-choice-chunk-mean.v1"
         )
@@ -1975,13 +2007,15 @@ def test_a_laya_run_exports_exact_probabilities_refusals_and_a_card_per_checkpoi
         assert manifest["parameters"]["checkpoint_route"] == "own repository"
         assert manifest["environment"]["laya"] == "0.4.32"
         assert "refused_questions" not in manifest
-        text = (out / "probabilities.json").read_text()
+        text = (out / "probabilities.json").read_text(encoding="utf-8")
         rows = json.loads(text, parse_float=Decimal)["rows"]
         assert len(rows) == 4
         for row in rows.values():  # exact decimals, read as decimals, sum to exactly one
             assert sum(row["probabilities"].values()) == Decimal(1)
         assert export({"run": out}, tmp_path / f"export-{name}", study["project"]) == 0
-        cards[name] = json.loads((tmp_path / f"export-{name}" / "model-card.json").read_text())
+        cards[name] = json.loads(
+            (tmp_path / f"export-{name}" / "model-card.json").read_text(encoding="utf-8")
+        )
     base, tuned = cards["laya"], cards["laya-typed-decisions"]
     assert base["details"]["fine_tuning"] == runner.LAYA_NOTES["convaiinnovations/laya"]
     assert "near-random zero-shot accuracy" in base["limitations"]
@@ -1998,12 +2032,14 @@ def test_a_laya_run_exports_exact_probabilities_refusals_and_a_card_per_checkpoi
     model = checkpoint(tmp_path, "convaiinnovations/laya", "laya-small")
     args = ["run", "--questions", qpath, "--backend", "laya", "--model-path", model]
     assert run([*args, "--limit", "3", "--out", refused_run]) == 0
-    manifest = json.loads((refused_run / "run-manifest.json").read_text())
+    manifest = json.loads((refused_run / "run-manifest.json").read_text(encoding="utf-8"))
     assert len(manifest["refused_questions"]) == 3
-    lines = (refused_run / "raw_responses.jsonl").read_text().splitlines()
+    lines = (refused_run / "raw_responses.jsonl").read_text(encoding="utf-8").splitlines()
     assert all("would cut them" in json.loads(line)["refused"] for line in lines)
     assert export({"run": refused_run}, tmp_path / "export-refused", study["project"]) == 0
-    report = json.loads((tmp_path / "export-refused" / "run-report.json").read_text())
+    report = json.loads(
+        (tmp_path / "export-refused" / "run-report.json").read_text(encoding="utf-8")
+    )
     assert report["proposals"] == 0 and report["abstentions"] == 3
     assert all(a["reason"].startswith("refused: ") for a in report["abstention_list"])
 
@@ -2048,11 +2084,13 @@ def test_the_model_allowlist_admits_qwen_and_the_two_laya_checkpoints_only(tmp_p
     assert "allow_patterns" not in qwen  # the Qwen download is exactly as before
     assert tuned["repo_id"] == "convaiinnovations/laya-typed-decisions"
     tuned_dir = tmp_path / "m" / "laya-typed-decisions"
-    record = json.loads((tuned_dir / "mcda-model-revision.json").read_text())
+    record = json.loads((tuned_dir / "mcda-model-revision.json").read_text(encoding="utf-8"))
     assert record["revision"] == "sha-of-laya-typed-decisions"
     assert record["route"] == "own repository" and record["files"] == runner.LAYA_FILES
     qwen_record = json.loads(
-        (tmp_path / "m" / "Qwen2.5-1.5B-Instruct" / "mcda-model-revision.json").read_text()
+        (tmp_path / "m" / "Qwen2.5-1.5B-Instruct" / "mcda-model-revision.json").read_text(
+            encoding="utf-8"
+        )
     )
     assert set(qwen_record) == {"repo_id", "revision", "licence", "retrieved_at"}
     monkeypatch.delenv("MCDA_ALLOW_MODEL_DOWNLOAD")
@@ -2082,7 +2120,7 @@ def test_jev_rotates_the_documented_request_and_maps_each_answer_back_by_option(
         assert jev_run(jev_questions, tmp_path / "rot", mock.url, "--allow-network") == 0
     finally:
         mock.close()
-    doc = json.loads(jev_questions.read_text())
+    doc = json.loads(jev_questions.read_text(encoding="utf-8"))
     first_three = doc["questions"][:3]
     assert len(mock.requests) == sum(len(q["options"]) for q in first_three)
     n = len(first_three[0]["options"])
@@ -2090,10 +2128,12 @@ def test_jev_rotates_the_documented_request_and_maps_each_answer_back_by_option(
     assert sent == [runner.rotated(first_three[0]["options"], shift) for shift in range(n)]
     positions = [body["questions"]["answer"]["criteria"] for _, _, body in mock.requests[:n]]
     assert all(list(p.values())[0] == f"Option 1 of {n}" for p in positions)
-    manifest = json.loads((tmp_path / "rot" / "run-manifest.json").read_text())
+    manifest = json.loads((tmp_path / "rot" / "run-manifest.json").read_text(encoding="utf-8"))
     assert manifest["scoring_version"] == "backend-probabilities-rotations.v1"
     assert manifest["parameters"]["order_averaging"] == "rotations"
-    raw = json.loads((tmp_path / "rot" / "raw_responses.jsonl").read_text().splitlines()[0])
+    raw = json.loads(
+        (tmp_path / "rot" / "raw_responses.jsonl").read_text(encoding="utf-8").splitlines()[0]
+    )
     options = first_three[0]["options"]
     true = true_weights(sorted(options))
     for option in options:  # each option's average is the same affine map of its true weight
@@ -2188,12 +2228,17 @@ def test_export_can_propose_from_the_recorded_second_reading_and_names_it(
     out = tmp_path / "run-laya"
     args = ["run", "--questions", qpath, "--backend", "laya", "--model-path", checkpoint(tmp_path)]
     assert run([*args, "--out", out]) == 0
-    rows = json.loads((out / "probabilities.json").read_text(), parse_float=Decimal)["rows"]
+    rows = json.loads(
+        (out / "probabilities.json").read_text(encoding="utf-8"), parse_float=Decimal
+    )["rows"]
     raws = {
         json.loads(line)["question_id"]: json.loads(line)["raw"]
-        for line in (out / "raw_responses.jsonl").read_text().splitlines()
+        for line in (out / "raw_responses.jsonl").read_text(encoding="utf-8").splitlines()
     }
-    options = {q["question_id"]: q["options"] for q in json.loads(qpath.read_text())["questions"]}
+    options = {
+        q["question_id"]: q["options"]
+        for q in json.loads(qpath.read_text(encoding="utf-8"))["questions"]
+    }
     differ = 0
     for qid, row in rows.items():
         reading = row["readings"][runner.MAX_CONFIDENCE_CHUNK]
@@ -2210,9 +2255,11 @@ def test_export_can_propose_from_the_recorded_second_reading_and_names_it(
         target = tmp_path / name
         cmd = ["export", "--run", out, "--project", study["project"], "--out", target, *extra]
         assert run(cmd) == 0
-        csv_rows = list(csv.reader(io.StringIO((target / "proposals.csv").read_text())))[1:]
-        report = json.loads((target / "run-report.json").read_text())
-        card = json.loads((target / "model-card.json").read_text())
+        csv_rows = list(
+            csv.reader(io.StringIO((target / "proposals.csv").read_text(encoding="utf-8")))
+        )[1:]
+        report = json.loads((target / "run-report.json").read_text(encoding="utf-8"))
+        card = json.loads((target / "model-card.json").read_text(encoding="utf-8"))
         return csv_rows, report, card
 
     mean_rows, mean_report, mean_card = exported("export-mean")

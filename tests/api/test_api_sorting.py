@@ -228,7 +228,9 @@ def test_the_saved_method_operation_clears_parameters_and_refuses_unknown_method
 def test_a_stored_sorting_project_saves_and_reloads_as_version_2(
     client: TestClient, store_dir: Path
 ) -> None:
-    created = client.post("/api/projects/import", json=json.loads(QUALIFICATION.read_text()))
+    created = client.post(
+        "/api/projects/import", json=json.loads(QUALIFICATION.read_text(encoding="utf-8"))
+    )
     assert created.status_code == 201
     pid = created.json()["project"]["id"]
     assert (store_dir / f"{pid}.json").read_bytes() == QUALIFICATION.read_bytes()
@@ -265,7 +267,7 @@ def test_the_cli_sets_audits_views_and_clears_classes(
         "Not qualified",
     )
     run("classes", "audit", f, "--below", "conditional", "--size", "1", "--seed", "2026")
-    assert json.loads(path.read_text())["schema_version"] == 2
+    assert json.loads(path.read_text(encoding="utf-8"))["schema_version"] == 2
     out = run("evaluate", f, "--method", "mavt_sorting")
     assert "Not qualified" in out and "audit sample below Conditional (1 of 2, seed 2026)" in out
     out = run("sensitivity", f, "--criterion", "cost", "--method", "mavt_sorting")

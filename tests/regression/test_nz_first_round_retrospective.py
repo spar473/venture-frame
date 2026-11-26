@@ -96,7 +96,9 @@ def test_inheritance_is_read_at_build_time(monkeypatch: pytest.MonkeyPatch) -> N
 
 def test_one_unreviewed_dated_evidence_claim_per_performance() -> None:
     project = repo.load(EXAMPLE / "project.json")
-    dossier = EvidenceDossier.model_validate_json((EXAMPLE / "evidence.json").read_text())
+    dossier = EvidenceDossier.model_validate_json(
+        (EXAMPLE / "evidence.json").read_text(encoding="utf-8")
+    )
     assert dossier.project_fingerprint == project.fingerprint()
     cells = {(p.alternative_id, p.criterion_id): p.value for p in project.performances}
     assert len(cells) == 95  # every cell rated: 56 drafted before 14 Nov, 39 under the gap rule
@@ -116,7 +118,9 @@ def test_one_unreviewed_dated_evidence_claim_per_performance() -> None:
 
 def test_sidecar_snapshot_dates_rating_parity_and_outcomes() -> None:
     project = repo.load(EXAMPLE / "project.json")
-    reference = ReferenceCases.model_validate_json((EXAMPLE / "reference-cases.json").read_text())
+    reference = ReferenceCases.model_validate_json(
+        (EXAMPLE / "reference-cases.json").read_text(encoding="utf-8")
+    )
     report = svc.validate(project, reference)
     assert report.valid, report.issues
     assert report.case_count == 5
@@ -262,7 +266,7 @@ def test_outcome_changes_cannot_change_project_or_dossier() -> None:
     assert build.build_project() == project
     assert build.build_dossier(project) == dossier
     for name in ("project.json", "evidence.json", "rubrics.json"):
-        text = (EXAMPLE / name).read_text().lower()
+        text = (EXAMPLE / name).read_text(encoding="utf-8").lower()
         assert "liquidator" not in text and "larger follow-on round" not in text
     reference = build.build_reference_set(project)
     assert all(case["outcome"]["label"] == "canary outcome" for case in reference["cases"])
@@ -280,7 +284,7 @@ def test_both_profiles_rank_every_company_without_mutating(profile: str) -> None
     )
     assert all(row.requirements.status == "pass" for row in result.rows)
     assert project.model_dump_json() == before
-    text = (EXAMPLE / "README.md").read_text()
+    text = (EXAMPLE / "README.md").read_text(encoding="utf-8")
     for row in result.rows:
         assert f"| {row.rank} ({row.value:.4f}, {row.class_name})" in text
 
@@ -288,7 +292,7 @@ def test_both_profiles_rank_every_company_without_mutating(profile: str) -> None
 def test_each_market_row_in_the_readme_names_its_own_company() -> None:
     # Each company's row carries that company's medians, computed independently from its sources.
     build = module()
-    readme = (EXAMPLE / "README.md").read_text()
+    readme = (EXAMPLE / "README.md").read_text(encoding="utf-8")
     for alt, name, _ in build.COMPANIES:
         size, growth = medians(build.MARKETS[alt])
         row = f"| {name} | {float(size)} | {float(growth)} | {len(build.MARKETS[alt])} |"
@@ -300,7 +304,9 @@ def test_each_market_row_in_the_readme_names_its_own_company() -> None:
 
 def test_every_gap_rule_claim_states_its_basis_and_the_counts_match_the_readme() -> None:
     build = module()
-    dossier = EvidenceDossier.model_validate_json((EXAMPLE / "evidence.json").read_text())
+    dossier = EvidenceDossier.model_validate_json(
+        (EXAMPLE / "evidence.json").read_text(encoding="utf-8")
+    )
     descriptions = {
         (c.alternative_id, c.criterion_id): c.source.description for c in dossier.claims
     }
@@ -322,7 +328,7 @@ def test_every_gap_rule_claim_states_its_basis_and_the_counts_match_the_readme()
     }
     assert all(c.get("sector") == 1 for c in counts.values())
     assert [key for key, basis in build.BASIS.items() if basis == "exception"] == [EXCEPTION_CELL]
-    readme = (EXAMPLE / "README.md").read_text()
+    readme = (EXAMPLE / "README.md").read_text(encoding="utf-8")
     assert "| Argo Navis Aerospace | 10 | 7 | 1 | 1 | 19 |" in readme
     assert "| Vertus Energy | 16 | 2 | 1 | 0 | 19 |" in readme
 
@@ -348,14 +354,16 @@ def test_build_refuses_a_gap_rule_cell_that_overwrites_a_drafted_rating(tmp_path
     for alt, cells in build.GAP_RULE_CELLS.items():
         for leaf in cells:
             assert build.CELLS[alt][leaf][2].endswith(cells[leaf][3])
-    text = (EXAMPLE / "build.py").read_text()
+    text = (EXAMPLE / "build.py").read_text(encoding="utf-8")
     marker = '    "vertus_energy": {\n        "board_advisors": ('
     assert text.count(marker) == 1
     duplicate = (
         '    "vertus_energy": {\n        "stage": ("Pre-seed", "vertus_scoop", "observed", "x"),\n'
     )
     copy = tmp_path / "build.py"
-    copy.write_text(text.replace(marker, duplicate + '        "board_advisors": ('))
+    copy.write_text(
+        text.replace(marker, duplicate + '        "board_advisors": ('), encoding="utf-8"
+    )
     spec = importlib.util.spec_from_file_location("first_round_duplicate", copy)
     assert spec is not None and spec.loader is not None
     with pytest.raises(ValueError, match="gap-rule cell already rated"):
@@ -372,7 +380,9 @@ def test_build_refuses_to_write_while_any_cell_is_missing(tmp_path: Path) -> Non
 
 def test_outcomes_switch_changes_only_outcomes_and_leaving_out_the_own_case() -> None:
     project = repo.load(EXAMPLE / "project.json")
-    reference = ReferenceCases.model_validate_json((EXAMPLE / "reference-cases.json").read_text())
+    reference = ReferenceCases.model_validate_json(
+        (EXAMPLE / "reference-cases.json").read_text(encoding="utf-8")
+    )
     before = project.fingerprint()
     off = svc.reference_cases(project, reference, project.analysis, alternative_id="vertus_energy")
     on = svc.reference_cases(
@@ -399,7 +409,7 @@ def test_outcomes_switch_changes_only_outcomes_and_leaving_out_the_own_case() ->
     assert "vertus_energy" not in [c.case_id for c in row.cases]
     assert len(row.cases) == 3 and row.not_comparable == []
     assert project.fingerprint() == before
-    text = (EXAMPLE / "README.md").read_text()
+    text = (EXAMPLE / "README.md").read_text(encoding="utf-8")
     for phrase in (
         "Not investment advice. Not a prediction.",
         "Companies neither contacted nor affiliated.",

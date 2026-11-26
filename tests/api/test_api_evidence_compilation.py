@@ -35,8 +35,8 @@ def rejection(workspace: dict[str, Any], digest: str) -> dict[str, Any]:
     "name,example", [("vc", "nz_deeptech_vc"), ("supplier", "supplier_qualification")]
 )
 def test_compile_export_import_copy_and_verify_binding(client, name, example):
-    raw = json.loads((ROOT / f"examples/{example}/project.json").read_text())
-    dossier = json.loads((ROOT / f"examples/evidence_demo/{name}.json").read_text())
+    raw = json.loads((ROOT / f"examples/{example}/project.json").read_text(encoding="utf-8"))
+    dossier = json.loads((ROOT / f"examples/evidence_demo/{name}.json").read_text(encoding="utf-8"))
     imported = client.post("/api/projects/import", json=raw)
     assert imported.status_code == 201 and imported.json()["copy_receipt"] is None
     project = imported.json()["project"]
@@ -104,8 +104,12 @@ def test_compile_export_import_copy_and_verify_binding(client, name, example):
 
 
 def test_stale_tampered_and_mismatched_requests_are_refused(client):
-    raw = json.loads((ROOT / "examples/supplier_qualification/project.json").read_text())
-    dossier = json.loads((ROOT / "examples/evidence_demo/supplier.json").read_text())
+    raw = json.loads(
+        (ROOT / "examples/supplier_qualification/project.json").read_text(encoding="utf-8")
+    )
+    dossier = json.loads(
+        (ROOT / "examples/evidence_demo/supplier.json").read_text(encoding="utf-8")
+    )
     first = client.post("/api/evidence/inspect", json={"project": raw, "document": dossier}).json()
     request = {
         "project": raw,
