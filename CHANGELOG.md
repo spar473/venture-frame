@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+### Decision confidence
+
+- Each robustness-band row gains `first`, `top_ranks` and `classes`: the share of SMAA-2 draws in
+  which the alternative is first (ties included), in the top `top_k` ranks (`min(3, alternatives)`)
+  and in each class, with SMAA-2's exact Clopper–Pearson interval at its `confidence` level, or
+  exact probabilities under enumeration. The response adds `top_k`, `confidence` and
+  `confidence_label`. Read from SMAA-2's acceptabilities; nothing is sampled again and no method
+  output changes.
+- The screening summary shows a Decision confidence table under the summary table, and the HTML
+  screening report gains a "Decision confidence by profile" section. The venture study's golden
+  report is regenerated (owner-approved); the supplier report is unchanged.
+- Shares are labelled as shares of draws under the stated uncertainty, never as probabilities of
+  success. Design: [robustness bands](docs/design/robustness-bands.md#decision-confidence).
+
 ### Native Windows
 
 - The engine, command line, `mcda serve` and the project library run on native Windows. The

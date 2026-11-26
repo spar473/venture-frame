@@ -2,7 +2,7 @@ import { act, fireEvent, render, renderHook, screen, within } from "@testing-lib
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../src/api/client";
 import type { Project, ScreeningRobustness, ScreeningSummary } from "../../src/api/types";
-import { bandLayout, displayShare, groupMarkers, leadSentence } from "../../src/components/results/RobustnessBands";
+import { bandLayout, DecisionConfidence, displayShare, groupMarkers, leadSentence, shareText } from "../../src/components/results/RobustnessBands";
 import { ScreeningSummaryView } from "../../src/components/results/ScreeningSummaryView";
 import { BASE_SELECTION, resolveContext } from "../../src/state/analysisContext";
 import { useScreeningRobustness } from "../../src/state/useScreeningRobustness";
@@ -22,7 +22,14 @@ function robustness(patch: Partial<ScreeningRobustness> = {}): ScreeningRobustne
     scenario_id: summary.scenario_id, available: true, reason: null, issue_codes: [], coverage: 0.8, run: "combined",
     evaluation: "sampled", draws: 10000, seed: 0, parameters: "defaults",
     rows: summary.rows.map((row, i) => ({ alternative_id: row.alternative_id, name: row.name, mavt_rank: row.rank,
-      rank_low: RANGES[i]?.[0] ?? row.rank, rank_high: RANGES[i]?.[1] ?? row.rank, band_share: 0.85, rank1_share: i === 0 ? 0.9247 : 0.01 })),
+      rank_low: RANGES[i]?.[0] ?? row.rank, rank_high: RANGES[i]?.[1] ?? row.rank, band_share: 0.85, rank1_share: i === 0 ? 0.9247 : 0.01,
+      first: { share: i === 0 ? 0.9247 : 0.01, lower: i === 0 ? 0.919 : 0.008, upper: i === 0 ? 0.9298 : 0.0122 },
+      top_ranks: { share: i < 3 ? 0.9991 : 0.004, lower: i < 3 ? 0.9983 : 0.003, upper: i < 3 ? 0.9996 : 0.0053 },
+      classes: [
+        { class_id: "prioritise", name: "Prioritise for diligence", share: i === 0 ? 0.9744 : 0, lower: i === 0 ? 0.9711 : 0, upper: i === 0 ? 0.9774 : 0.0004 },
+        { class_id: "monitor", name: "Monitor", share: i === 0 ? 0.0256 : 1, lower: i === 0 ? 0.0226 : 0.9996, upper: i === 0 ? 0.0289 : 1 },
+      ] })),
+    top_k: 3, confidence: 0.95, confidence_label: "Decision confidence is the share of draws; not a probability of success.",
     groups: [[order[0] ?? ""], order.slice(1, 7), [order[7] ?? ""]],
     basis: "Varied: 87 stated measurement ranges.", label: "Rank ranges are not probabilities.", ...patch,
   };
@@ -111,5 +118,30 @@ describe("the rank-range request", () => {
     const { result } = renderHook(() => useScreeningRobustness(project, own, true));
     await start();
     expect(result.current).toMatchObject({ status: "error", message: "Rank ranges do not match the selected revision and configuration." });
+  });
+});
+
+describe("decision confidence", () => {
+  it("shows the engine's shares with intervals widened to whole percents", () => {
+    expect(shareText({ share: 0.9247, lower: 0.919, upper: 0.9298 })).toEqual({ share: "92%", interval: "(91–93%)" });
+    expect(shareText({ share: 0, lower: 0, upper: 0.0004 })).toEqual({ share: "0%", interval: "(0–1%)" });
+    expect(shareText({ share: 0.5, lower: null, upper: null })).toEqual({ share: "50%", interval: null });
+  });
+  it("renders one row per engine row, in the engine's order, with a column per class", () => {
+    render(<DecisionConfidence layout={layoutOf(robustness())} names={names}/>);
+    const table = screen.getByRole("table", { name: "Decision confidence" });
+    const headers = within(table).getAllByRole("columnheader").map((h) => h.textContent);
+    expect(headers).toEqual(["Alternative", "First", "Top 3", "Prioritise for diligence", "Monitor"]);
+    const rows = within(table).getAllByRole("row").slice(1);
+    expect(rows.map((r) => within(r).getByRole("rowheader").textContent)).toEqual(summary.rows.map((r) => r.name));
+    expect(within(rows[0] as HTMLElement).getAllByRole("cell").map((c) => c.textContent))
+      .toEqual(["92% (91–93%)", "> 99% (99–100%)", "97% (97–98%)", "3% (2–3%)"]);
+    expect(screen.getByText(/not probabilities of success/)).toBeInTheDocument();
+  });
+  it("shows nothing without bands, and appears under the summary table once they arrive", () => {
+    const { container } = render(<DecisionConfidence layout={null} names={names}/>);
+    expect(container).toBeEmptyDOMElement();
+    render(<ScreeningSummaryView summary={summary} project={project} bands={ready(robustness())}/>);
+    expect(screen.getByRole("table", { name: "Decision confidence" })).toBeInTheDocument();
   });
 });

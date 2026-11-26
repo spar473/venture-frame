@@ -59,9 +59,43 @@ are the selected profile's:
 `weight_profile_id` and `scenario_id`, `available`, `reason`, `issue_codes`, `coverage`, `run`,
 `evaluation`, `draws` (none under exact enumeration), `seed`, `parameters` (`saved` or
 `defaults`), `rows` (in MAVT rank order: `alternative_id`, `name`, `mavt_rank`, `rank_low`,
-`rank_high`, `band_share`, `rank1_share`), `groups`, `basis` and `label`. The label: "Rank ranges
-show where each alternative's rank falls in most draws under the uncertainty stated in the project.
-They are not probabilities of success or predictions."
+`rank_high`, `band_share`, `rank1_share`, and the decision-confidence fields `first`, `top_ranks`
+and `classes` below), `top_k`, `confidence`, `groups`, `basis`, `label` and `confidence_label`. The
+label: "Rank ranges show where each alternative's rank falls in most draws under the uncertainty
+stated in the project. They are not probabilities of success or predictions."
+
+## Decision confidence
+
+**Status:** accepted by the owner, 25 November 2026 (deep dive 1 of the evidence-backed weighting
+plan), including the regenerated golden report. It changes no mathematics, project, sidecar or
+method output, and SMAA-2 itself is unchanged.
+
+Rank ranges answer "which ranks are too close to call". Decision confidence states the same draws
+as plain shares, per alternative and per profile, so a partner can read how settled each reading
+is:
+
+- **`first`**: the share of draws at rank 1, tied first places included (the same share as
+  `rank1_share`).
+- **`top_ranks`**: the share of draws whose competition rank is at most `top_k`, where `top_k` is
+  `min(3, number of alternatives)`. Each draw gives one rank per alternative, so this is the sum
+  of the first `top_k` rank counts.
+- **`classes`**: one share per class, best class first, from SMAA-2's class acceptabilities;
+  empty without classes. Every draw falls in exactly one class, so a row's class shares sum to 1.
+
+Each is a `ShareEstimate` (`share`, `lower`, `upper`). In a sampled run, `lower` and `upper` are
+the exact two-sided Clopper–Pearson interval at SMAA-2's `confidence` (0.95 by default): for
+`first` and `classes` they are SMAA-2's own intervals, and for `top_ranks` they are computed from
+the summed count with the same function. Under exact enumeration the shares are probabilities,
+`fsum`med, with no interval, and `confidence` is `None`.
+
+The `confidence_label`: "Decision confidence is the share of draws, under the uncertainty stated
+in the project, in which an alternative is first, is in the top ranks or falls in a class. It
+describes how settled the screening reading is, not a probability of success."
+
+**What it is about.** The shares describe the uncertainty *stated in the project*, nothing more.
+In case 2 that is 87 measurement ranges and top-level swing-rating intervals the study author
+typed in, so the shares measure the consequence of those stated ranges. They become a statement
+about partners' real uncertainty only when weights are elicited with ranges (deep dive 3).
 
 ## Surfaces
 
@@ -74,6 +108,11 @@ They are not probabilities of success or predictions."
   sentence above the table is built from these fields only. Bands load after the summary renders,
   through the keyed, abortable request pattern, and are hidden during a what-if trial.
 - The HTML screening report: the rank range in each profile's table and one line per group.
+- Decision confidence: a table under the screening summary in the app (First, Top 3, one column
+  per class, each share with its interval in brackets), and a "Decision confidence by profile"
+  section in the HTML report with the same table per profile. Shares display as whole percents,
+  never 0 % or 100 % for a share that is neither ("< 1%", "> 99%"); interval ends are widened
+  outward to whole percents (floor and ceiling), so rounding never narrows an interval.
 
 ## Case 2 (venture study), default run
 
@@ -83,6 +122,22 @@ They are not probabilities of success or predictions."
 | Commercial/traction-led | [Upstock] · [Hectre, Wych, Hnry, Wellumio, Captivate Technology, Scentian Bio] · [Kea Aerospace] | 0.9247 |
 
 Technical/IP-led ranges, in MAVT order: 1–1, 2–6, 2–4, 2–4, 4–7, 3–6, 5–7, 8–8.
+
+Decision confidence, Technical/IP-led (shares of 10,000 draws):
+
+| Alternative | First | Top 3 | Prioritise for diligence | Monitor | Not now |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Upstock | 0.9302 | 0.9991 | 0.9744 | 0.0256 | 0 |
+| Wellumio | 0.0060 | 0.2800 | 0.0599 | 0.9401 | 0 |
+| Hectre | 0.0061 | 0.6907 | 0.1224 | 0.8776 | 0 |
+| Wych | 0.0555 | 0.7700 | 0.3570 | 0.6430 | 0 |
+| Captivate Technology | 0.0017 | 0.0910 | 0.0156 | 0.9799 | 0.0045 |
+| Scentian Bio | 0.0004 | 0.1138 | 0.0064 | 0.9936 | 0 |
+| Hnry | 0.0001 | 0.0554 | 0.0072 | 0.9900 | 0.0028 |
+| Kea Aerospace | 0 | 0 | 0 | 0.2810 | 0.7190 |
+
+Wych, fourth by MAVT, is in *Prioritise for diligence* in about a third of draws; Kea Aerospace,
+last, is in *Monitor* in more than a quarter.
 
 ## Verification
 
@@ -95,6 +150,16 @@ Technical/IP-led ranges, in MAVT order: 1–1, 2–6, 2–4, 2–4, 4–7, 3–6
   partition the alternatives, the same seed gives the same result, looking never changes the
   project or the screening summary.
 - API tests for both routes, the unavailable state, and the cross-site guard.
+- Decision confidence (`tests/regression/test_decision_confidence_reference.py`): on case 2's real
+  output under both profiles, every share is recounted from SMAA-2's rank and class counts, and
+  every sampled interval is recomputed with SciPy's beta quantiles (not the engine's), agreeing
+  within 10⁻⁹; class shares sum to the draws; classes come best first. Exact enumeration matches
+  `smaa_oracle`'s exact probabilities with no interval. Tied first places count as first
+  (`tie_case`); a two-alternative project counts its top 2. The report test parses each decision
+  confidence cell and rebuilds it from the counts with its own formatter.
+- Six more mutants under `--robustness-only`: top ranks one rank short, `top_k` not capped at the
+  number of alternatives, sole first in place of tied first, classes not best first, a fixed 90 %
+  interval level, and report intervals rounded inward.
 - Nine mutants (`scripts/mutation_check.py --robustness-only`): an interval that drops its last
   rank, `>` for `≥` on coverage, touching ranges not overlapping, a sweep in MAVT order, ties that
   ignore the MAVT rank, enumeration without its tolerance, a missing "no stated uncertainty"

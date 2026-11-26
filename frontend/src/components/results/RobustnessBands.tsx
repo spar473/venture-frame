@@ -105,3 +105,46 @@ export function BandsLead({ request, layout, names }: { request: BandsRequest | 
     <InfoDisclosure label="How rank ranges are found">Each rank range is the shortest run of ranks that holds at least {displayShare(layout.result.coverage)} of
       the draws; alternatives whose ranges overlap are too close to separate. {layout.result.basis} {layout.result.label}</InfoDisclosure></p>;
 }
+
+type Share = Band["first"];
+
+/** A share of draws with the engine's interval, widened outward to whole percents for display. */
+export function shareText(estimate: Share): { share: string; interval: string | null } {
+  const interval = estimate.lower != null && estimate.upper != null
+    ? `(${String(Math.floor(estimate.lower * 100))}–${String(Math.ceil(estimate.upper * 100))}%)` : null;
+  return { share: displayShare(estimate.share), interval };
+}
+
+function ShareCell({ estimate }: { estimate: Share }) {
+  const { share, interval } = shareText(estimate);
+  return <td className="num">{share}{interval && <> <span className="rank-range">{interval}</span></>}</td>;
+}
+
+/** Decision confidence: the engine's shares of draws in which each alternative is first, is in the
+ * top ranks and falls in each class, from the same run as the rank ranges. Display only. */
+export function DecisionConfidence({ layout, names }: { layout: BandLayout | null; names: Record<string, string> }) {
+  if (!layout || !layout.result.rows.length) return null;
+  const { result } = layout;
+  const classes = result.rows[0]?.classes ?? [];
+  const how = result.confidence != null
+    ? `Brackets give the exact ${displayShare(result.confidence)} interval for each share, widened to whole percents.`
+    : "Exact enumeration: the shares are probabilities under the stated uncertainty.";
+  return <section className="decision-confidence" aria-label="Decision confidence">
+    <p className="decision-confidence-title"><strong>Decision confidence</strong>{" "}
+      <InfoDisclosure label="About decision confidence">{result.confidence_label} {how} {result.basis}</InfoDisclosure></p>
+    <div className="table-scroll" tabIndex={0}>
+      <table className="grid" aria-label="Decision confidence">
+        <thead><tr>
+          <th scope="col">Alternative</th><th scope="col" className="num">First</th><th scope="col" className="num">Top {String(result.top_k ?? "")}</th>
+          {classes.map((c) => <th scope="col" className="num" key={c.class_id}>{c.name}</th>)}
+        </tr></thead>
+        <tbody>{result.rows.map((row) => <tr key={row.alternative_id}>
+          <th scope="row">{names[row.alternative_id] ?? row.name}</th>
+          <ShareCell estimate={row.first}/><ShareCell estimate={row.top_ranks}/>
+          {row.classes.map((c) => <ShareCell estimate={c} key={c.class_id}/>)}
+        </tr>)}</tbody>
+      </table>
+    </div>
+    <p className="muted small">Share of draws under the uncertainty stated in the project; not probabilities of success.</p>
+  </section>;
+}

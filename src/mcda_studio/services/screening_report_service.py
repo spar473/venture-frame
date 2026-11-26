@@ -14,6 +14,7 @@ line. Nothing is invented to fill it.
 import hashlib
 import html
 import json
+import math
 import re
 from datetime import date
 from typing import Any
@@ -31,6 +32,7 @@ from mcda_studio.services.questions_service import Question, open_questions
 from mcda_studio.services.screening_robustness_service import (
     COVERAGE,
     ScreeningRobustness,
+    ShareEstimate,
     screening_robustness,
 )
 from mcda_studio.services.screening_summary_service import (
@@ -248,6 +250,54 @@ def _bands_lines(bands: ScreeningRobustness, names: dict[str, str]) -> list[str]
     return lines
 
 
+def _share_text(estimate: ShareEstimate) -> str:
+    """A share of draws as a whole percent, never 0 % or 100 % for a share that is neither, with
+    its interval widened outward to whole percents so rounding never narrows it."""
+    share = estimate.share
+    if 0 < share < 0.005:
+        text = "< 1%"
+    elif 0.995 <= share < 1:
+        text = "> 99%"
+    else:
+        text = f"{share * 100:.0f}%"
+    if estimate.lower is None or estimate.upper is None:
+        return _e(text)
+    low, high = math.floor(estimate.lower * 100), math.ceil(estimate.upper * 100)
+    return f'{_e(text)} <span class="range">({low}–{high}%)</span>'
+
+
+def _confidence_lines(bands: ScreeningRobustness, names: dict[str, str]) -> list[str]:
+    """Decision confidence for one profile: first, top ranks and each class, from the same draws
+    as the rank ranges. Nothing is shown when the rank ranges are unavailable."""
+    if not bands.available or not bands.rows:
+        return []
+    class_names = [c.name for c in bands.rows[0].classes]
+    headers: list[tuple[str, bool]] = [
+        ("Alternative", False),
+        ("First", True),
+        (f"Top {bands.top_k}", True),
+        *[(name, True) for name in class_names],
+    ]
+    rows = [
+        [
+            _e(names.get(r.alternative_id, r.name)),
+            _share_text(r.first),
+            _share_text(r.top_ranks),
+            *[_share_text(c) for c in r.classes],
+        ]
+        for r in bands.rows
+    ]
+    if bands.confidence is not None:
+        level = f"{round(bands.confidence * 100)}%"
+        how = f"Brackets give the exact {level} interval for the share, widened to whole percents."
+    else:
+        how = "Exact enumeration: the shares are probabilities under the stated uncertainty."
+    return [
+        _table(headers, rows),
+        f'<p class="muted">{_e(bands.confidence_label)} {_e(how)}</p>',
+    ]
+
+
 def _active(claim: Claim) -> bool:
     return claim.review is not None and claim.review.status != "rejected"
 
@@ -400,6 +450,7 @@ def screening_report(
 
     # Rankings per profile
     body.append("<h2>Screening summary by profile</h2>")
+    confidence: list[tuple[str, ScreeningRobustness]] = []
     for profile_id, name, summary in readings:
         body.append(f"<h3>{_e(name)}</h3>")
         if summary.status != "available":
@@ -412,7 +463,16 @@ def screening_report(
         body.append(table)
         body.extend(_bands_lines(bands, names))
         body.extend(f'<p class="muted">{_e(note)}</p>' for note in notes)
+        if bands.available and bands.rows:
+            confidence.append((name, bands))
     body.append(f'<p class="muted">{_e(primary.label)}</p>')
+
+    # Decision confidence per profile, from the same draws as the rank ranges
+    if confidence:
+        body.append("<h2>Decision confidence by profile</h2>")
+        for name, bands in confidence:
+            body.append(f"<h3>{_e(name)}: decision confidence</h3>")
+            body.extend(_confidence_lines(bands, names))
 
     # Partner comparison
     body.append("<h2>Partner comparison</h2>")

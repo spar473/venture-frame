@@ -251,6 +251,11 @@ margin, mandate status, the two largest contributions, the closest change and th
   saved SMAA-2 parameters (or SMAA-2's defaults) and the selected profile and scenario, and are
   hidden during a what-if trial. A project with no stated uncertainty shows the rank alone and says
   why. A range is not a probability of success. Details: [robustness bands](design/robustness-bands.md).
+- **Decision confidence.** Under the summary, a table gives each company's share of the same
+  draws in which it is first, in the top three and in each class, with the exact 95 % interval in
+  brackets. Read "Upstock is first in 93% of draws" as how settled the reading is under the
+  uncertainty the project states, not as a chance of success. Details:
+  [decision confidence](design/robustness-bands.md#decision-confidence).
 
 **Hiding series** is for inspection only. It never renormalises values, and hidden items are
 always disclosed. Tables show every number without hovering, and matrices support arrow keys.

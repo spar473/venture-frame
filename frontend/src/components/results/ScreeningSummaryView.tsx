@@ -5,7 +5,7 @@ import type { StudyEvidenceOffer } from "../CompanyExplorer";
 import { Caveat, InfoDisclosure } from "../InfoDisclosure";
 import { RatingHint } from "../RatingHint";
 import { closestChangeExact, closestChangePlain, POINTS_NOTE, type ChangeNames } from "./closestChange";
-import { BandsLead, bandLayout, groupMarkers, RankCell, type BandsRequest } from "./RobustnessBands";
+import { BandsLead, bandLayout, DecisionConfidence, groupMarkers, RankCell, type BandsRequest } from "./RobustnessBands";
 import { ValueText } from "./ValueText";
 
 const COLUMN_LABELS: Record<ScreeningSummary["columns"][number]["column"], string> = {
@@ -82,6 +82,7 @@ export function ScreeningSummaryView({ summary, project, hideOpenQuestions = fal
       </table>
     </div>
     {analyst && shown.has("fragility") && <p className="muted small summary-note">{POINTS_NOTE}</p>}
+    <DecisionConfidence layout={layout} names={names.alternatives}/>
     <Caveat id="screening" caption="Preference values under this profile; not probabilities or predictions.">{summary.label} {summary.fragility_definition}
       {!hideOpenQuestions && summary.project_open_questions ? ` ${String(summary.project_open_questions)} open question(s) concern the whole project.` : ""}</Caveat>
     {absent.length > 0 && <p className="muted small" aria-label="Summary columns not shown">Not shown: {absent.map((c) => `${COLUMN_LABELS[c.column]} (${c.reason})`).join("; ")}</p>}
