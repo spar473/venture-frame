@@ -27,8 +27,10 @@ def test_saving_is_deterministic_and_leaves_no_temp_files(tmp_path: Path) -> Non
     p = tiny_project()
     repo.save(p, tmp_path / "a.json")
     repo.save(p, tmp_path / "b.json")
-    assert (tmp_path / "a.json").read_text() == (tmp_path / "b.json").read_text()
-    assert (tmp_path / "a.json").read_text().endswith("}\n")
+    assert (tmp_path / "a.json").read_text(encoding="utf-8") == (tmp_path / "b.json").read_text(
+        encoding="utf-8"
+    )
+    assert (tmp_path / "a.json").read_text(encoding="utf-8").endswith("}\n")
     assert sorted(f.name for f in tmp_path.iterdir()) == ["a.json", "b.json"]
 
 
@@ -36,7 +38,7 @@ def test_overwrite_is_atomic_when_serialisation_fails(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     path = repo.save(tiny_project(), tmp_path / "p.json")
-    original = path.read_text()
+    original = path.read_text(encoding="utf-8")
 
     def boom(_: Any) -> str:
         raise RuntimeError("disk on fire")
@@ -44,7 +46,7 @@ def test_overwrite_is_atomic_when_serialisation_fails(
     monkeypatch.setattr(jr, "to_json_text", boom)
     with pytest.raises(RuntimeError):
         repo.save(tiny_project(), path)
-    assert path.read_text() == original
+    assert path.read_text(encoding="utf-8") == original
 
 
 def test_save_creates_missing_directories(tmp_path: Path) -> None:
@@ -54,7 +56,7 @@ def test_save_creates_missing_directories(tmp_path: Path) -> None:
 
 def test_result_models_can_be_saved(tmp_path: Path) -> None:
     out = save_model(evaluate_mavt(tiny_project()), tmp_path / "r.json")
-    assert json.loads(out.read_text())["method"] == "mavt"
+    assert json.loads(out.read_text(encoding="utf-8"))["method"] == "mavt"
 
 
 @pytest.mark.parametrize(
@@ -72,7 +74,7 @@ def test_result_models_can_be_saved(tmp_path: Path) -> None:
 )
 def test_malformed_files_fail_clearly(tmp_path: Path, content: str, match: str) -> None:
     path = tmp_path / "bad.json"
-    path.write_text(content)
+    path.write_text(content, encoding="utf-8")
     with pytest.raises(ProjectLoadError, match=match):
         repo.load(path)
 

@@ -170,7 +170,9 @@ def test_ids_that_could_be_unsafe_file_names_are_rejected(
 
 def test_get_reports_a_corrupted_stored_file_as_such(client: TestClient, store_dir: Path) -> None:
     pid = create(client)["project"]["id"]
-    (store_dir / f"{pid}.json").write_text('{"schema_version": 1, "id": "' + pid + '"}')
+    (store_dir / f"{pid}.json").write_text(
+        '{"schema_version": 1, "id": "' + pid + '"}', encoding="utf-8"
+    )
     resp = client.get(f"/api/projects/{pid}")
     assert resp.status_code == 500
     assert errors(resp)["code"] == "STORED_PROJECT_UNREADABLE"

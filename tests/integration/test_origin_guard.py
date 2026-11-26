@@ -33,7 +33,9 @@ def test_a_real_server_refuses_other_origins_and_accepts_its_own(tmp_path):
     port = free_port()
     command = [sys.executable, "-m", "mcda_studio", "serve", "--store", str(tmp_path / "library")]
     command += ["--port", str(port), "--no-open"]
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    process = subprocess.Popen(
+        command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8"
+    )
     base = f"http://127.0.0.1:{port}"
     try:
         for _ in range(200):

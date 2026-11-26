@@ -218,7 +218,7 @@ def test_the_cli_states_runs_and_clears_uncertainty(
         "--cell",
         "evergreen:on_time",
     )
-    assert json.loads(path.read_text())["schema_version"] == 3
+    assert json.loads(path.read_text(encoding="utf-8"))["schema_version"] == 3
     out = run("evaluate", f, "--method", "smaa2", "--samples", "2000", "--seed", "7")
     assert "sampled acceptability under these assumptions (combined run; 2000 draws, seed 7" in out
     assert "inputs to check (heuristic" in out and "Qualified" in out

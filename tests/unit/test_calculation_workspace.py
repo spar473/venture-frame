@@ -31,7 +31,9 @@ SOURCE = Source(name="Note", reference="local:note", date="2026-11-01", descript
 
 def venture():
     p = JsonProjectRepository().load(EXAMPLE / "venture-project.json")
-    return p, DerivedModel.model_validate_json((EXAMPLE / "venture-model.json").read_text())
+    return p, DerivedModel.model_validate_json(
+        (EXAMPLE / "venture-model.json").read_text(encoding="utf-8")
+    )
 
 
 def blank(p):
@@ -407,7 +409,9 @@ def test_naive_times_are_refused():
 
 def test_usage_follows_intermediates_and_tiny_changes_still_count():
     p = JsonProjectRepository().load(EXAMPLE / "supplier-project.json")
-    model = DerivedModel.model_validate_json((EXAMPLE / "supplier-model.json").read_text())
+    model = DerivedModel.model_validate_json(
+        (EXAMPLE / "supplier-model.json").read_text(encoding="utf-8")
+    )
     current = cw.inspect(p, model)
     uses = {u.factor_id: u for u in current.factor_uses}
     # annual_units reaches both targets only through the intermediate purchase_volume.
