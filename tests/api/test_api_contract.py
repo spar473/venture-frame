@@ -46,7 +46,9 @@ def test_every_documented_endpoint_has_a_description_of_its_error_shape(tmp_path
         "criteria",
         "performances",
     } <= project_fields
-    saved_schema = json.loads((ROOT / "docs" / "architecture" / "project_schema.json").read_text())
+    saved_schema = json.loads(
+        (ROOT / "docs" / "architecture" / "project_schema.json").read_text(encoding="utf-8")
+    )
     assert set(saved_schema["properties"]) == project_fields
 
 

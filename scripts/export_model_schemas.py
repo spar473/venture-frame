@@ -31,10 +31,10 @@ def main():
         text = json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
         file = ROOT / name
         if "--check" in sys.argv:
-            if not file.is_file() or file.read_text() != text:
+            if not file.is_file() or file.read_text(encoding="utf-8") != text:
                 raise SystemExit(f"Out of date model schema: {name}")
         else:
-            file.write_text(text, newline="\n")
+            file.write_text(text, newline="\n", encoding="utf-8")
     print("Model/check/starter schemas are current")
 
 

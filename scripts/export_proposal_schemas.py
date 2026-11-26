@@ -24,10 +24,10 @@ def main():
         text = json.dumps(schema, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
         file = ROOT / name
         if "--check" in sys.argv:
-            if not file.is_file() or file.read_text() != text:
+            if not file.is_file() or file.read_text(encoding="utf-8") != text:
                 raise SystemExit(f"Proposal schema out of date: {file.name}")
         else:
-            file.write_text(text, newline="\n")
+            file.write_text(text, newline="\n", encoding="utf-8")
     print("Proposal schemas current.")
 
 

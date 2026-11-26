@@ -14,7 +14,7 @@ EXAMPLE = Path(__file__).parents[2] / "examples/derived_measurements"
 
 @pytest.mark.parametrize("name", ["venture", "supplier"])
 def test_demo_calculations_compile_reopen_and_rank_against_rational_oracle(name, tmp_path):
-    raw = json.loads((EXAMPLE / f"{name}-model.json").read_text())
+    raw = json.loads((EXAMPLE / f"{name}-model.json").read_text(encoding="utf-8"))
     model = DerivedModel.model_validate(raw)
     repo = JsonProjectRepository()
     p = repo.load(EXAMPLE / f"{name}-project.json")

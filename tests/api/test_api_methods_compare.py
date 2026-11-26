@@ -47,7 +47,7 @@ def test_the_comparison_route(client: TestClient) -> None:
 
 def test_the_stored_route_and_a_subset(client: TestClient, tmp_path: Path) -> None:
     path = tmp_path / "q.json"
-    path.write_text(to_json_text(every_section(repo.load(QUALIFICATION))))
+    path.write_text(to_json_text(every_section(repo.load(QUALIFICATION))), encoding="utf-8")
     project_id = import_file(client, path)["project"]["id"]
     stored = client.post(
         f"/api/projects/{project_id}/methods/compare", json={"methods": ["ahp", "mavt"]}
@@ -124,8 +124,8 @@ def test_the_cli_command(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Non
         in text
     )
     assert "every method that ran puts Apex Components first" in text and CONTEXT in text
-    assert json.loads(out.read_text())["methods"][0] == "mavt"
-    path.write_text(to_json_text(every_section(repo.load(QUALIFICATION))))
+    assert json.loads(out.read_text(encoding="utf-8"))["methods"][0] == "mavt"
+    path.write_text(to_json_text(every_section(repo.load(QUALIFICATION))), encoding="utf-8")
     result = CliRunner().invoke(
         cli_app, ["compare-methods", str(path), "--method", "mavt", "--method", "smaa2"]
     )

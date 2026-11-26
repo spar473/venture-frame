@@ -312,7 +312,7 @@ def main() -> int:
     )
     args = ap.parse_args()
     if args.compare:
-        old, new = (json.loads(p.read_text()) for p in args.compare)
+        old, new = (json.loads(p.read_text(encoding="utf-8")) for p in args.compare)
         changed = sorted(k for k in old.keys() & new.keys() if old[k] != new[k])
         missing = sorted(old.keys() ^ new.keys())
         for key in changed:
@@ -328,7 +328,9 @@ def main() -> int:
         hold_machine_fixed()
     data = manifest(args.root.resolve())
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", newline="\n")
+    args.out.write_text(
+        json.dumps(data, indent=2, sort_keys=True) + "\n", newline="\n", encoding="utf-8"
+    )
     print(f"{len(data)} outputs hashed from {args.root}")
     return 0
 

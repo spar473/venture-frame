@@ -178,7 +178,7 @@ def test_evidence_and_range_question_prose_rounds_without_changing_structured_wi
     p = JsonProjectRepository().load(ROOT / "examples/supplier_qualification/project.json")
     p = project_service.set_performance(p, "apex", "unit_price", 42.123456789)
     dossier = EvidenceDossier.model_validate_json(
-        (ROOT / "examples/evidence_demo/supplier.json").read_text()
+        (ROOT / "examples/evidence_demo/supplier.json").read_text(encoding="utf-8")
     )
     dossier.project_fingerprint = p.fingerprint()
     unsupported = questions_service.open_questions(p, dossier=dossier)

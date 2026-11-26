@@ -35,11 +35,11 @@ def test_keyed_starter_api_cli_and_service_are_identical_and_do_not_save(client,
     assert response.status_code == 200, response.text
     assert response.json() == expected.model_dump(mode="json")
     path, output = tmp_path / "request.json", tmp_path / "materials.json"
-    path.write_text(request.model_dump_json())
+    path.write_text(request.model_dump_json(), encoding="utf-8")
     command = ["starter-templates", "instantiate", str(path), "-o", str(output)]
     result = CliRunner().invoke(app, command)
     assert result.exit_code == 0, result.output
-    assert json.loads(output.read_text()) == response.json()
+    assert json.loads(output.read_text(encoding="utf-8")) == response.json()
     verified = client.post("/api/starter-templates/verify", json=response.json())
     assert verified.status_code == 200 and verified.json() == response.json()
     archive = client.post("/api/starter-templates/archive", json=response.json())
@@ -83,7 +83,7 @@ def test_model_selection_http_cli_and_questions_reproduce_without_project_mutati
         for name in ("project.json", "comparison.json", "selection.json", "bundle.json")
     ]
     for path, document in zip(paths, (p, comparison, selection), strict=False):
-        path.write_text(document.model_dump_json())
+        path.write_text(document.model_dump_json(), encoding="utf-8")
     result = CliRunner().invoke(
         app,
         [
@@ -96,7 +96,7 @@ def test_model_selection_http_cli_and_questions_reproduce_without_project_mutati
         ],
     )
     assert result.exit_code == 0, result.output
-    assert json.loads(paths[3].read_text()) == compiled.json()
+    assert json.loads(paths[3].read_text(encoding="utf-8")) == compiled.json()
     questions = client.post(
         "/api/open-questions",
         json={"project": body["project"], "model_comparison": body["comparison"]},
@@ -144,14 +144,14 @@ def test_checked_run_and_output_verify_retain_unmodified_inner_record(client, tm
         )
     ]
     for path, value in zip(paths, (p, model, spec, declaration, parameters), strict=True):
-        path.write_text(value.model_dump_json())
+        path.write_text(value.model_dump_json(), encoding="utf-8")
     exported = tmp_path / "checked.json"
     result = CliRunner().invoke(
         app,
         ["model-comparisons", "run-checked", *[str(path) for path in paths], "-o", str(exported)],
     )
     assert result.exit_code == 0, result.output
-    assert json.loads(exported.read_text()) == response.json()
+    assert json.loads(exported.read_text(encoding="utf-8")) == response.json()
     assert (
         CliRunner().invoke(app, ["model-comparisons", "verify-checked", str(exported)]).exit_code
         == 0

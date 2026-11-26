@@ -68,8 +68,10 @@ def assert_fixture_matches(name, committed, generated):
 
 def _render():
     base = ROOT / "examples/starter_templates/venture_screening"
-    project = Project.model_validate_json((base / "project.json").read_text())
-    comparison = ModelComparison.model_validate_json((base / "model_comparison.json").read_text())
+    project = Project.model_validate_json((base / "project.json").read_text(encoding="utf-8"))
+    comparison = ModelComparison.model_validate_json(
+        (base / "model_comparison.json").read_text(encoding="utf-8")
+    )
     current = comparisons.inspect(project, comparison)
     selection = comparisons.ModelTargetSelection(
         side="right",
@@ -85,7 +87,7 @@ def _render():
     )
     bundle = comparisons.compile_selection(project, comparison, selection, current.review_digest)
     study = Project.model_validate_json(
-        (ROOT / "examples/nz_venture_screening/project.json").read_text()
+        (ROOT / "examples/nz_venture_screening/project.json").read_text(encoding="utf-8")
     )
     commercial = AnalysisConfiguration(
         method="mavt_sorting", weight_profile_id="commercial_traction"
@@ -115,7 +117,9 @@ def fixtures():
     Production run metadata and production replay are not overridden.
     """
     reference = json.loads(
-        (ROOT / "examples/starter_templates/venture_screening/model_output.json").read_text()
+        (ROOT / "examples/starter_templates/venture_screening/model_output.json").read_text(
+            encoding="utf-8"
+        )
     )
     environment = reference["environment"]
     system, machine = environment["system"].split(" ", 1)
@@ -137,14 +141,14 @@ def write_fixtures(target, *, check=False):
         if check:
             if not file.is_file():
                 raise SystemExit(f"Out of date component fixture: {name}")
-            if name != "screening-summary.json" and file.read_text() != text:
+            if name != "screening-summary.json" and file.read_text(encoding="utf-8") != text:
                 raise SystemExit(f"Out of date component fixture: {name}")
             try:
-                assert_fixture_matches(name, json.loads(file.read_text()), value)
+                assert_fixture_matches(name, json.loads(file.read_text(encoding="utf-8")), value)
             except AssertionError as exc:
                 raise SystemExit(f"Out of date component fixture: {exc}") from exc
         else:
-            file.write_text(text, newline="\n")
+            file.write_text(text, newline="\n", encoding="utf-8")
 
 
 def main(argv=None):

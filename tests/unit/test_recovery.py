@@ -65,12 +65,12 @@ def test_unsafe_entry_names_refused_before_writes(tmp_path, entry):
 
 def test_unreadable_and_mismatched_entries_visible_and_retained(tmp_path):
     store, project, entry = deleted(tmp_path)
-    entry.write_text("{broken json")
+    entry.write_text("{broken json", encoding="utf-8")
     assert not store.list_trash()[0].readable
     with pytest.raises(UnreadableTrashEntryError):
         store.restore(entry.name)
-    assert entry.read_text() == "{broken json"
-    entry.write_text(project.model_copy(update={"id": "wrong"}).model_dump_json())
+    assert entry.read_text(encoding="utf-8") == "{broken json"
+    entry.write_text(project.model_copy(update={"id": "wrong"}).model_dump_json(), encoding="utf-8")
     with pytest.raises(InvalidTrashEntryError, match="must agree"):
         store.restore(entry.name)
     assert entry.exists() and store.list_trash()[0].error
@@ -99,12 +99,12 @@ def test_symlink_entry_and_symlink_trash_directory_cannot_escape(tmp_path):
 def test_existing_destination_symlink_is_not_followed_or_replaced(tmp_path):
     store, project, entry = deleted(tmp_path)
     outside = tmp_path / "unrelated.json"
-    outside.write_text("keep")
+    outside.write_text("keep", encoding="utf-8")
     destination = store.root / f"{project.id}.json"
     destination.symlink_to(outside)
     with pytest.raises(ProjectExistsError):
         store.restore(entry.name)
-    assert destination.is_symlink() and outside.read_text() == "keep"
+    assert destination.is_symlink() and outside.read_text(encoding="utf-8") == "keep"
     assert entry.exists()
 
 
@@ -180,13 +180,13 @@ def test_stale_diagnostics_do_not_own_library_and_symlink_lock_is_refused(tmp_pa
     root = tmp_path / "library"
     with LibraryOwnership(root):
         pass
-    (root / ".mcda-studio.lock").write_text('{"pid":99999,"port":1234}')
+    (root / ".mcda-studio.lock").write_text('{"pid":99999,"port":1234}', encoding="utf-8")
     with LibraryOwnership(root):
         pass
     (root / ".mcda-studio.lock").unlink()
     target = tmp_path / "do-not-touch"
-    target.write_text("original")
+    target.write_text("original", encoding="utf-8")
     (root / ".mcda-studio.lock").symlink_to(target)
     with pytest.raises(LibraryLockError), LibraryOwnership(root):
         pass
-    assert target.read_text() == "original"
+    assert target.read_text(encoding="utf-8") == "original"

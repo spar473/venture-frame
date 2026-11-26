@@ -332,13 +332,16 @@ def test_proxy_schemas_and_ui_fixtures_are_current():
     root = Path(__file__).resolve().parents[1]
     module = runpy.run_path(str(root / "scripts/export_proxy_schemas.py"))
     for name, model in module["MODELS"].items():
-        assert json.loads((root / "docs/schemas" / name).read_text()) == {
+        assert json.loads((root / "docs/schemas" / name).read_text(encoding="utf-8")) == {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             **model.model_json_schema(mode="validation"),
         }
     fixture_module = runpy.run_path(str(root / "scripts/export_proxy_test_fixtures.py"))
     for name, value in fixture_module["fixtures"]().items():
-        assert json.loads((root / "frontend/tests/fixtures" / name).read_text()) == value
+        assert (
+            json.loads((root / "frontend/tests/fixtures" / name).read_text(encoding="utf-8"))
+            == value
+        )
 
 
 def test_proxy_open_questions_report_pending_disclosures_without_changing_result_schema():

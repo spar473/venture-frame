@@ -36,7 +36,7 @@ def test_an_mavt_only_project_migrates_and_saves_as_version_1_with_identical_byt
     name: str, tmp_path: Path
 ) -> None:
     source = ROOT / "examples" / name / "project.json"
-    raw = json.loads(source.read_text())
+    raw = json.loads(source.read_text(encoding="utf-8"))
     assert raw["schema_version"] == 1 and SCHEMA_VERSION > 1
     project = repo.load(source)  # migrated 1 -> 2 in memory
     assert project.schema_version == project.required_schema_version() == 1
@@ -53,13 +53,13 @@ def test_a_project_with_classes_is_version_2_and_clearing_them_restores_version_
     project = repo.load(source)
     sorted_ = with_classes(project, CLASSES)
     path = repo.save(sorted_, tmp_path / "sorted.json")
-    raw = json.loads(path.read_text())
+    raw = json.loads(path.read_text(encoding="utf-8"))
     assert raw["schema_version"] == 2 and raw["sorting"]["classes"][0]["id"] == "go"
     reloaded = repo.load(path)
     assert reloaded == sorted_ and reloaded.schema_version == 2
     assert reloaded.fingerprint() == sorted_.fingerprint() != project.fingerprint()
     cleared = ps.clear_sorting_model(reloaded)
-    assert to_json_text(cleared) == source.read_text()
+    assert to_json_text(cleared) == source.read_text(encoding="utf-8")
     assert cleared.fingerprint() == project.fingerprint()
 
 
@@ -81,7 +81,9 @@ def test_a_version_1_file_cannot_hold_a_version_2_section() -> None:
 def test_an_older_program_refuses_a_version_2_file_with_its_existing_message(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    raw = json.loads((ROOT / "examples" / "supplier_qualification" / "project.json").read_text())
+    raw = json.loads(
+        (ROOT / "examples" / "supplier_qualification" / "project.json").read_text(encoding="utf-8")
+    )
     assert raw["schema_version"] == 2
     monkeypatch.setattr(jr, "SCHEMA_VERSION", 1)
     with pytest.raises(ProjectLoadError, match="newer than this program supports"):

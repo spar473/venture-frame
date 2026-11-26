@@ -47,7 +47,7 @@ def test_the_draft_and_stored_routes(client: TestClient, tmp_path: Path) -> None
         "evergreen": "pass",
     }
     path = tmp_path / "q.json"
-    path.write_text(json.dumps(stated()))
+    path.write_text(json.dumps(stated()), encoding="utf-8")
     project_id = import_file(client, path)["project"]["id"]
     stored = client.post(f"/api/projects/{project_id}/feasibility").json()
     assert stored["alternatives"] == result["alternatives"]
@@ -135,7 +135,7 @@ def test_the_downloads(client: TestClient, tmp_path: Path) -> None:
     )
     assert stale.status_code == 412 and errors(stale)["code"] == "STALE_REVISION"
     path = tmp_path / "q.json"
-    path.write_text(json.dumps(project))
+    path.write_text(json.dumps(project), encoding="utf-8")
     project_id = import_file(client, path)["project"]["id"]
     stored = client.post(
         f"/api/projects/{project_id}/feasibility/export",
@@ -167,7 +167,7 @@ def test_the_cli_states_checks_prints_beside_and_clears(
         "--max", "45", "--unit", "NZD")  # fmt: skip
     run("requirement", "labels", f, "certified", "certification", "--name", "Certified",
         "--at-least", "iso9001")  # fmt: skip
-    raw = json.loads(path.read_text())
+    raw = json.loads(path.read_text(encoding="utf-8"))
     assert raw["schema_version"] == 6
     assert raw["requirements"][1]["allowed"] == ["iso9001", "iso9001_14001"]
     out = run("feasibility", f)
@@ -195,7 +195,7 @@ def test_the_cli_states_checks_prints_beside_and_clears(
     run("feasibility", f, "-o", str(out_file), code=1)  # the USD bound still blocks it
     run("requirement", "remove", f, "price_cap")
     run("feasibility", f, "-o", str(out_file))
-    assert [r["id"] for r in json.loads(out_file.read_text())["requirements"]] == [
+    assert [r["id"] for r in json.loads(out_file.read_text(encoding="utf-8"))["requirements"]] == [
         "certified",
         "home",
     ]
