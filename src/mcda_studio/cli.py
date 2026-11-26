@@ -618,6 +618,206 @@ def reference_outcomes_command(
     console.print_json(data=result.model_dump(mode="json"))
 
 
+def _load_rating_proposals(path: Path) -> Any:
+    from mcda_studio.domain.rating_proposals import RatingProposals
+
+    try:
+        return RatingProposals.model_validate_json(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, ValidationError) as exc:
+        _fail(f"Cannot load the rating proposals: {exc}")
+
+
+def _load_rubric_text(path: Path | None) -> dict[str, str]:
+    if path is None:
+        return {}
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, ValueError) as exc:
+        _fail(f"Cannot load the rubric text: {exc}")
+    if not isinstance(value, dict) or not all(
+        isinstance(k, str) and isinstance(v, str) for k, v in value.items()
+    ):
+        _fail("--rubric-text must be a JSON object from criterion id to text")
+    return value
+
+
+def _rating_guard[T](fn: Callable[[], T]) -> T:
+    from mcda_studio.services.reference_rating_service import RatingRefusedError
+
+    try:
+        return fn()
+    except RatingRefusedError as exc:
+        typer.echo(
+            json.dumps(
+                {"refused": True, "issues": [i.model_dump(mode="json") for i in exc.issues]},
+                indent=2,
+            )
+        )
+        _fail(f"refused: {len(exc.issues)} issue(s); nothing was written")
+
+
+def _refuse_existing(path: Path) -> None:
+    if path.exists():
+        _fail(f"Refusing to overwrite {path}")
+
+
+@reference_app.command("packets")
+def reference_packets(
+    reference_file: Annotated[Path, typer.Argument(help="Reference-cases JSON (version 2).")],
+    project_file: Annotated[Path, typer.Option("--project", help="Project JSON file.")],
+    out: Annotated[Path, typer.Option("--out", help="Write the packets JSON here.")],
+    case: Annotated[
+        list[str] | None, typer.Option("--case", help="A case id; repeat (default: every case).")
+    ] = None,
+    leaf: Annotated[
+        list[str] | None,
+        typer.Option("--leaf", help="A labelled leaf to rate; repeat (default: every one)."),
+    ] = None,
+    context_label: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--context-label",
+            help="A context row to include, by label; repeat. Rows are left out by default, "
+            "because free-text context can describe outcomes.",
+        ),
+    ] = None,
+    rubric_text: Annotated[
+        Path | None,
+        typer.Option("--rubric-text", help="JSON object: criterion id to rubric text."),
+    ] = None,
+) -> None:
+    """Write one packet per case for a proposer: snapshot date, criteria and labels, no outcomes."""
+    from mcda_studio.services import reference_outcome_service
+    from mcda_studio.services import reference_rating_service as rating
+
+    project = _guard(lambda: repo.load(project_file))
+    reference_set = _load_reference_set_v2(reference_file)
+    _guard(lambda: reference_outcome_service.check(project, reference_set))
+    _refuse_existing(out)
+    items = _guard(
+        lambda: rating.packets(
+            project, reference_set, case, leaf, context_label, _load_rubric_text(rubric_text)
+        )
+    )
+    with out.open("x", encoding="utf-8", newline="\n") as handle:
+        handle.write(json.dumps(rating.dump_packets(items), indent=2, ensure_ascii=False) + "\n")
+    err_console.print(f"wrote {len(items)} packet(s) to {out}")
+
+
+FORBIDDEN_IN_STEM = set('/\\:*?"<>|')  # a stem is a plain file name, never a path
+
+
+@reference_app.command("review-sheet")
+def reference_review_sheet(
+    proposals_file: Annotated[Path, typer.Argument(help="rating-proposals JSON (version 1).")],
+    reference_file: Annotated[
+        Path, typer.Option("--reference-cases", help="Reference-cases JSON (version 2).")
+    ],
+    project_file: Annotated[Path, typer.Option("--project", help="Project JSON file.")],
+    out_dir: Annotated[Path, typer.Option("--out-dir", help="Write review.csv and review.html.")],
+    rubric_text: Annotated[
+        Path | None,
+        typer.Option("--rubric-text", help="JSON object: criterion id to rubric text."),
+    ] = None,
+    stem: Annotated[
+        str,
+        typer.Option(
+            "--stem",
+            help="File name stem, e.g. review-2 for review-2.csv and review-2.html beside an "
+            "earlier sheet (default review).",
+        ),
+    ] = "review",
+) -> None:
+    """Write a review sheet (UTF-8 CSV with a byte-order mark, every row 'skip') and a page of
+    labels, rubrics and sources to keep open beside it. Refuses invalid proposals."""
+    from mcda_studio.services import reference_outcome_service
+    from mcda_studio.services import reference_rating_service as rating
+
+    project = _guard(lambda: repo.load(project_file))
+    reference_set = _load_reference_set_v2(reference_file)
+    proposals = _load_rating_proposals(proposals_file)
+    _guard(lambda: reference_outcome_service.check(project, reference_set))
+    if not stem or any(c in stem for c in FORBIDDEN_IN_STEM) or stem in (".", ".."):
+        _fail("--stem must be a plain file name without a folder or extension")
+    sheet, page = out_dir / f"{stem}.csv", out_dir / f"{stem}.html"
+    _refuse_existing(sheet)
+    _refuse_existing(page)
+    rows = _guard(
+        lambda: _rating_guard(lambda: rating.review_rows(project, reference_set, proposals))
+    )
+    html_text = rating.review_html(
+        project, reference_set, proposals, _load_rubric_text(rubric_text)
+    )
+    out_dir.mkdir(parents=True, exist_ok=True)
+    with sheet.open("x", encoding="utf-8-sig", newline="") as handle:
+        handle.write(rating.review_csv(rows))
+    with page.open("x", encoding="utf-8", newline="\n") as handle:
+        handle.write(html_text)
+    err_console.print(f"wrote {sheet} ({len(rows)} rows) and {page}")
+
+
+@reference_app.command("import-reviews")
+def reference_import_reviews(
+    sheet_file: Annotated[Path, typer.Argument(help="The filled review sheet (CSV).")],
+    proposals_file: Annotated[
+        Path, typer.Option("--proposals", help="The rating-proposals JSON the sheet came from.")
+    ],
+    reference_file: Annotated[
+        Path, typer.Option("--reference-cases", help="Reference-cases JSON (version 2).")
+    ],
+    project_file: Annotated[Path, typer.Option("--project", help="Project JSON file.")],
+    reviewer: Annotated[str, typer.Option("--reviewer", help="Who reviewed the sheet.")],
+    reviewed_on: Annotated[str, typer.Option("--reviewed-on", help="YYYY-MM-DD.")],
+    out: Annotated[Path, typer.Option("--out", help="Write the updated reference set here.")],
+    replace: Annotated[
+        bool,
+        typer.Option("--replace", help="Allow replacing an existing reviewed rating."),
+    ] = False,
+    sheet_encoding: Annotated[
+        str, typer.Option("--sheet-encoding", help="The sheet's encoding (default utf-8-sig).")
+    ] = "utf-8-sig",
+) -> None:
+    """Write accepted and edited proposals as reviewed ratings into a new reference set.
+
+    Only 'accept' and 'edit' rows count; 'reject' and 'skip' leave the criterion unrated. Any issue
+    refuses the whole import and nothing is written. The result passes `reference-cases validate`.
+    """
+    import datetime as dt
+
+    from mcda_studio.services import reference_rating_service as rating
+
+    project = _guard(lambda: repo.load(project_file))
+    reference_set = _load_reference_set_v2(reference_file)
+    proposals = _load_rating_proposals(proposals_file)
+    try:
+        day = dt.date.fromisoformat(reviewed_on)
+    except ValueError:
+        _fail("--reviewed-on must be YYYY-MM-DD")
+    _refuse_existing(out)
+    try:
+        raw = sheet_file.read_bytes()
+    except OSError as exc:
+        _fail(f"Cannot read the review sheet: {exc}")
+    text = _guard(lambda: rating.decode_sheet(raw, sheet_encoding))
+    updated, report = _guard(
+        lambda: _rating_guard(
+            lambda: rating.import_reviews(
+                project,
+                reference_set,
+                proposals,
+                text,
+                reviewer=reviewer,
+                reviewed_on=day,
+                replace=replace,
+            )
+        )
+    )
+    with out.open("x", encoding="utf-8", newline="\n") as handle:
+        handle.write(rating.dump_reference_set(updated))
+    typer.echo(json.dumps(report.model_dump(mode="json"), indent=2))
+    err_console.print(f"wrote {out}")
+
+
 calibrate_app = typer.Typer(
     help="Calibration: weight samples that fit a reference set's recorded outcomes under a "
     "stated model. Offline and opt-in; it changes no project. See docs/design/calibration.md.",
