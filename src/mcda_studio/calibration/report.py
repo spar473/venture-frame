@@ -10,9 +10,9 @@ import math
 import numpy as np
 
 from mcda_studio.calibration import diagnostics as dg
-from mcda_studio.calibration.prior import NestedDirichletPrior
 from mcda_studio.calibration.sampler import Chains
 from mcda_studio.domain.common import DomainModel
+from mcda_studio.methods.nested_dirichlet import NestedDirichletPrior
 
 #: A run where every varying leaf keeps at least this share of its prior SD is prior-dominated.
 PRIOR_DOMINATED_RATIO = 0.9

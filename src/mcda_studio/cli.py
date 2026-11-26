@@ -723,6 +723,69 @@ def calibrate_fit(
         err_console.print(f"wrote {out}")
 
 
+@calibrate_app.command("prior")
+def calibrate_prior(
+    file: FileArg,
+    out: Annotated[Path, typer.Option("--out", help="Write the weight-samples sidecar here.")],
+    profile: Annotated[
+        str | None, typer.Option(help="The weight profile to centre the prior on.")
+    ] = None,
+    conviction: Annotated[
+        str | None,
+        typer.Option(help="high, medium or low (default: the profile's elicitation record)."),
+    ] = None,
+    kappa: Annotated[
+        float | None,
+        typer.Option("--kappa", help="A concentration for every varying group, instead."),
+    ] = None,
+    draws: Annotated[int, typer.Option(help="Stored weight vectors (1 to 100000).")] = 10_000,
+    seed: Annotated[int, typer.Option(help="Seed for the PCG64 stream.")] = 0,
+) -> None:
+    """Draw a profile's weights from the conviction prior, Dirichlet(kappa * w0) per sibling
+    group, and write them as a weight-samples sidecar (basis "prior") that SMAA-2 can read.
+
+    Uses no outcome data and changes no project. Prints the sidecar's digest for the SMAA-2
+    parameter weight_samples_sha256. An existing file is never overwritten."""
+    from mcda_studio.services import conviction_prior_service as cps
+
+    if conviction not in (None, "high", "medium", "low"):
+        _fail("--conviction must be high, medium or low")
+    if out.exists():
+        _fail(f"Refusing to overwrite {out}")
+    project = _guard(lambda: repo.load(file))
+    samples = _guard(
+        lambda: cps.conviction_prior(
+            project,
+            profile,
+            conviction=conviction,  # type: ignore[arg-type]
+            kappa=kappa,
+            draws=draws,
+            seed=seed,
+        )
+    )
+    try:
+        with out.open("x", encoding="utf-8", newline="\n") as handle:
+            handle.write(samples.model_dump_json())
+    except OSError as exc:
+        _fail(f"Cannot write {out}: {exc}")
+    summary = {
+        "weight_samples_sha256": cps.sidecar_digest(samples),
+        "basis": samples.basis,
+        "weight_profile_id": samples.weight_profile_id,
+        "project_fingerprint": samples.project_fingerprint,
+        "conviction": samples.prior.conviction,
+        "conviction_source": samples.prior.conviction_source,
+        "groups": [
+            {"parent_id": g.parent_id, "kappa": g.kappa, "kappa_method": g.kappa_method}
+            for g in samples.prior.groups
+        ],
+        "draws": samples.sampler.samples,
+        "seed": samples.seed,
+    }
+    typer.echo(json.dumps(summary, indent=2))
+    err_console.print(f"wrote {out}")
+
+
 @calibrate_app.command("synthetic-check")
 def calibrate_synthetic_check(
     cases: Annotated[int, typer.Option(help="Simulated cases.")] = 500,
@@ -888,15 +951,49 @@ def evaluate(
         str | None, typer.Option(help="AHP synthesis: distributive or ideal.")
     ] = None,
     as_json: Annotated[bool, typer.Option("--json", help="Print full result JSON.")] = False,
+    weight_samples_file: Annotated[
+        Path | None,
+        typer.Option(
+            "--weight-samples",
+            help="SMAA-2: take the weights from this weight-samples sidecar (basis prior or "
+            "calibrated) instead of the stated weight groups.",
+        ),
+    ] = None,
+    resample: Annotated[
+        bool,
+        typer.Option("--resample", help="SMAA-2: allow more draws than stored weight vectors."),
+    ] = False,
 ) -> None:
     """Calculate rankings and save the full inspectable result."""
+    from mcda_studio.domain.weight_samples import WeightSamples
+    from mcda_studio.methods.smaa import samples as weight_samples
+
     project = _guard(lambda: repo.load(file))
     cfg = _configuration(project, method, weight_profile_id=profile, scenario_id=scenario)
     run = {"samples": samples, "seed": seed, "uncertainty": uncertainty, "synthesis": synthesis}
     if any(v is not None for v in run.values()):
         given = {k: v for k, v in run.items() if v is not None}
         cfg = cfg.model_copy(update={"parameters": {**cfg.parameters, **given}})
-    result = _guard(lambda: svc.evaluate_project(project, cfg))
+    supplied: WeightSamples | None = None
+    if weight_samples_file is not None:
+        try:
+            supplied = WeightSamples.model_validate_json(
+                weight_samples_file.read_text(encoding="utf-8")
+            )
+        except (OSError, UnicodeError, ValidationError) as exc:
+            _fail(f"Cannot load the weight samples: {exc}")
+        # A saved configuration that already pins a digest keeps it, so a different file is
+        # refused (WEIGHT_SAMPLES_DIGEST_MISMATCH) rather than silently used.
+        pinned = cfg.parameters.get("weight_samples_sha256") or weight_samples.digest(supplied)
+        source = {"weight_source": "samples", "weight_samples_sha256": pinned}
+        if resample:
+            source["resample"] = True
+        cfg = cfg.model_copy(update={"parameters": {**cfg.parameters, **source}})
+    elif resample:
+        _fail("--resample needs --weight-samples")
+
+    with weight_samples.supplied(supplied):
+        result = _guard(lambda: svc.evaluate_project(project, cfg))
     if output:
         _guard(lambda: _save_result(result, output))
     if as_json:

@@ -146,7 +146,9 @@ conviction does to the decision before applying anything.
   proposal. They are not estimates.
 - A ranking sets the ratings' magnitudes aside entirely, and ties are not allowed. A partner with
   a genuine tie breaks it or uses intervals.
-- A true Dirichlet(κ·w) conviction needs a portable gamma quantile. It is deferred to the
+- A true Dirichlet(κ·w) conviction is delivered through stored samples instead of a portable
+  gamma quantile: `mcda calibrate prior` and SMAA-2's samples weight source
+  ([sampled weights in SMAA-2](sampled-weights-in-smaa.md)). It was first deferred to the
   calibration layer (deep dive 5), which will store sampled weights.
 - The record says who gave a judgement. It does not prove that they did, and in case 2 it is the
   study author's practice elicitation on public information, not a partner's.

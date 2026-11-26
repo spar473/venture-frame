@@ -21,9 +21,16 @@ from __future__ import annotations
 import math
 from typing import Literal
 
+from pydantic import Field
+
 from mcda_studio.domain.common import DomainModel, Id
 from mcda_studio.domain.errors import McdaError, UnknownReferenceError
-from mcda_studio.domain.preferences import AnalysisConfiguration, GroupElicitation, WeightProfile
+from mcda_studio.domain.preferences import (
+    AnalysisConfiguration,
+    Conviction,
+    GroupElicitation,
+    WeightProfile,
+)
 from mcda_studio.domain.project import Project
 from mcda_studio.domain.uncertainty import GroupUncertainty, SmaaModel
 from mcda_studio.methods.ahp.matrix import CR_THRESHOLD, analyse, matrix_issues
@@ -101,10 +108,18 @@ class ElicitationCheck(DomainModel):
     label: str = LABEL
 
 
+class KappaUsed(DomainModel):
+    parent_id: Id | None
+    name: str
+    kappa: float
+
+
 class ProposalPreview(DomainModel):
-    mode: Literal["current", "conviction", "ranking"]
+    mode: Literal["current", "conviction", "ranking", "dirichlet"]
     label: str
     robustness: robustness.ScreeningRobustness
+    # Only for the true-conviction preview: the concentration used in each varying group.
+    kappas: list[KappaUsed] = Field(default_factory=list, exclude_if=lambda v: not v)
 
 
 class ElicitationPreview(DomainModel):
@@ -390,6 +405,76 @@ def elicitation_preview(
                 robustness=robustness.screening_robustness(trial, configuration),
             )
         )
+    record = profile.elicitation
+    if record is not None and record.conviction is not None:
+        previews.append(_dirichlet_preview(project, configuration, profile.id, record.conviction))
     return ElicitationPreview(
         project_fingerprint=project.fingerprint(), profile_id=profile.id, previews=previews
+    )
+
+
+def _dirichlet_preview(
+    project: Project, configuration: AnalysisConfiguration, profile_id: str, conviction: Conviction
+) -> ProposalPreview:
+    """Decision confidence with the weights drawn from the conviction prior, Dirichlet(kappa * w0)
+    per sibling group, through SMAA-2's samples weight source. Stated weight groups are set aside;
+    stated measurement ranges stay. Preview only: the samples live in no project."""
+    from mcda_studio.methods.smaa import samples as weight_samples
+    from mcda_studio.services import conviction_prior_service as cps
+
+    saved = dict(project.analysis.parameters) if project.analysis.method == "smaa2" else {}
+    parameters = {k: v for k, v in saved.items() if k not in weight_samples.SOURCE_PARAMETERS}
+    draws = int(parameters.get("samples", cps.DEFAULT_DRAWS))
+    base = project.smaa.model_copy(update={"groups": []}) if project.smaa else SmaaModel()
+    before = project.model_copy(
+        update={
+            "smaa": base,
+            "analysis": project.analysis.model_copy(
+                update={"method": "smaa2", "parameters": parameters}
+            ),
+        },
+        deep=True,
+    )
+    names = {node.id: node.name for node in project.criteria}
+    label = f"True conviction: Dirichlet around the ratings ({conviction})"
+    try:
+        sidecar = cps.conviction_prior(
+            before,
+            profile_id,
+            conviction=conviction,
+            draws=draws,
+            seed=0,
+        )
+    except McdaError as exc:
+        empty = robustness.screening_robustness(project, configuration).model_copy(
+            update={"available": False, "reason": str(exc), "rows": [], "groups": []}
+        )
+        return ProposalPreview(mode="dirichlet", label=label, robustness=empty)
+    trial = before.model_copy(
+        update={
+            "analysis": before.analysis.model_copy(
+                update={
+                    "parameters": {
+                        **parameters,
+                        "weight_source": "samples",
+                        "weight_samples_sha256": weight_samples.digest(sidecar),
+                    }
+                }
+            )
+        }
+    )
+    with weight_samples.supplied(sidecar):
+        result = robustness.screening_robustness(trial, configuration)
+    return ProposalPreview(
+        mode="dirichlet",
+        label=label,
+        robustness=result,
+        kappas=[
+            KappaUsed(
+                parent_id=g.parent_id,
+                name="the top level" if g.parent_id is None else names[g.parent_id],
+                kappa=g.kappa,
+            )
+            for g in sidecar.prior.groups
+        ],
     )

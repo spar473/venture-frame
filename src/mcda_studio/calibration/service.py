@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import datetime as dt
 import hashlib
-import math
 import platform
 from dataclasses import dataclass
 from fractions import Fraction
@@ -18,9 +17,8 @@ from typing import Literal
 import numpy as np
 
 from mcda_studio.calibration import report, sampler
-from mcda_studio.calibration import weight_samples as ws
 from mcda_studio.calibration.likelihood import Observation, OutcomeData, Status, encode
-from mcda_studio.calibration.prior import NestedDirichletPrior, make_prior, moment_matched_kappa
+from mcda_studio.domain import weight_samples as ws
 from mcda_studio.domain.common import DomainModel, Id
 from mcda_studio.domain.errors import McdaError, UnknownReferenceError
 from mcda_studio.domain.preferences import WeightProfile
@@ -28,6 +26,7 @@ from mcda_studio.domain.project import Project
 from mcda_studio.domain.reference_cases_v2 import ReferenceCasesV2, date_bounds
 from mcda_studio.methods.mavt.value_functions import build_evaluator
 from mcda_studio.methods.mavt.weighting import compute_weights
+from mcda_studio.methods.nested_dirichlet import NestedDirichletPrior, prior_for_profile
 from mcda_studio.services.elicitation_service import CONVICTION_HALF_WIDTH
 from mcda_studio.services.reference_case_service import compared_criteria, parse_fraction
 from mcda_studio.services.reference_outcome_service import check, window_end
@@ -199,28 +198,13 @@ def _insufficient(cases: _Cases, include_proposed: bool, threshold: Fraction, n:
 def _build_prior(
     project: Project, profile: WeightProfile, half_width: float, local: dict[str, float]
 ) -> NestedDirichletPrior:
-    tree = project.tree()
     held_lists: dict[str | None, list[str]] = {}
     if project.smaa is not None:
         for group in project.smaa.groups:
             held_lists[group.parent_id] = list(group.held)
-    children: dict[str | None, list[str]] = {None: tree.child_ids(None)}
-    for node in tree.all_ids():
-        if not tree.is_leaf(node):
-            children[node] = tree.child_ids(node)
-    kappa: dict[str | None, float] = {}
-    method: dict[str | None, str] = {}
-    for parent, kids in children.items():
-        share = 1.0 if parent is None else math.prod(local[n] for n in tree.path(parent))
-        free = [k for k in kids if local[k] > 0.0 and k not in held_lists.get(parent, [])]
-        if share == 0.0 or len(free) < 2:
-            continue
-        concentration = moment_matched_kappa(
-            [float(profile.judgements.get(k, 1.0)) for k in free], half_width
-        )
-        kappa[parent] = float(concentration.kappa)
-        method[parent] = concentration.method
-    return make_prior(tree.all_ids(), children, local, kappa, held_lists, method)
+    return prior_for_profile(
+        project.tree(), local, profile.judgements, held_lists, half_width=half_width
+    )
 
 
 def _prior_spec(
@@ -254,6 +238,7 @@ def _prior_spec(
         base_rate=base_rate,
         alpha_mean=problem.alpha_mean,
         alpha_sd=problem.alpha_sd,
+        log_beta_mean=0.0,
         log_beta_sd=problem.log_beta_sd,
         centre_global=prior.centre_global(),
     )

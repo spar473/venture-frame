@@ -53,11 +53,16 @@ function bands(first: number): ScreeningRobustness {
   } as unknown as ScreeningRobustness;
 }
 
-function setup(record: Elicitation | null) {
+const DEFAULT_PREVIEWS: ElicitationPreview["previews"] = [
+  { mode: "current", label: "Stated uncertainty now", robustness: bands(0.93) },
+  { mode: "ranking", label: "Ranking only", robustness: bands(0.42) },
+];
+
+function setup(record: Elicitation | null, previews: ElicitationPreview["previews"] = DEFAULT_PREVIEWS) {
   const p = project(record);
   vi.spyOn(api, "elicitationCheck").mockResolvedValue(checkOf(record !== null));
   const preview: ElicitationPreview = { project_fingerprint: "fp", profile_id: "p", label: "Decision confidence now and under each proposal.",
-    previews: [{ mode: "current", label: "Stated uncertainty now", robustness: bands(0.93) }, { mode: "ranking", label: "Ranking only", robustness: bands(0.42) }] };
+    previews };
   const previewSpy = vi.spyOn(api, "elicitationPreview").mockResolvedValue(preview);
   const apply = vi.fn<(ops: Operation[]) => Promise<boolean>>(() => Promise.resolve(true));
   render(<ElicitationPanel project={p} context={resolveContext(p, "fp", BASE_SELECTION)} busy={false} apply={apply}/>);
@@ -110,6 +115,31 @@ describe("the Judgement panel", () => {
     const table = screen.getByRole("table", { name: "Decision confidence by proposal" });
     expect(within(table).getByRole("row", { name: /Xeno/ })).toHaveTextContent("93%93%42%42%");
     expect(screen.getByText(/not probabilities of success/)).toBeInTheDocument();
+  });
+
+  it("offers a weight uncertainty choice and shows the concentration the engine used for true conviction", async () => {
+    const { previewSpy } = setup(RECORD, [
+      { mode: "current", label: "Stated uncertainty now", robustness: bands(0.93) },
+      { mode: "conviction", label: "Medium conviction: every swing rating ±30%", robustness: bands(0.8) },
+      { mode: "dirichlet", label: "True conviction: Dirichlet around the ratings (medium)", robustness: bands(0.79),
+        kappas: [{ parent_id: null, name: "the top level", kappa: 136 }, { parent_id: "team", name: "Team", kappa: 139 }] },
+    ]);
+    await settle();
+    fireEvent.click(screen.getByRole("button", { name: "Compare decision confidence" }));
+    await settle();
+    expect(previewSpy).toHaveBeenCalledTimes(1);
+    const choice = screen.getByRole("group", { name: "Weight uncertainty" });
+    expect(within(choice).getByRole("radio", { name: "Conviction bands" })).toBeChecked();
+    const table = screen.getByRole("table", { name: "Decision confidence by proposal" });
+    expect(within(table).getByRole("row", { name: /Xeno/ })).toHaveTextContent("93%93%80%80%79%79%");
+    const chosenHeader = () => within(table).getAllByRole("columnheader").find((h) => h.getAttribute("aria-current") === "true");
+    expect(chosenHeader()).toHaveTextContent("Medium conviction");
+    expect(screen.queryByLabelText("Concentration used")).not.toBeInTheDocument();
+    fireEvent.click(within(choice).getByRole("radio", { name: "True conviction (Dirichlet κ)" }));
+    expect(chosenHeader()).toHaveTextContent("True conviction");
+    expect(screen.getByLabelText("Chosen weight uncertainty")).toHaveTextContent("True conviction: Dirichlet around the ratings (medium).");
+    expect(screen.getByLabelText("Concentration used")).toHaveTextContent("κ used: the top level 136, Team 139.");
+    expect(previewSpy).toHaveBeenCalledTimes(1); // the browser re-reads the engine's previews; it computes nothing
   });
 
   it("clears the record", async () => {

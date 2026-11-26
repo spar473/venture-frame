@@ -72,6 +72,18 @@ def _v6_to_v7(raw: dict[str, Any]) -> dict[str, Any]:
     return raw
 
 
+def _v7_to_v8(raw: dict[str, Any]) -> dict[str, Any]:
+    """Version 8 only adds a parameter value: SMAA-2 weights from a weight-samples sidecar
+    (``weight_source: "samples"``), which an older file cannot hold."""
+    analysis = raw.get("analysis")
+    parameters = analysis.get("parameters") if isinstance(analysis, dict) else None
+    if isinstance(parameters, dict) and parameters.get("weight_source") == "samples":
+        raise ProjectLoadError(
+            "schema version 7 cannot contain the SMAA-2 parameter weight_source 'samples'"
+        )
+    return raw
+
+
 #: ``MIGRATIONS[n]`` upgrades a raw dict from schema version n to n + 1.
 MIGRATIONS: dict[int, Callable[[dict[str, Any]], dict[str, Any]]] = {
     1: _v1_to_v2,
@@ -80,6 +92,7 @@ MIGRATIONS: dict[int, Callable[[dict[str, Any]], dict[str, Any]]] = {
     4: _v4_to_v5,
     5: _v5_to_v6,
     6: _v6_to_v7,
+    7: _v7_to_v8,
 }
 
 

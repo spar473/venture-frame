@@ -155,6 +155,20 @@ class InputToCheck(DomainModel):
     difference: float
 
 
+class WeightSamplesUse(DomainModel):
+    """Where a run's weights came from when SMAA-2 read a weight-samples sidecar."""
+
+    sha256: str  # the sidecar's canonical-JSON digest, as pinned by weight_samples_sha256
+    basis: Literal["prior", "calibrated"]
+    weight_profile_id: Id
+    stored: int  # N, the vectors in the sidecar
+    used: int  # S, the draws of this run
+    index_method: Literal["without replacement", "with replacement"]
+    index_stream: str  # PCG64(seed).jumped(2): integers only, separate from the main stream
+    interval_n: int | None = None  # the n behind a resampled preference run's intervals
+    note: str | None = None  # the reuse sentence when S > N
+
+
 class SmaaResult(AnalysisResult):
     """SMAA-2 acceptabilities. ``ranking`` is MAVT's reference ranking at the entered values and
     the profile's ratings; the acceptabilities never enter it."""
@@ -166,7 +180,7 @@ class SmaaResult(AnalysisResult):
     samples: int | None
     outcomes: int | None
     seed: int
-    algorithm: Literal["smaa2.pcg64.v1"] = "smaa2.pcg64.v1"
+    algorithm: Literal["smaa2.pcg64.v1", "smaa2.pcg64.v1+samples"] = "smaa2.pcg64.v1"
     confidence: float
     interval_method: Literal["clopper-pearson"] = "clopper-pearson"
     dependence: str
@@ -177,6 +191,9 @@ class SmaaResult(AnalysisResult):
     acceptability: list[AlternativeAcceptability]  # in the project's alternative order
     inputs_to_check: list[InputToCheck]
     inputs_to_check_label: HeuristicLabel = HEURISTIC_LABEL
+    # Present only when the weights came from a weight-samples sidecar, so every other result
+    # keeps its bytes.
+    weight_samples: WeightSamplesUse | None = Field(default=None, exclude_if=lambda v: v is None)
 
 
 FlowLabel = Literal[

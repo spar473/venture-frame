@@ -3766,6 +3766,31 @@ export interface components {
             /** Weight */
             weight: number;
         };
+        /** DataSpec */
+        DataSpec: {
+            /** Compared Criteria */
+            compared_criteria: string[];
+            /** Entering Cases */
+            entering_cases: number;
+            /** Excluded */
+            excluded: {
+                [key: string]: number;
+            };
+            /** Insufficient */
+            insufficient: string[];
+            /** Min Rated Fraction */
+            min_rated_fraction: string;
+            /** Outcome Definition */
+            outcome_definition: string;
+            /** Rated Cases */
+            rated_cases: {
+                [key: string]: number;
+            };
+            /** Statuses */
+            statuses: {
+                [key: string]: number;
+            };
+        };
         /**
          * DecisionDetails
          * @description What the decision owner states for a version-2 record. ``alternatives_considered`` is a
@@ -3910,6 +3935,7 @@ export interface components {
             dossier?: components["schemas"]["EvidenceDossier-Input"] | null;
             project: components["schemas"]["Project-Input"];
             proposals?: components["schemas"]["ExternalProposals-Input"] | null;
+            weight_samples?: components["schemas"]["WeightSamples"] | null;
         };
         /** DecisionInspectRequest */
         DecisionInspectRequest: {
@@ -4252,6 +4278,21 @@ export interface components {
             model: components["schemas"]["DerivedModel-Input"] | components["schemas"]["DerivedCompilation-Input"];
             project: components["schemas"]["Project-Input"];
         };
+        /** DiagnosticsSpec */
+        DiagnosticsSpec: {
+            /** Acceptance */
+            acceptance: {
+                [key: string]: number[];
+            };
+            /** Converged */
+            converged: boolean;
+            /** Ess Min */
+            ess_min: number;
+            /** Quantities */
+            quantities: components["schemas"]["QuantityDiagnosticsSpec"][];
+            /** Rhat Max */
+            rhat_max: number;
+        };
         /**
          * DirectRatingValueFunction
          * @description The measurement *is* a rating on [min_rating, max_rating], rescaled linearly to [0, 1].
@@ -4544,6 +4585,7 @@ export interface components {
         EvaluateDraftRequest: {
             configuration?: components["schemas"]["AnalysisConfiguration-Input"] | null;
             project: components["schemas"]["Project-Input"];
+            weight_samples?: components["schemas"]["WeightSamples"] | null;
         };
         /** EvidenceCell */
         EvidenceCell: {
@@ -5257,6 +5299,15 @@ export interface components {
              */
             status: "checked" | "no_requirements" | "unavailable";
         };
+        /** FixedGroupPrior */
+        FixedGroupPrior: {
+            /** Children */
+            children: string[];
+            /** Parent Id */
+            parent_id: string | null;
+            /** Reason */
+            reason: string;
+        };
         /**
          * FormulaCheck
          * @description The formula evaluated as if it alone were accepted; shown before its review.
@@ -5372,6 +5423,26 @@ export interface components {
             reasons?: {
                 [key: string]: string;
             };
+        };
+        /** GroupPrior */
+        GroupPrior: {
+            /** Centre */
+            centre: number[];
+            /** Children */
+            children: string[];
+            /**
+             * Held
+             * @default []
+             */
+            held: string[];
+            /** Kappa */
+            kappa: number;
+            /** Kappa Method */
+            kappa_method: string;
+            /** Parent Id */
+            parent_id: string | null;
+            /** Share */
+            share: number;
         };
         /**
          * GroupUncertainty
@@ -5539,6 +5610,15 @@ export interface components {
              */
             path: string;
             severity: components["schemas"]["Severity"];
+        };
+        /** KappaUsed */
+        KappaUsed: {
+            /** Kappa */
+            kappa: number;
+            /** Name */
+            name: string;
+            /** Parent Id */
+            parent_id: string | null;
         };
         /**
          * LabelEffect
@@ -6674,6 +6754,33 @@ export interface components {
             /** Version */
             version: number;
         };
+        /** PriorSpec */
+        PriorSpec: {
+            /** Alpha Mean */
+            alpha_mean?: number | null;
+            /** Alpha Sd */
+            alpha_sd?: number | null;
+            /** Base Rate */
+            base_rate?: number | null;
+            /** Centre Global */
+            centre_global: {
+                [key: string]: number;
+            };
+            /** Conviction */
+            conviction: ("high" | "medium" | "low") | null;
+            /** Conviction Source */
+            conviction_source: string;
+            /** Fixed Groups */
+            fixed_groups: components["schemas"]["FixedGroupPrior"][];
+            /** Groups */
+            groups: components["schemas"]["GroupPrior"][];
+            /** Half Width */
+            half_width: number | null;
+            /** Log Beta Mean */
+            log_beta_mean?: number | null;
+            /** Log Beta Sd */
+            log_beta_sd?: number | null;
+        };
         /** ProfileComparison */
         ProfileComparison: {
             configuration: components["schemas"]["AnalysisConfiguration-Output"];
@@ -7284,13 +7391,15 @@ export interface components {
         };
         /** ProposalPreview */
         ProposalPreview: {
+            /** Kappas */
+            kappas?: components["schemas"]["KappaUsed"][];
             /** Label */
             label: string;
             /**
              * Mode
              * @enum {string}
              */
-            mode: "current" | "conviction" | "ranking";
+            mode: "current" | "conviction" | "ranking" | "dirichlet";
             robustness: components["schemas"]["ScreeningRobustness"];
         };
         /** ProposalRegistryRequest */
@@ -8041,6 +8150,15 @@ export interface components {
              */
             upper_inclusive: boolean;
         };
+        /** QuantityDiagnosticsSpec */
+        QuantityDiagnosticsSpec: {
+            /** Ess Bulk */
+            ess_bulk: number | null;
+            /** Name */
+            name: string;
+            /** Rhat */
+            rhat: number | null;
+        };
         /** QuantityRange */
         "QuantityRange-Input": {
             /** Interpretation */
@@ -8285,6 +8403,7 @@ export interface components {
             min_shared_fraction: string;
             project: components["schemas"]["Project-Input"];
             reference_cases: components["schemas"]["ReferenceCases"];
+            weight_samples?: components["schemas"]["WeightSamples"] | null;
             /**
              * Weighting
              * @default equal
@@ -8826,6 +8945,23 @@ export interface components {
              */
             seed: number;
         };
+        /** SamplerSpec */
+        SamplerSpec: {
+            /** Algorithm */
+            algorithm: string;
+            /** Chains */
+            chains: number;
+            /** Draws */
+            draws: number;
+            /** Numpy Version */
+            numpy_version: string;
+            /** Python Version */
+            python_version: string;
+            /** Samples */
+            samples: number;
+            /** Warmup */
+            warmup: number;
+        };
         /** Scale */
         "Scale-Input": {
             /** @default fixed */
@@ -8999,6 +9135,7 @@ export interface components {
             /** Profile Ids */
             profile_ids?: string[] | null;
             project: components["schemas"]["Project-Input"];
+            weight_samples?: components["schemas"]["WeightSamples"] | null;
         };
         /** ScreeningRobustness */
         ScreeningRobustness: {
@@ -9637,9 +9774,9 @@ export interface components {
             /**
              * Algorithm
              * @default smaa2.pcg64.v1
-             * @constant
+             * @enum {string}
              */
-            algorithm: "smaa2.pcg64.v1";
+            algorithm: "smaa2.pcg64.v1" | "smaa2.pcg64.v1+samples";
             /** Assumptions */
             assumptions: string[];
             /** Classes */
@@ -9711,6 +9848,7 @@ export interface components {
             uncertainty: components["schemas"]["SmaaModel-Output"];
             /** Weight Profile Id */
             weight_profile_id: string | null;
+            weight_samples?: components["schemas"]["WeightSamplesUse"] | null;
         };
         /**
          * SortingAnalysisRecord
@@ -10799,6 +10937,7 @@ export interface components {
              * @default 101
              */
             sample_count: number;
+            weight_samples?: components["schemas"]["WeightSamples"] | null;
         };
         /** ValueSample */
         ValueSample: {
@@ -10890,6 +11029,91 @@ export interface components {
             method: string;
             /** Name */
             name: string;
+        };
+        /** WeightSamples */
+        WeightSamples: {
+            /** Alpha */
+            alpha?: number[] | null;
+            /**
+             * Basis
+             * @default calibrated
+             * @enum {string}
+             */
+            basis: "prior" | "calibrated";
+            /** Beta */
+            beta?: number[] | null;
+            data?: components["schemas"]["DataSpec"] | null;
+            /** Diagnostic */
+            diagnostic: boolean;
+            diagnostics: components["schemas"]["DiagnosticsSpec"];
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "weight-samples";
+            /** Label */
+            label: string;
+            /** Leaf Ids */
+            leaf_ids: string[];
+            /** Limitations */
+            limitations: string[];
+            prior: components["schemas"]["PriorSpec"];
+            /** Project Fingerprint */
+            project_fingerprint: string;
+            /** Project Id */
+            project_id: string;
+            /** Reference Set Digest Basis */
+            reference_set_digest_basis?: ("file bytes" | "canonical JSON") | null;
+            /** Reference Set Id */
+            reference_set_id?: string | null;
+            /** Reference Set Sha256 */
+            reference_set_sha256?: string | null;
+            /** Review States */
+            review_states: ("proposed" | "reviewed")[];
+            sampler: components["schemas"]["SamplerSpec"];
+            /** Samples */
+            samples: number[][];
+            /** Seed */
+            seed: number;
+            /** Usable */
+            usable: boolean;
+            /**
+             * Version
+             * @constant
+             */
+            version: 1;
+            /** Weight Profile Id */
+            weight_profile_id: string;
+        };
+        /**
+         * WeightSamplesUse
+         * @description Where a run's weights came from when SMAA-2 read a weight-samples sidecar.
+         */
+        WeightSamplesUse: {
+            /**
+             * Basis
+             * @enum {string}
+             */
+            basis: "prior" | "calibrated";
+            /**
+             * Index Method
+             * @enum {string}
+             */
+            index_method: "without replacement" | "with replacement";
+            /** Index Stream */
+            index_stream: string;
+            /** Interval N */
+            interval_n: number | null;
+            /** Note */
+            note: string | null;
+            /** Sha256 */
+            sha256: string;
+            /** Stored */
+            stored: number;
+            /** Used */
+            used: number;
+            /** Weight Profile Id */
+            weight_profile_id: string;
         };
         /** WinnerChange */
         WinnerChange: {

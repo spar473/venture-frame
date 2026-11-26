@@ -16,7 +16,8 @@ The working tree is never modified. An unmodified baseline run must pass first.
                                       --study-only | --summary-only |
                                       --cleanup-only | --showcase-only |
                                       --reference_cases-only | --robustness-only |
-                                      --structured_judgement-only | --calibration-only]
+                                      --structured_judgement-only | --calibration-only |
+                                      --smaa_samples-only]
 
 Groups are named after the milestone that introduced them (B3 weighting, B4 sensitivity, B5
 scenarios, B6 results) or after the development itself (RETRY: analysis retry; COVERAGE:
@@ -4177,12 +4178,12 @@ OVERNIGHT["reference_outcomes"] = (
 # Calibration on synthetic data (deep dive 5, 25 November 2026): the nested Dirichlet prior, the
 # censoring-aware likelihood, the sampler, the convergence gate and the weight-samples sidecar.
 # Design: docs/design/calibration.md. ``--calibration-only``.
-CAL_PRIOR = "src/mcda_studio/calibration/prior.py"
+CAL_PRIOR = "src/mcda_studio/methods/nested_dirichlet.py"
 CAL_LIKELIHOOD = "src/mcda_studio/calibration/likelihood.py"
 CAL_SAMPLER = "src/mcda_studio/calibration/sampler.py"
 CAL_DIAGNOSTICS = "src/mcda_studio/calibration/diagnostics.py"
 CAL_SERVICE = "src/mcda_studio/calibration/service.py"
-CAL_SIDECAR = "src/mcda_studio/calibration/weight_samples.py"
+CAL_SIDECAR = "src/mcda_studio/domain/weight_samples.py"
 CALIBRATION_BACKEND = [
     Mutation("CALIBRATION the ALR Jacobian dropped from the prior density", CAL_PRIOR,
              "            total = total + norm + (a * log_simplex(y)).sum(axis=-1)",
@@ -4246,6 +4247,72 @@ OVERNIGHT["calibration"] = (
         "tests/unit/test_calibration_sampler.py",
         "tests/unit/test_calibration_service.py",
         "tests/unit/test_calibration_boundaries.py",
+    ),
+)
+
+
+# SMAA-2 samples weight source, conviction prior and schema 8 (26 November 2026).
+# Design: docs/design/sampled-weights-in-smaa.md. ``--smaa_samples-only``.
+SS_SAMPLES = "src/mcda_studio/methods/smaa/samples.py"
+SS_ENGINE = "src/mcda_studio/methods/smaa/engine.py"
+SS_PROJECT = "src/mcda_studio/domain/project.py"
+SS_REPO = "src/mcda_studio/storage/json_repository.py"
+SS_PRIOR = "src/mcda_studio/methods/nested_dirichlet.py"
+SMAA_SAMPLES_BACKEND = [
+    Mutation("SAMPLES indices drawn with replacement when S <= N", SS_SAMPLES,
+             "        return order[:draws].copy()",
+             "        return rng.integers(0, stored, size=draws).astype(np.intp)"),
+    Mutation("SAMPLES S > N accepted without resample", SS_SAMPLES,
+             "    if params.samples > stored and not params.resample:", "    if False:"),
+    Mutation("SAMPLES resampled preference intervals use n = S", SS_ENGINE,
+             'interval_n=stored if reused and params.uncertainty == "preference" else None,',
+             "interval_n=None,"),
+    Mutation("SAMPLES index draws taken from the main stream", SS_SAMPLES,
+             "    rng = np.random.Generator(np.random.PCG64(seed).jumped(INDEX_STREAM_JUMP))",
+             "    rng = np.random.Generator(np.random.PCG64(seed))"),
+    Mutation("SAMPLES a diagnostic (unusable) sidecar accepted", SS_SAMPLES,
+             "    if not samples.usable:", "    if False:"),
+    Mutation("SAMPLES the digest check skipped", SS_SAMPLES,
+             "    if pinned is not None and digest(samples) != pinned:", "    if False:"),
+    Mutation("SAMPLES the tree check skipped", SS_SAMPLES,
+             "    if samples.leaf_ids != project.tree().leaves():", "    if False:"),
+    Mutation("SAMPLES stated weight groups and samples mixed in one run", SS_SAMPLES,
+             "    if project.smaa is not None and project.smaa.groups:", "    if False:"),
+    Mutation("SAMPLES a performance run reads the samples", SS_SAMPLES,
+             '        and params.uncertainty in ("preference", "combined")\n', ""),
+    Mutation("SAMPLES the record omits the index method", SS_ENGINE,
+             'index_method="with replacement" if reused else "without replacement",',
+             'index_method="without replacement",'),
+    Mutation("SAMPLES the stated default counts as the samples source (schema 8)", SS_PROJECT,
+             '        return self.analysis.parameters.get("weight_source") == "samples"',
+             '        return "weight_source" in self.analysis.parameters'),
+    Mutation("SAMPLES the run profile is not checked against the sidecar", SS_SAMPLES,
+             "        if run_profile is not None and run_profile.id != samples.weight_profile_id:",
+             "        if False:"),
+    Mutation("SAMPLES a stale sidecar accepted", SS_SAMPLES,
+             "    if samples.project_fingerprint != fitted_fingerprint(project):", "    if False:"),
+    Mutation("SAMPLES saving the source makes every sidecar stale", SS_SAMPLES,
+             "        k: v for k, v in project.analysis.parameters.items() if k not in SOURCE_PARAMETERS",
+             "        k: v for k, v in project.analysis.parameters.items()"),
+    Mutation("SAMPLES a version 7 file may hold the samples source", SS_REPO,
+             '    if isinstance(parameters, dict) and parameters.get("weight_source") == "samples":',
+             "    if False:"),
+    Mutation("SAMPLES a samples configuration is not written as version 8", SS_PROJECT,
+             "            used.append(SAMPLES_WEIGHT_SOURCE_VERSION)", "            pass"),
+    Mutation("SAMPLES a stated kappa is ignored by the conviction prior", SS_PRIOR,
+             '            kappas[parent], methods[parent] = float(kappa), "stated"',
+             '            kappas[parent], methods[parent] = 1.0, "stated"'),
+    Mutation("SAMPLES prior draws ignore what held children leave", SS_PRIOR,
+             "            local[idx, :] = g.share * rng.dirichlet(g.kappa * np.asarray(g.centre), size=n).T",
+             "            local[idx, :] = rng.dirichlet(g.kappa * np.asarray(g.centre), size=n).T"),
+]  # fmt: skip
+OVERNIGHT["smaa_samples"] = (
+    SMAA_SAMPLES_BACKEND,
+    pytest_runner(
+        "SMAA-2 samples",
+        "tests/unit/test_smaa_samples.py",
+        "tests/unit/test_conviction_prior.py",
+        "tests/regression/test_smaa_samples_reference.py",
     ),
 )
 

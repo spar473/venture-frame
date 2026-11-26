@@ -1,8 +1,14 @@
-# Sampled weights in SMAA-2 (proposal)
+# Sampled weights in SMAA-2
 
-**Status:** proposed on 25 November 2026 (deep dive 5, phase 4). **Not implemented.** It needs the
-owner's approval under rule 3: it changes SMAA-2's inputs and adds method parameters. Nothing in
-this note is in the code.
+**Status:**
+- Proposed on 25 November 2026 (deep dive 5, phase 4).
+- **Approved by the owner in the DD7 session prompt of 26 November 2026**, which also approved
+  schema 8 for saved `"samples"` configurations and a `basis` field on `weight-samples` v1.
+- **Implemented** on `feature/conviction-prior`. The conviction prior came first (decision 4):
+  `mcda calibrate prior`.
+- Where the code had to settle what this note left open, see
+  [Implementation notes](#implementation-notes) at the end. Every existing output is
+  byte-identical: 969 of 969 against `feature/calibration`.
 
 ## Why
 
@@ -157,3 +163,51 @@ compared against the commit before the change (and with `--portable` across mach
 3. Whether to plan `weight-samples` version 2 with a weights-basis digest.
 4. Whether a "conviction prior" command (samples from `Dir(κ·w0)` with no reference set) should come
    first. It would deliver DD3's promise before any outcome data exist.
+
+## Implementation notes
+
+What the code settles that the proposal left open:
+
+- **The conviction prior.** `mcda calibrate prior PROJECT --profile ID [--conviction | --kappa]
+  [--draws N] [--seed S] --out FILE` writes a sidecar with `basis: "prior"`.
+  - It draws exact `Dirichlet(κ·w0)` per varying sibling group (`methods/nested_dirichlet.py`).
+  - κ is moment-matched to the conviction (555 / 136 / 47 on case 2's top level), or stated.
+  - Held and zero-weight children behave as DD3 says.
+  - `--draws` defaults to 10,000, SMAA-2's default sample count, so S ≤ N by default.
+- **`basis`.** `weight-samples` v1 gains `basis`, `"prior"` or `"calibrated"`.
+  - The reference-set fields and the outcome model's priors and draws are required only for a
+    calibrated basis, and refused for a prior basis.
+  - A file without `basis` reads as calibrated.
+- **Digest.** `weight_samples_sha256` is the SHA-256 of the sidecar's canonical JSON (sorted keys,
+  UTF-8, `(',', ':')`), not of the file's bytes. A file and the same sidecar sent in an API
+  request therefore pin the same digest.
+- **Staleness without a weights-basis digest.** v1 stores only the full project fingerprint. The
+  check compares it with the project's fingerprint after removing the three source parameters,
+  which reconstructs the project as it was when the samples were drawn.
+  - Workflow: save the method and SMAA-2 settings first, then draw, then save `weight_source` and
+    the digest.
+  - Any other change makes the file stale (`WEIGHT_SAMPLES_STALE`).
+  - The weights-basis digest of decision 3 is not added; it was not approved.
+- **Codes the proposal described but did not name:**
+  - `WEIGHT_SAMPLES_DIGEST_REQUIRED`: samples without a digest;
+  - `WEIGHT_SAMPLES_MISSING`: no sidecar supplied;
+  - `WEIGHT_SAMPLES_UNKNOWN_PROFILE`;
+  - `WEIGHT_SAMPLES_PROFILE_MISMATCH`: the run's profile is not the sidecar's. This one is a
+    conservative addition.
+- **Resampled intervals.** In a resampled preference run each count is scaled to N before its
+  Clopper–Pearson interval is computed.
+- **The agreement oracle.** It compares two sampled estimates with a two-proportion test at a
+  family-wise α of 0.001. Requiring each estimate inside the other's 99.9% interval would fail
+  about 2% of comparisons for correct code. Against the NumPy replica (ten times the draws), the
+  engine's interval at 1 − 0.001/m must contain the replica's frequency.
+- **The application.** The Judgement tab's decision-confidence comparison has a "Weight
+  uncertainty" choice: conviction bands, ranking only, or true conviction (Dirichlet κ).
+  - The true-conviction column comes from the elicitation preview, which draws the prior and runs
+    SMAA-2 through the samples source server-side. It shows the κ used.
+  - It cannot be "used as the weight uncertainty" from the app, because the sidecar lives in no
+    project. Saving a samples configuration goes through the CLI (`mcda evaluate
+    --weight-samples`, or saved parameters plus the file).
+- **Tests and mutants.**
+  - `tests/unit/test_smaa_samples.py` and `tests/unit/test_conviction_prior.py`;
+  - `tests/regression/test_smaa_samples_reference.py`;
+  - the `smaa_samples` mutant group (18 mutants).

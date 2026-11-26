@@ -204,8 +204,20 @@ def _basis(project: Project, result: SmaaResult, saved: bool) -> str:
                     f"the swing ratings at {where} within stated intervals, in place of this "
                     f"profile's{kept}"
                 )
-    weights = "every weight" if result.run == "performance" or not model.groups else "other weights"
-    fixed = [f"{weights} (this profile's)"]
+    use = result.weight_samples
+    if use is not None and result.run in {"preference", "combined"}:
+        drawn = (
+            "the conviction prior, a Dirichlet around this profile's weights"
+            if use.basis == "prior"
+            else "weights calibrated to a reference set's outcomes"
+        )
+        varied.append(f"every weight, from {use.used:,} of {use.stored:,} stored draws of {drawn}")
+        fixed = []
+    else:
+        weights = (
+            "every weight" if result.run == "performance" or not model.groups else "other weights"
+        )
+        fixed = [f"{weights} (this profile's)"]
     if result.run == "preference":
         fixed.append("every measurement at its entered value")
     fixed.append("value functions")

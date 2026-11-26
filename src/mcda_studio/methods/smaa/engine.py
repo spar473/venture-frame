@@ -27,12 +27,14 @@ from mcda_studio.domain.results import (
     AlternativeAcceptability,
     InputToCheck,
     SmaaResult,
+    WeightSamplesUse,
 )
 from mcda_studio.domain.uncertainty import (
     CategoricalDistribution,
     CellUncertainty,
     DiscreteDistribution,
     GroupUncertainty,
+    SmaaModel,
     TriangularDistribution,
     UniformDistribution,
 )
@@ -46,8 +48,13 @@ from mcda_studio.methods.mavt.aggregation import (
     rank_values,
 )
 from mcda_studio.methods.mavt.value_functions import build_evaluator
+from mcda_studio.methods.smaa import samples as weight_samples
 from mcda_studio.methods.smaa.intervals import clopper_pearson
-from mcda_studio.methods.smaa.validation import effective_function, smaa_parameters
+from mcda_studio.methods.smaa.validation import (
+    SmaaParameters,
+    effective_function,
+    smaa_parameters,
+)
 from mcda_studio.methods.sorting.classes import class_bands, class_index, lower_boundaries
 
 NEAR_TIE = 1e-9
@@ -173,6 +180,9 @@ class _Plan:
     shared: list[tuple[str, list[int]]]  # (shared draw id, indexes into cells)
     boundaries: list[float]
     class_ids: list[str]
+    # Global weights per draw, (draws, leaves) in leaf order, when they come from a weight-samples
+    # sidecar; None when they are drawn from the stated groups.
+    weight_rows: NDArray[np.float64] | None = None
 
     @property
     def independent(self) -> list[int]:
@@ -180,16 +190,21 @@ class _Plan:
         return [i for i in range(len(self.cells)) if i not in taken]
 
 
-def _plan(project: Project, configuration: AnalysisConfiguration, run: str) -> _Plan:
+def _plan(
+    project: Project,
+    configuration: AnalysisConfiguration,
+    run: str,
+    from_samples: bool = False,
+) -> _Plan:
     prep = prepare_mavt(project, configuration)  # validates through the SMAA-2 method
-    model = project.smaa
-    assert model is not None  # guaranteed by validation (NOTHING_UNCERTAIN)
+    # Validation guarantees a section (NOTHING_UNCERTAIN) unless the weights come from samples.
+    model = project.smaa if project.smaa is not None else SmaaModel()
     cells: list[_Cell] = []
     if run in {"performance", "combined"}:
         built = [_cell(prep, project, configuration, c) for c in model.cells]
         cells = sorted(built, key=lambda c: (c.alternative, c.leaf))
     groups: list[_Group] = []
-    if run in {"preference", "combined"}:
+    if run in {"preference", "combined"} and not from_samples:
         by_parent = {g.parent_id: g for g in model.groups}
         order: list[str | None] = [
             None,
@@ -369,7 +384,11 @@ def _sample(
                 partial[:, cell.alternative, cell.leaf] = cell.partial(uniforms[:, column])
             draws.append(uniforms[:, column])
             column += 1
-        weights = _weights(plan, local, n)
+        weights = (
+            _weights(plan, local, n)
+            if plan.weight_rows is None
+            else plan.weight_rows[done : done + n].copy()
+        )
         ranks, classes, near = _evaluate(plan, partial, weights)
         near_total += near
         for a in range(alternatives):
@@ -434,7 +453,12 @@ def _input_labels(plan: _Plan) -> list[tuple[str, str]]:
 
 def _enumerable(plan: _Plan) -> int | None:
     """The joint outcome count when every varying input is discrete and few enough, else None."""
-    if plan.groups or not plan.cells or any(c.outcomes is None for c in plan.cells):
+    if (
+        plan.weight_rows is not None
+        or plan.groups
+        or not plan.cells
+        or any(c.outcomes is None for c in plan.cells)
+    ):
         return None
     total = 1
     for i in plan.independent:
@@ -528,19 +552,59 @@ def _frequency(value: int | Fraction, n: int | None) -> float:
     return float(value) if isinstance(value, Fraction) else int(value) / (n or 1)
 
 
-def _estimate(value: int | Fraction, n: int | None, confidence: float) -> AcceptabilityEstimate:
+def _estimate(
+    value: int | Fraction, n: int | None, confidence: float, interval_n: int | None = None
+) -> AcceptabilityEstimate:
+    """``interval_n`` (a resampled preference run): the interval is computed as if from that many
+    draws, with the count scaled to it, so reusing stored vectors cannot narrow it."""
     if isinstance(value, Fraction):
         return AcceptabilityEstimate(count=None, frequency=float(value), lower=None, upper=None)
     assert n is not None
+    if interval_n is not None and interval_n < n:
+        scaled = int(int(value) * interval_n / n + 0.5)
+        lower, upper = clopper_pearson(scaled, interval_n, confidence)
+        return AcceptabilityEstimate(
+            count=int(value), frequency=int(value) / n, lower=lower, upper=upper
+        )
     lower, upper = clopper_pearson(int(value), n, confidence)
     return AcceptabilityEstimate(
         count=int(value), frequency=int(value) / n, lower=lower, upper=upper
     )
 
 
+def _sampled_weights(
+    project: Project, params: SmaaParameters
+) -> tuple[NDArray[np.float64] | None, WeightSamplesUse | None]:
+    """The per-draw global weights from the supplied sidecar, and the record of their use."""
+    if not weight_samples.uses_samples(params):
+        return None, None
+    supplied = weight_samples.supplied_samples()
+    assert supplied is not None  # guaranteed by validation (WEIGHT_SAMPLES_MISSING)
+    draws, resample, seed = params.samples, params.resample, params.seed
+    stored = len(supplied.samples)
+    index = weight_samples.indices(seed, draws, stored, resample)
+    rows = np.asarray(supplied.samples, dtype=np.float64)[index]
+    reused = draws > stored
+    use = WeightSamplesUse(
+        sha256=weight_samples.digest(supplied),
+        basis=supplied.basis,
+        weight_profile_id=supplied.weight_profile_id,
+        stored=stored,
+        used=draws,
+        index_method="with replacement" if reused else "without replacement",
+        index_stream=f"PCG64({seed}).jumped({weight_samples.INDEX_STREAM_JUMP})",
+        interval_n=stored if reused and params.uncertainty == "preference" else None,
+        note=weight_samples.RESAMPLE_SENTENCE.format(S=draws, N=stored) if reused else None,
+    )
+    return rows, use
+
+
 def run_smaa(project: Project, configuration: AnalysisConfiguration) -> SmaaResult:
     params = smaa_parameters(configuration)
-    plan = _plan(project, configuration, params.uncertainty)
+    plan = _plan(  # validates first, so the sidecar is checked before it is read
+        project, configuration, params.uncertainty, weight_samples.uses_samples(params)
+    )
+    plan.weight_rows, samples_use = _sampled_weights(project, params)
     prep = plan.prep
     alternatives, leaves = len(prep.alt_ids), len(prep.leaf_ids)
     outcomes = _enumerable(plan)
@@ -597,23 +661,34 @@ def run_smaa(project: Project, configuration: AnalysisConfiguration) -> SmaaResu
                 f"{NEAR_TIE} and were summed again with math.fsum",
             )
         )
+    if samples_use is not None:
+        diagnostics.append(
+            Issue(
+                severity=Severity.INFO,
+                code="WEIGHT_SAMPLES",
+                message=f"weights came from {samples_use.used} of {samples_use.stored} stored "
+                f"vectors ({samples_use.basis} basis), drawn {samples_use.index_method}"
+                + (f"; {samples_use.note}" if samples_use.note else ""),
+            )
+        )
+    interval_n = samples_use.interval_n if samples_use is not None else None
     names = {a.id: a.name for a in project.alternatives}
     acceptability = [
         AlternativeAcceptability(
             alternative_id=alt,
             name=names[alt],
-            ranks=[_estimate(v, n, params.confidence) for v in counts.ranks[a]],
-            sole_first=_estimate(counts.sole[a], n, params.confidence),
-            tied_first=_estimate(counts.tied[a], n, params.confidence),
+            ranks=[_estimate(v, n, params.confidence, interval_n) for v in counts.ranks[a]],
+            sole_first=_estimate(counts.sole[a], n, params.confidence, interval_n),
+            tied_first=_estimate(counts.tied[a], n, params.confidence, interval_n),
             classes={
-                cid: _estimate(counts.classes[a][k], n, params.confidence)
+                cid: _estimate(counts.classes[a][k], n, params.confidence, interval_n)
                 for k, cid in enumerate(plan.class_ids)
             },
         )
         for a, alt in enumerate(prep.alt_ids)
     ]
     reference = build_mavt_result(prep)
-    assert project.smaa is not None
+    stated = project.smaa if project.smaa is not None else SmaaModel()
     return SmaaResult(
         schema_version=project.required_schema_version(),
         project_id=project.id,
@@ -630,8 +705,8 @@ def run_smaa(project: Project, configuration: AnalysisConfiguration) -> SmaaResu
         outcomes=outcomes,
         seed=params.seed,
         confidence=params.confidence,
-        dependence=project.smaa.dependence,
-        uncertainty=project.smaa.model_copy(deep=True),
+        dependence=stated.dependence,
+        uncertainty=stated.model_copy(deep=True),
         environment={
             "python": platform.python_version(),
             "numpy": np.__version__,
@@ -641,4 +716,9 @@ def run_smaa(project: Project, configuration: AnalysisConfiguration) -> SmaaResu
         leader_id=prep.alt_ids[leader],
         acceptability=acceptability,
         inputs_to_check=inputs_to_check,
+        **(
+            {"algorithm": weight_samples.STREAM, "weight_samples": samples_use}
+            if samples_use is not None
+            else {}
+        ),
     )

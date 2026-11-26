@@ -5,7 +5,7 @@ import re
 from collections.abc import Callable
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StrictInt, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, ValidationError
 
 from mcda_studio.domain.common import Issue, Severity
 from mcda_studio.domain.criteria import CriterionTree, QualitativeValueFunction, ValueFunctionSpec
@@ -20,6 +20,7 @@ from mcda_studio.domain.uncertainty import (
     TriangularDistribution,
     UniformDistribution,
 )
+from mcda_studio.methods.smaa import samples
 from mcda_studio.methods.sorting.classes import check_sorting
 
 PROBABILITY_TOL = 1e-9
@@ -35,6 +36,12 @@ class SmaaParameters(BaseModel):
     samples: StrictInt = Field(default=10_000, ge=1_000, le=100_000)
     seed: StrictInt = Field(default=0, ge=0)
     confidence: float = Field(default=0.95, ge=0.8, le=0.999)
+    #: where a preference or combined run takes its weights: the stated weight groups, or the
+    #: global weight vectors of a supplied weight-samples sidecar (docs/design/
+    #: sampled-weights-in-smaa.md); the sidecar's digest pins which file
+    weight_source: Literal["stated", "samples"] = "stated"
+    weight_samples_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    resample: StrictBool = False
 
 
 def smaa_parameters(configuration: AnalysisConfiguration) -> SmaaParameters:
@@ -81,12 +88,19 @@ def check_smaa(
         params = None  # reported by the parameter checks
     model = project.smaa
     run = params.uncertainty if params else "combined"
+    from_samples = samples.uses_samples(params)
+    issues.extend(samples.check(project, configuration, params))
     if model is None:
-        add(
-            "NOTHING_UNCERTAIN",
-            "SMAA-2 needs stated uncertainty; the project states none",
-            "smaa",
-        )
+        if not from_samples:
+            add(
+                "NOTHING_UNCERTAIN",
+                "SMAA-2 needs stated uncertainty; the project states none",
+                "smaa",
+            )
+        elif project.sorting is not None:  # class acceptability needs valid classes
+            issues.extend(
+                i for i in check_sorting(project, []) if i.code != "SORTING_LOCAL_ANCHORS"
+            )
         return issues
     if model.dependence != "independent":
         add(
@@ -294,7 +308,7 @@ def check_smaa(
 
     varies_cells = run in {"performance", "combined"} and bool(model.cells)
     varies_groups = run in {"preference", "combined"} and bool(model.groups)
-    if not (varies_cells or varies_groups):
+    if not (varies_cells or varies_groups or from_samples):
         add(
             "NOTHING_UNCERTAIN",
             f"nothing stated varies in a {run} run",

@@ -14,7 +14,7 @@ from mcda_studio.api import operations as ops
 from mcda_studio.domain.errors import ProjectLoadError
 from mcda_studio.domain.pairwise import PairwiseJudgement
 from mcda_studio.domain.preferences import AnalysisConfiguration, Elicitation, GroupElicitation
-from mcda_studio.domain.project import SCHEMA_VERSION
+from mcda_studio.domain.project import SCHEMA_VERSION, STRUCTURED_JUDGEMENT_VERSION
 from mcda_studio.domain.uncertainty import GroupUncertainty, SmaaModel
 from mcda_studio.methods.smaa.validation import check_smaa
 from mcda_studio.services import project_service as ps
@@ -59,7 +59,8 @@ def issues(project, configuration=SMAA):  # type: ignore[no-untyped-def]
 
 
 def test_schema_version_is_7_and_unused_fields_change_nothing(tmp_path: Path) -> None:
-    assert SCHEMA_VERSION == 7
+    # Structured judgement arrived in version 7; version 8 (samples weight source) came later.
+    assert STRUCTURED_JUDGEMENT_VERSION == 7 and SCHEMA_VERSION >= 7
     project = repo.load(STUDY)
     assert project.schema_version == project.required_schema_version() == 6
     assert repo.save(project, tmp_path / "p.json").read_bytes() == STUDY.read_bytes()
