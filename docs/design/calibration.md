@@ -283,3 +283,41 @@ the full suite and can be skipped with `-m "not slow"`).
    frontend imports it.
 10. **Mutants:** the `calibration` group in `scripts/mutation_check.py`, at least 12 mutants, every
     one killed.
+
+## 9. Known behaviour: the prior pulls when the truth is far from the stated weights
+
+The 90% intervals are posterior intervals under the stated conviction. They keep their coverage when
+the true weights are as close to the stated ones as that conviction says; verification items 4 and
+5 draw the truth from the prior. When the truth lies further away, the prior pulls every estimate
+towards the stated weights, and the intervals miss on the far side.
+
+`synthetic-check` shows this on purpose. Its planted weights are a total-variation (TV) distance of
+0.30 from the stated ones. Under κ = 47 (low conviction), 99% of prior draws lie within TV 0.195,
+and none of 20,000 lay as far as 0.30. So w[a1] and w[b2] miss at 150, 500 and 2,000 cases, with
+every estimate between the planted and the stated value.
+
+DD10 (`dd10_prior_pull.ipynb`, kept outside the repository) found this is the prior, not a bias:
+
+- the miss shrinks as cases grow (w[b2] 0.15, 0.17, 0.26, 0.33 at 150 to 8,000 cases, against 0.358);
+- it disappears as κ falls;
+- a prior centred on the truth covers 43 of 45 intervals;
+- coverage is nominal for truths within TV 0.1.
+
+Coverage of the five weights at 2,000 cases and κ = 47 (40 truths per band, 99% Clopper–Pearson):
+
+| TV from stated | coverage [99% CI] |
+| --- | --- |
+| 0 to 0.1 | 0.885 [0.82, 0.94] |
+| 0.1 to 0.2 | 0.69 [0.60, 0.77] |
+| 0.2 to 0.3 | 0.54 [0.45, 0.63] |
+| 0.3 to 0.4 | 0.43 [0.34, 0.52] |
+
+At κ = 136 (medium) coverage is already 0.75 [0.66, 0.82] within TV 0.1. Layer 2 behaves the
+same way: at 1,000 decisions, κ = 47 gives 0.70 for TV 0.1 to 0.2, and the default κ = 10 gives
+0.86 [0.78, 0.91].
+
+A conviction is therefore a claim about distance. On this tree, case 2's top-level concentrations
+put 90% of prior draws within TV 0.14 (low, κ = 47), 0.08 (medium, 136) and 0.04 (high, 555). If
+the real weights may be further from the stated ones than that, the intervals are too narrow at
+these sample sizes; state a lower conviction. This describes the method as it is. Nothing in it
+was changed.
