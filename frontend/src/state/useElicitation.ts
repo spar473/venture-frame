@@ -30,3 +30,17 @@ export function useElicitationPreview(project: Project, context: AnalysisContext
   }, [project, context]);
   return useAnalysisRequest(key, enabled && project.weight_profiles.length > 0, load, 0);
 }
+
+/** Aids for stating weights (anchored swings, break-even weights, reference profiles), all
+ * derived by the engine for the viewed revision and profile. */
+export function useJudgementAids(project: Project, context: AnalysisContext) {
+  const key = analysisKey({ ...context, criterionId: null }, "judgement-aids");
+  const load = useCallback(async (signal: AbortSignal) => {
+    const result = await api.judgementAids(project, context.configuration, signal);
+    if (result.project_fingerprint !== context.fingerprint || result.weight_profile_id !== context.resolvedProfileId) {
+      throw new Error("The judgement aids do not match the selected revision and profile.");
+    }
+    return result;
+  }, [project, context]);
+  return useAnalysisRequest(key, project.weight_profiles.length > 0, load);
+}

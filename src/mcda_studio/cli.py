@@ -33,6 +33,12 @@ from typer.core import TyperGroup
 
 from mcda_studio.cli_models import model_app, starter_app
 from mcda_studio.cli_proxy import proxy_app
+from mcda_studio.cli_tradeoff import ParticlesOpt as TradeoffParticlesOpt
+from mcda_studio.cli_tradeoff import PriorOpt as TradeoffPriorOpt
+from mcda_studio.cli_tradeoff import ProfileOpt as TradeoffProfileOpt
+from mcda_studio.cli_tradeoff import ProjectArg as TradeoffProjectArg
+from mcda_studio.cli_tradeoff import SeedOpt as TradeoffSeedOpt
+from mcda_studio.cli_tradeoff import elicit_app, tradeoff_app
 from mcda_studio.console_streams import configure_streams
 from mcda_studio.domain.criteria import (
     ControlPoint,
@@ -128,6 +134,7 @@ app.add_typer(alt_app, name="alternative")
 app.add_typer(model_app, name="model-comparisons")
 app.add_typer(starter_app, name="starter-templates")
 app.add_typer(proxy_app, name="proxy")
+app.add_typer(elicit_app, name="elicit")
 app.add_typer(crit_app, name="criterion")
 uncertainty_app = typer.Typer(
     help="Stated uncertainty for SMAA-2 (method smaa2): measurement distributions, weight "
@@ -986,6 +993,80 @@ def calibrate_prior(
     err_console.print(f"wrote {out}")
 
 
+@tradeoff_app.command("fit")
+def tradeoff_fit(
+    file: TradeoffProjectArg,
+    answers: Annotated[
+        Path, typer.Option("--answers", help="tradeoff-answers JSON or a filled sheet (.csv).")
+    ],
+    profile: TradeoffProfileOpt = None,
+    prior: TradeoffPriorOpt = "auto",
+    mode: Annotated[
+        str, typer.Option(help="auto (exact, noisy on a conflict), exact or noisy.")
+    ] = "auto",
+    answered_by: Annotated[
+        str | None, typer.Option(help="Who answered a sheet (recorded in --save-answers).")
+    ] = None,
+    answered_on: Annotated[
+        str | None, typer.Option(help="YYYY-MM-DD the sheet was answered.")
+    ] = None,
+    save_answers: Annotated[
+        Path | None,
+        typer.Option("--save-answers", help="Write the answers as a tradeoff-answers JSON file."),
+    ] = None,
+    out: Annotated[
+        Path | None,
+        typer.Option("--out", help="Write a weight-samples sidecar (basis tradeoff) here."),
+    ] = None,
+    particles: TradeoffParticlesOpt = 4000,
+    seed: TradeoffSeedOpt = 0,
+) -> None:
+    """Print the implied weights (median and 90% interval), the gap to the stated weights,
+    decision confidence before and after, and any conflicts, as JSON.
+
+    Exits 1 when the fit is in conflict (exact mode) or does not converge (noisy mode); no
+    sidecar is written then. Existing files are never overwritten."""
+    from mcda_studio.calibration.tradeoff import fit_noisy
+    from mcda_studio.cli_tradeoff import _answers, _context, _settings
+    from mcda_studio.services import tradeoff_service as ts
+
+    if mode not in ("auto", "exact", "noisy"):
+        _fail("--mode must be auto, exact or noisy")
+    for target in (out, save_answers):
+        if target is not None and target.exists():
+            _fail(f"Refusing to overwrite {target}")
+    if answered_on is not None and (
+        len(answered_on) != 10 or answered_on[4] != "-" or answered_on[7] != "-"
+    ):
+        _fail("--answered-on must be YYYY-MM-DD")
+    ctx = _context(file, profile, prior)
+    given = _answers(ctx, answers, answered_by, answered_on)
+    result = _guard(
+        lambda: ts.fit(
+            ctx,
+            given,
+            mode=mode,  # type: ignore[arg-type]
+            settings=_settings(particles, seed),
+            noisy=fit_noisy,
+        )
+    )
+    typer.echo(json.dumps(result.report.model_dump(mode="json"), indent=2))
+    if save_answers is not None:
+        with save_answers.open("x", encoding="utf-8", newline="\n") as handle:
+            handle.write(json.dumps(given.model_dump(mode="json"), indent=2, ensure_ascii=False))
+            handle.write("\n")
+        err_console.print(f"wrote {save_answers}")
+    if result.draws is None:
+        _fail(f"{result.report.status}: no samples were written")
+    if out is not None:
+        samples = _guard(lambda: ts.weight_samples(ctx, given, result))
+        with out.open("x", encoding="utf-8", newline="\n") as handle:
+            handle.write(samples.model_dump_json())
+        from mcda_studio.services import conviction_prior_service as cps
+
+        err_console.print(f"wrote {out} (weight_samples_sha256 {cps.sidecar_digest(samples)})")
+
+
 @calibrate_app.command("synthetic-check")
 def calibrate_synthetic_check(
     cases: Annotated[int, typer.Option(help="Simulated cases.")] = 500,
@@ -1166,6 +1247,26 @@ def validate(file: FileArg) -> None:
     console.print(f"[green]valid[/green] with {len(report.warnings)} warning(s)")
 
 
+def _print_break_even(report: Any) -> None:
+    table = Table("criterion", "share now", "leader changes if")
+    for c in report.criteria:
+        parts = []
+        if c.falls_below:
+            parts.append(f"below {c.falls_below.share:.1%} ({escape(c.falls_below.new_leader)})")
+        if c.rises_above:
+            parts.append(f"above {c.rises_above.share:.1%} ({escape(c.rises_above.new_leader)})")
+        table.add_row(escape(c.name), f"{c.share:.1%}", "; ".join(parts) or "never")
+    console.print(f"[bold]Break-even weights[/bold]: {escape(report.leader_name)} leads")
+    console.print(table)
+    if report.nearest is not None:
+        n = report.nearest
+        moves = ", ".join(f"{escape(m.name)} {m.stated:.1%} -> {m.changed:.1%}" for m in n.changes)
+        console.print(
+            f"Nearest change: {escape(n.name)} ties the leader after moving {n.distance:.1%} of "
+            f"the weight (L1): {moves}"
+        )
+
+
 @app.command()
 def evaluate(
     file: FileArg,
@@ -1193,6 +1294,14 @@ def evaluate(
     resample: Annotated[
         bool,
         typer.Option("--resample", help="SMAA-2: allow more draws than stored weight vectors."),
+    ] = False,
+    break_even: Annotated[
+        bool,
+        typer.Option(
+            "--break-even",
+            help="Also show how far the weights must move before the leader changes (per "
+            "criterion, and the nearest weight vector in L1). With --json, print only that.",
+        ),
     ] = False,
 ) -> None:
     """Calculate rankings and save the full inspectable result."""
@@ -1223,10 +1332,19 @@ def evaluate(
     elif resample:
         _fail("--resample needs --weight-samples")
 
+    if break_even:
+        from mcda_studio.services import break_even_service
+
+        report = _guard(lambda: break_even_service.break_even(project, cfg))
+        if as_json:
+            typer.echo(json.dumps(report.model_dump(mode="json"), indent=2))
+            return
     with weight_samples.supplied(supplied):
         result = _guard(lambda: svc.evaluate_project(project, cfg))
     if output:
         _guard(lambda: _save_result(result, output))
+    if break_even:
+        _print_break_even(report)
     if as_json:
         typer.echo(to_json_text(result), nl=False)
         return

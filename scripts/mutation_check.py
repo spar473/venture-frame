@@ -18,7 +18,7 @@ The working tree is never modified. An unmodified baseline run must pass first.
                                       --reference_cases-only | --robustness-only |
                                       --structured_judgement-only | --calibration-only |
                                       --smaa_samples-only | --reference_rating-only |
-                                      --revealed-only]
+                                      --revealed-only | --tradeoff-only]
 
 Groups are named after the milestone that introduced them (B3 weighting, B4 sensitivity, B5
 scenarios, B6 results) or after the development itself (RETRY: analysis retry; COVERAGE:
@@ -4437,6 +4437,101 @@ OVERNIGHT["revealed"] = (
     ),
 )
 
+
+# Trade-off elicitation (DD11, 28 November 2026): exact mode (SMC over a constrained prior), the
+# Bradley-Terry noisy mode on the calibration sampler, question selection, the stop rule, conflicts,
+# the tradeoff-answers sidecar and weight-samples with basis tradeoff.
+# Design: docs/design/tradeoff-elicitation.md. ``--tradeoff-only``.
+TO_METHOD = "src/mcda_studio/methods/tradeoff.py"
+TO_SERVICE = "src/mcda_studio/services/tradeoff_service.py"
+TO_ANSWERS = "src/mcda_studio/domain/tradeoff_answers.py"
+TO_SAMPLES = "src/mcda_studio/domain/weight_samples.py"
+TO_NOISY = "src/mcda_studio/calibration/tradeoff.py"
+TRADEOFF_BACKEND = [
+    Mutation("TRADEOFF the filter keeps every particle", TO_METHOD,
+             "        keep = np.flatnonzero(g >= 0.0)", "        keep = np.arange(g.size)"),
+    Mutation("TRADEOFF resampling indexes all particles, not the survivors", TO_METHOD,
+             "        picks = keep[np.minimum((u * keep.size).astype(np.intp), keep.size - 1)]",
+             "        picks = np.minimum((u * keep.size).astype(np.intp), keep.size - 1)"),
+    Mutation("TRADEOFF a move may leave the constraints", TO_METHOD,
+             "                accept &= np.isfinite(trial_density) & self.feasible(trial_weights)",
+             "                accept &= np.isfinite(trial_density)"),
+    Mutation("TRADEOFF a move ignores the prior density ratio", TO_METHOD,
+             "                    accept = log_u < trial_density - self.log_density[b]",
+             "                    accept = log_u < 0.0"),
+    Mutation("TRADEOFF a Dirichlet block ignores its concentrations", TO_METHOD,
+             "        density: Array = self._normalisers[b] + (np.asarray(g.alpha) * logp).sum(axis=1)",
+             "        density: Array = self._normalisers[b] + logp.sum(axis=1)"),
+    Mutation("TRADEOFF an ordered block's density ignores the order", TO_METHOD,
+             "            density = np.where(ordered, density, -np.inf)", "            density = density"),
+    Mutation("TRADEOFF ordered prior draws are not sorted", TO_METHOD,
+             "            if g.kind == \"ordered\":\n                p = -np.sort(-p, axis=1)",
+             "            if False:\n                p = -np.sort(-p, axis=1)"),
+    Mutation("TRADEOFF an intervals block ignores its box", TO_METHOD,
+             "            inside = np.all((z >= lo) & (z <= hi), axis=1)",
+             "            inside = np.ones(z.shape[0], dtype=bool)"),
+    Mutation("TRADEOFF noisy mode forgets which groups are ordered", TO_METHOD,
+             "        if g.kind == \"ordered\":\n            ordered.append(b)",
+             "        if False:\n            ordered.append(b)"),
+    Mutation("TRADEOFF Bradley-Terry sign flipped", TO_NOISY,
+             "        total: Array = -np.logaddexp(0.0, -beta[None, :] * s).sum(axis=0)",
+             "        total: Array = -np.logaddexp(0.0, beta[None, :] * s).sum(axis=0)"),
+    Mutation("TRADEOFF the beta prior's mean dropped", TO_NOISY,
+             "        log_beta_mean=LOG_BETA_PRIOR_MEAN,", "        log_beta_mean=0.0,"),
+    Mutation("TRADEOFF implied answers may be asked", TO_METHOD,
+             "IMPLIED_LOW = 0.02", "IMPLIED_LOW = 0.0"),
+    Mutation("TRADEOFF the most lopsided question is asked", TO_METHOD,
+             "    return eligible[int(np.argmin(gap))]", "    return eligible[int(np.argmax(gap))]"),
+    Mutation("TRADEOFF the question limit raised", TO_METHOD,
+             "MAX_QUESTIONS = 30", "MAX_QUESTIONS = 300"),
+    Mutation("TRADEOFF the stop rule's noise inflated", TO_METHOD,
+             "NOISE_Z = 2.5758293035489004", "NOISE_Z = 25.758293035489004"),
+    Mutation("TRADEOFF the stop rule ignores its window", TO_METHOD,
+             "    if len(history) <= STOP_WINDOW:", "    if len(history) < 2:"),
+    Mutation("TRADEOFF P(first) counts the last, not the leader", TO_METHOD,
+             "    leaders = np.argmax(values, axis=1)", "    leaders = np.argmin(values, axis=1)"),
+    Mutation("TRADEOFF a pair touching zero counts as a conflict", TO_METHOD,
+             "    return best < 0.0", "    return best <= 0.0"),
+    Mutation("TRADEOFF the pair check skips the edge points", TO_METHOD,
+             "            best = max(best, float(value))", "            best = best"),
+    Mutation("TRADEOFF choosing B reads as choosing A", TO_SERVICE,
+             '        return d if answer.choice == "A" else -d', "        return d"),
+    Mutation("TRADEOFF a conflicting answer is never reported", TO_SERVICE,
+             "            conflicts.append(_conflict(ctx, answers, k, kept, contrasts))", "            pass"),
+    Mutation("TRADEOFF auto mode never falls back to noisy", TO_SERVICE,
+             '    use_noisy = mode == "noisy" or (mode == "auto" and bool(run.conflicts))',
+             '    use_noisy = mode == "noisy"'),
+    Mutation("TRADEOFF screened-only leaves are asked", TO_SERVICE,
+             "    leaves = [leaf for j, leaf in enumerate(ctx.leaf_ids) if ctx.prior.varying[j]]",
+             "    leaves = list(ctx.leaf_ids)"),
+    Mutation("TRADEOFF a question is better on both criteria", TO_SERVICE,
+             "                    contrast[index[second]] = -d2", "                    contrast[index[second]] = d2"),
+    Mutation("TRADEOFF the ranking prior reverses the swing order", TO_SERVICE,
+             "    return sorted(free, key=lambda k: (-local[k], position[k]))",
+             "    return sorted(free, key=lambda k: (local[k], position[k]))"),
+    Mutation("TRADEOFF a changed project is read without a warning", TO_SERVICE,
+             "    if answers.project_fingerprint != ctx.project.fingerprint():", "    if False:"),
+    Mutation("TRADEOFF answers for another profile accepted", TO_SERVICE,
+             "    if answers.weight_profile_id != ctx.profile.id:", "    if False:"),
+    Mutation("TRADEOFF simulated answers become weight samples", TO_SERVICE,
+             '    if report.source != "person":', "    if False:"),
+    Mutation("TRADEOFF an unknown level accepted", TO_SERVICE,
+             "            if not isinstance(raw, str) or raw not in vf.mapping:", "            if False:"),
+    Mutation("TRADEOFF A and B may differ on different criteria", TO_ANSWERS,
+             "        if not self.a or set(self.a) != set(self.b):", "        if not self.a:"),
+    Mutation("TRADEOFF a later answers version read", TO_ANSWERS,
+             "            if type(version) is int and version != VERSION:", "            if False:"),
+    Mutation("TRADEOFF the tradeoff label not checked", TO_SAMPLES,
+             "        if self.label != TRADEOFF_LABEL:", "        if False:"),
+]  # fmt: skip
+OVERNIGHT["tradeoff"] = (
+    TRADEOFF_BACKEND,
+    pytest_runner(
+        "Trade-off elicitation",
+        "tests/unit/test_tradeoff.py",
+        "tests/regression/test_tradeoff_oracles.py",
+    ),
+)
 
 def main() -> int:
     ap = argparse.ArgumentParser()

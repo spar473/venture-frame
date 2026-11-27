@@ -3,9 +3,11 @@
 ``basis`` says what the vectors are: ``"calibrated"``, posterior draws fitted to a reference set's
 outcomes (``mcda calibrate fit``, ``docs/design/calibration.md``), or ``"prior"``, exact draws from
 the nested Dirichlet conviction prior with no outcome data (``mcda calibrate prior``,
-``docs/design/sampled-weights-in-smaa.md``). The reference-set and outcome-model fields are
-required only when the basis is calibrated, and absent otherwise. A file without ``basis`` was
-written before the field existed and is calibrated.
+``docs/design/sampled-weights-in-smaa.md``), or ``"tradeoff"``, draws of the weights implied by a
+person's answers to pairwise trade-off questions under a stated prior, with no outcome data
+(``mcda elicit tradeoff fit``, ``docs/design/tradeoff-elicitation.md``). The reference-set and
+outcome-model fields are required only when the basis is calibrated, and absent otherwise. A file
+without ``basis`` was written before the field existed and is calibrated.
 
 A separate local JSON file, never stored inside a project. Strict sidecar conventions: unknown
 fields are refused, ``version`` must be an explicit integer, and any version other than 1 is
@@ -26,8 +28,9 @@ from mcda_studio.domain.sidecar_common import SidecarModel
 
 __all__ = [
     "DIAGNOSTIC_LABEL", "KIND", "LABEL", "LIMITATIONS", "PRIOR_LABEL", "PRIOR_LIMITATIONS",
-    "SUM_TOLERANCE", "VERSION", "Basis", "DataSpec", "DiagnosticsSpec", "FixedGroupPrior",
-    "GroupPrior", "PriorSpec", "QuantityDiagnosticsSpec", "SamplerSpec", "WeightSamples",
+    "SUM_TOLERANCE", "TRADEOFF_LABEL", "TRADEOFF_LIMITATIONS", "VERSION", "Basis", "DataSpec",
+    "DiagnosticsSpec", "FixedGroupPrior", "GroupPrior", "PriorSpec", "QuantityDiagnosticsSpec",
+    "SamplerSpec", "WeightSamples",
 ]  # fmt: skip
 
 KIND = "weight-samples"
@@ -61,8 +64,19 @@ PRIOR_LIMITATIONS = [
     "The draws are exact and independent (no Markov chain), so there is nothing to converge; "
     "they repeat for a seed on one platform and NumPy version.",
 ]
+TRADEOFF_LABEL = (
+    "Trade-off weights describe what is consistent with one person's answers to pairwise "
+    "trade-off questions under a stated prior; they use no outcome data and are not a forecast "
+    "for any alternative."
+)
+TRADEOFF_LIMITATIONS = [
+    "Answers inform the weights only along the contrasts asked; elsewhere the prior decides.",
+    "Exact mode treats every answer as a considered preference; noisy mode (Bradley-Terry) allows "
+    "slips. The sampler's algorithm field says which was used.",
+    "One person's answers: partners are never averaged.",
+]
 SUM_TOLERANCE = 1e-9
-Basis = Literal["prior", "calibrated"]
+Basis = Literal["prior", "calibrated", "tradeoff"]
 
 
 class GroupPrior(SidecarModel):
@@ -181,6 +195,8 @@ class WeightSamples(SidecarModel):
         n = self.sampler.samples
         if self.basis == "prior":
             self._prior_basis()
+        elif self.basis == "tradeoff":
+            self._tradeoff_basis()
         else:
             self._calibrated_basis(n)
         if len(self.samples) != n:
@@ -229,6 +245,22 @@ class WeightSamples(SidecarModel):
             raise ValueError("a prior basis is never diagnostic, is usable and counts no ratings")
         if self.label != PRIOR_LABEL:
             raise ValueError("the label must be the fixed prior label")
+
+    def _tradeoff_basis(self) -> None:
+        present = [name for name in _REFERENCE_FIELDS if getattr(self, name) is not None] + [
+            f"prior.{name}" for name in _OUTCOME_PRIORS if getattr(self.prior, name) is not None
+        ]
+        if present:
+            raise ValueError(
+                "a tradeoff basis uses no reference set or outcome model; remove "
+                + ", ".join(present)
+            )
+        if self.diagnostic or not self.usable or self.review_states:
+            raise ValueError(
+                "a tradeoff basis is never diagnostic, is usable and counts no ratings"
+            )
+        if self.label != TRADEOFF_LABEL:
+            raise ValueError("the label must be the fixed trade-off label")
 
 
 _REFERENCE_FIELDS = (

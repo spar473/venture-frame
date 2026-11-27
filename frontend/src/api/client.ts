@@ -4,7 +4,7 @@ import type { StarterTemplate, StarterRequest, StarterMaterialization, ModelComp
 import type { ExternalProposals, ProposalInspection, ProposalReview, ProposalCompilation, ProposalRegistrySupply } from "./types";
 import type { DecisionDetails as FactorDecision, FactorInspection, FactorRunParameters, FactorRunRecord } from "./types";
 import type {
-  AhpMatrixPreview, PairwiseJudgement, MethodComparison, MethodComparisonExportRequest, FeasibilityResult, QuestionsResult, DecisionImpact, ReferenceCasesResult, ReferenceCasesValidation, ScreeningSummary, ScreeningRobustness, ElicitationCheck, ElicitationPreview, ScreeningDetails, ProfileComparison, ScreeningWhatIf, DerivedPreview,
+  AhpMatrixPreview, PairwiseJudgement, MethodComparison, MethodComparisonExportRequest, FeasibilityResult, QuestionsResult, DecisionImpact, ReferenceCasesResult, ReferenceCasesValidation, ScreeningSummary, ScreeningRobustness, ElicitationCheck, ElicitationPreview, JudgementAids, ScreeningDetails, ProfileComparison, ScreeningWhatIf, DerivedPreview,
   EvidenceInspection, EvidenceWorkspace, ClaimReview, DerivedCompilation,
   CalculationInspection, CalculationWorkspace, CalculationApplication, CalculationEvent,
   EvidenceCompilation, EvidenceCompilationInspection, ArtifactBinding, ProjectCopyReceipt, ImportedProjectDocument,
@@ -192,6 +192,8 @@ export const api = {
     request<ElicitationCheck>("POST", "/api/elicitation/check", { body: { project, configuration }, signal }),
   elicitationPreview: (project: Project, configuration: AnalysisConfiguration, signal?: AbortSignal) =>
     request<ElicitationPreview>("POST", "/api/elicitation/preview", { body: { project, configuration }, signal }),
+  judgementAids: (project: Project, configuration: AnalysisConfiguration, signal?: AbortSignal) =>
+    request<JudgementAids>("POST", "/api/judgement-aids", { body: { project, configuration }, signal }),
   health: () => request<Health>("GET", "/api/health"),
   meta: () => request<Meta>("GET", "/api/meta"),
   templates: () => request<TemplateInfo[]>("GET", "/api/templates"),

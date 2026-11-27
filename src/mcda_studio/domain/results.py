@@ -159,7 +159,7 @@ class WeightSamplesUse(DomainModel):
     """Where a run's weights came from when SMAA-2 read a weight-samples sidecar."""
 
     sha256: str  # the sidecar's canonical-JSON digest, as pinned by weight_samples_sha256
-    basis: Literal["prior", "calibrated"]
+    basis: Literal["prior", "calibrated", "tradeoff"]
     weight_profile_id: Id
     stored: int  # N, the vectors in the sidecar
     used: int  # S, the draws of this run

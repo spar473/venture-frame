@@ -1,7 +1,8 @@
 import { Fragment, useState } from "react";
 import type { Elicitation, ElicitationCheck, ElicitationPreview, ElicitationGroupCheck, GroupElicitation, Operation, PairwiseJudgement, Project } from "../api/types";
 import type { AnalysisContext } from "../state/analysisContext";
-import { useElicitationCheck, useElicitationPreview } from "../state/useElicitation";
+import { useElicitationCheck, useElicitationPreview, useJudgementAids } from "../state/useElicitation";
+import { JudgementAidsView } from "./JudgementAids";
 import { displayFixed } from "./results/numberDisplay";
 import { displayShare } from "./results/RobustnessBands";
 import { CommitText, Field } from "./ui";
@@ -44,6 +45,7 @@ export function ElicitationPanel({ project, context, busy, apply }: {
   const check = useElicitationCheck(project, context);
   const [comparing, setComparing] = useState(false);
   const preview = useElicitationPreview(project, context, comparing);
+  const aids = useJudgementAids(project, context);
   if (!profile) return <section className="panel" aria-label="Judgement"><h2>Judgement</h2><p>Add a weight profile first.</p></section>;
   const record = profile.elicitation ?? null;
   const name = (id: string) => project.criteria.find((c) => c.id === id)?.name ?? id;
@@ -102,6 +104,9 @@ export function ElicitationPanel({ project, context, busy, apply }: {
         {preview.status === "ready" && <PreviewTable preview={preview.result}/>}
       </>}
     </section>}
+    {aids.status === "loading" && <p role="status">Preparing the aids for the weights…</p>}
+    {aids.status === "error" && <><p role="alert">{aids.message}</p><button type="button" onClick={aids.retry}>Retry aids</button></>}
+    {aids.status === "ready" && <JudgementAidsView aids={aids.result}/>}
     <p className="muted small">{check.status === "ready" ? check.result.label : ""}</p>
   </section>;
 }

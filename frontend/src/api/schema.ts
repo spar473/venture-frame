@@ -592,6 +592,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/judgement-aids": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Judgement Aids Draft
+         * @description Aids for stating weights under the configured profile: swings anchored in the project's
+         *     own alternatives, break-even weights for the leader, and any bundled reference profile set
+         *     beside the profile's order. Read-only; a reference profile is never a default.
+         */
+        post: operations["judgement_aids_draft_api_judgement_aids_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/meta": {
         parameters: {
             query?: never;
@@ -1040,6 +1062,23 @@ export interface paths {
         get: operations["download_project_api_projects__project_id__file_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects/{project_id}/judgement-aids": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Judgement Aids Stored */
+        post: operations["judgement_aids_stored_api_projects__project_id__judgement_aids_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2635,6 +2674,32 @@ export interface components {
             /** Weight Profile Id */
             weight_profile_id: string | null;
         };
+        /** Anchor */
+        Anchor: {
+            best: components["schemas"]["AnchorEnd"];
+            /** Criterion Id */
+            criterion_id: string;
+            /** Name */
+            name: string;
+            /** Swing */
+            swing: string;
+            /** Tied Best */
+            tied_best: number;
+            /** Tied Worst */
+            tied_worst: number;
+            worst: components["schemas"]["AnchorEnd"];
+        };
+        /** AnchorEnd */
+        AnchorEnd: {
+            /** Alternative Id */
+            alternative_id: string;
+            /** Level */
+            level: string;
+            /** Name */
+            name: string;
+            /** Value */
+            value: number;
+        };
         /**
          * AnchorMode
          * @description Where the 0-and-1 anchors of a *linear* value function come from.
@@ -2871,6 +2936,33 @@ export interface components {
             score_threshold: number;
             /** Upper */
             upper: number;
+        };
+        /** BreakEven */
+        BreakEven: {
+            /** Challengers */
+            challengers: components["schemas"]["NearestChange"][];
+            /** Classes */
+            classes: components["schemas"]["ClassMove"][];
+            /** Criteria */
+            criteria: components["schemas"]["CriterionBreakEven"][];
+            /** Leader */
+            leader: string;
+            /** Leader Name */
+            leader_name: string;
+            nearest: components["schemas"]["NearestChange"] | null;
+            /** Nearest Sentence */
+            nearest_sentence: string;
+            /** Project Fingerprint */
+            project_fingerprint: string;
+            /**
+             * Rule
+             * @default Per criterion: the criterion's local weight moves and its siblings are rescaled in proportion (the engine's one-way sensitivity). Nearest change: the smallest total movement of global weights (L1), leaves rated 0 held at 0.
+             */
+            rule: string;
+            /** Scenario Id */
+            scenario_id: string | null;
+            /** Weight Profile Id */
+            weight_profile_id: string;
         };
         /** Calculation */
         Calculation: {
@@ -3198,6 +3290,22 @@ export interface components {
             /** Swing */
             swing: number | null;
         };
+        /** Citation */
+        Citation: {
+            /** Authors */
+            authors: string;
+            /**
+             * Title
+             * @default
+             */
+            title: string;
+            /** Url */
+            url: string;
+            /** Where */
+            where: string;
+            /** Year */
+            year: number;
+        };
         /** Claim */
         "Claim-Input": {
             /** Alternative Id */
@@ -3319,6 +3427,17 @@ export interface components {
             class_before: string;
             /** Weight */
             weight: number;
+        };
+        /** ClassMove */
+        ClassMove: {
+            /** Alternative Id */
+            alternative_id: string;
+            /** Class Id */
+            class_id: string;
+            down: components["schemas"]["NearestChange"] | null;
+            /** Name */
+            name: string;
+            up: components["schemas"]["NearestChange"] | null;
         };
         /** ClassShare */
         ClassShare: {
@@ -3650,6 +3769,21 @@ export interface components {
             judgements: components["schemas"]["PairwiseJudgement"][];
             /** Parent Id */
             parent_id: string | null;
+        };
+        /** CriterionBreakEven */
+        CriterionBreakEven: {
+            /** Criterion Id */
+            criterion_id: string;
+            falls_below: components["schemas"]["Threshold"] | null;
+            /** Local Weight */
+            local_weight: number;
+            /** Name */
+            name: string;
+            rises_above: components["schemas"]["Threshold"] | null;
+            /** Sentence */
+            sentence: string;
+            /** Share */
+            share: number;
         };
         /** CriterionContext */
         CriterionContext: {
@@ -5611,6 +5745,36 @@ export interface components {
             path: string;
             severity: components["schemas"]["Severity"];
         };
+        /** JudgementAids */
+        JudgementAids: {
+            /**
+             * Anchors
+             * @default []
+             */
+            anchors: components["schemas"]["Anchor"][];
+            /** Available */
+            available: boolean;
+            break_even: components["schemas"]["BreakEven"] | null;
+            /**
+             * Label
+             * @default Derived from the project and the profile; nothing here changes the project. A reference profile is for comparison only: it is never a default and gives no weights.
+             */
+            label: string;
+            /** Project Fingerprint */
+            project_fingerprint: string;
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+            /**
+             * References
+             * @default []
+             */
+            references: components["schemas"]["ReferenceComparison"][];
+            /** Weight Profile Id */
+            weight_profile_id: string;
+        };
         /** KappaUsed */
         KappaUsed: {
             /** Kappa */
@@ -6503,6 +6667,17 @@ export interface components {
             /** Position */
             position?: number | null;
         };
+        /** NearestChange */
+        NearestChange: {
+            /** Alternative Id */
+            alternative_id: string;
+            /** Changes */
+            changes: components["schemas"]["WeightChange"][];
+            /** Distance */
+            distance: number;
+            /** Name */
+            name: string;
+        };
         /** NotComparableCase */
         NotComparableCase: {
             /** Case Id */
@@ -6612,6 +6787,22 @@ export interface components {
             unavailable_codes: string[];
             /** Unavailable Reason */
             unavailable_reason: string | null;
+        };
+        /** PairCheck */
+        PairCheck: {
+            /** Above */
+            above: string;
+            /** Above Name */
+            above_name: string;
+            /** Below */
+            below: string;
+            /** Below Name */
+            below_name: string;
+            /**
+             * Partner
+             * @enum {string}
+             */
+            partner: "agrees" | "disagrees" | "tie" | "not comparable";
         };
         /**
          * PairExplanation
@@ -8507,6 +8698,23 @@ export interface components {
             source: string;
             /** Text */
             text: string;
+        };
+        /** ReferenceComparison */
+        ReferenceComparison: {
+            /** Criteria Note */
+            criteria_note: string;
+            /** Partner Order */
+            partner_order: string[];
+            /** Partner Order Names */
+            partner_order_names: string[];
+            /** Purpose */
+            purpose: string;
+            /** Reference Id */
+            reference_id: string;
+            /** Title */
+            title: string;
+            /** Variants */
+            variants: components["schemas"]["VariantCheck"][];
         };
         /**
          * ReferenceOutcome
@@ -10520,6 +10728,17 @@ export interface components {
             /** Version */
             version: string;
         };
+        /** StatementCheck */
+        StatementCheck: {
+            /** Disagreements */
+            disagreements: number;
+            /** Horizon */
+            horizon: string | null;
+            /** Pairs */
+            pairs: components["schemas"]["PairCheck"][];
+            /** Text */
+            text: string;
+        };
         /** SuggestedSourceClaim */
         "SuggestedSourceClaim-Input": {
             /** Assertion */
@@ -10634,6 +10853,15 @@ export interface components {
         TemplateInfo: {
             /** Name */
             name: string;
+        };
+        /** Threshold */
+        Threshold: {
+            /** Local Weight */
+            local_weight: number;
+            /** New Leader */
+            new_leader: string;
+            /** Share */
+            share: number;
         };
         /** TrashEntry */
         TrashEntry: {
@@ -10946,6 +11174,32 @@ export interface components {
             /** Partial Value */
             partial_value: number;
         };
+        /** VariantCheck */
+        VariantCheck: {
+            /** Citations */
+            citations: components["schemas"]["Citation"][];
+            /** Disagreements */
+            disagreements: number;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Statements */
+            statements: components["schemas"]["StatementCheck"][];
+            /** Summary */
+            summary: string;
+        };
+        /** WeightChange */
+        WeightChange: {
+            /** Changed */
+            changed: number;
+            /** Criterion Id */
+            criterion_id: string;
+            /** Name */
+            name: string;
+            /** Stated */
+            stated: number;
+        };
         /** WeightPreview */
         WeightPreview: {
             configuration: components["schemas"]["AnalysisConfiguration-Output"];
@@ -11039,7 +11293,7 @@ export interface components {
              * @default calibrated
              * @enum {string}
              */
-            basis: "prior" | "calibrated";
+            basis: "prior" | "calibrated" | "tradeoff";
             /** Beta */
             beta?: number[] | null;
             data?: components["schemas"]["DataSpec"] | null;
@@ -11094,7 +11348,7 @@ export interface components {
              * Basis
              * @enum {string}
              */
-            basis: "prior" | "calibrated";
+            basis: "prior" | "calibrated" | "tradeoff";
             /**
              * Index Method
              * @enum {string}
@@ -12099,6 +12353,39 @@ export interface operations {
             };
         };
     };
+    judgement_aids_draft_api_judgement_aids_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EvaluateDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JudgementAids"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     meta_api_meta_get: {
         parameters: {
             query?: never;
@@ -12999,6 +13286,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    judgement_aids_stored_api_projects__project_id__judgement_aids_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnalysisOptions"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JudgementAids"];
                 };
             };
             /** @description Validation Error */

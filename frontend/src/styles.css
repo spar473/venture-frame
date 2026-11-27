@@ -734,6 +734,7 @@ table.grid.projects td:first-child .project-link, table.grid.projects td:first-c
 .elicitation-badge.check { color: #8a4b00; }
 .elicitation-badge.incomplete { color: #5a5a5a; }
 .elicitation-status.check { color: #8a4b00; }
+.judgement-aids li.disagrees { color: #8a4b00; font-weight: 600; }
 .elicitation-findings { margin: 6px 0; padding-left: 20px; }
 .elicitation-proposals { list-style: none; padding: 0; display: grid; gap: 10px; }
 .elicitation-proposals li { border: 1px solid var(--border, #d9dee3); border-radius: 6px; padding: 10px 12px; }
