@@ -39,6 +39,10 @@ else:
 WINDOWS = sys.platform == "win32"
 #: Windows: the byte that carries the lock, far beyond any diagnostic text.
 LOCK_OFFSET = 1 << 20
+#: The smallest step between two modified times that the library's file system keeps apart, in
+#: nanoseconds: NTFS stores 100 ns ticks; APFS and ext4 store nanoseconds. A coarser file system
+#: (FAT, exFAT, HFS+) keeps fewer apart; see ``docs/development/known-limitations.md``.
+MTIME_STEP_NS = 100 if WINDOWS else 1
 
 
 class NotRegularFileError(OSError):
