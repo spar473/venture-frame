@@ -18,7 +18,8 @@ The working tree is never modified. An unmodified baseline run must pass first.
                                       --reference_cases-only | --robustness-only |
                                       --structured_judgement-only | --calibration-only |
                                       --smaa_samples-only | --reference_rating-only |
-                                      --revealed-only | --tradeoff-only]
+                                      --revealed-only | --tradeoff-only |
+                                      --break_even-only]
 
 Groups are named after the milestone that introduced them (B3 weighting, B4 sensitivity, B5
 scenarios, B6 results) or after the development itself (RETRY: analysis retry; COVERAGE:
@@ -4532,6 +4533,57 @@ OVERNIGHT["tradeoff"] = (
         "tests/regression/test_tradeoff_oracles.py",
     ),
 )
+
+# Break-even weights and judgement aids (DD11, 28 November 2026): the nearest weight vector in L1
+# that changes the leader, per-criterion thresholds as shares of the goal, anchored swings and the
+# reference profile comparison. Design: docs/design/tradeoff-elicitation.md. ``--break_even-only``.
+BE_METHOD = "src/mcda_studio/methods/mavt/break_even.py"
+BE_SERVICE = "src/mcda_studio/services/break_even_service.py"
+JA_SERVICE = "src/mcda_studio/services/judgement_aids_service.py"
+BREAK_EVEN_BACKEND = [
+    Mutation("BREAK_EVEN mass taken from the largest contrast first", BE_METHOD,
+             "    donors = sorted((int(i) for i in idx if i != to and d[i] < top), key=lambda i: (d[i], i))",
+             "    donors = sorted((int(i) for i in idx if i != to and d[i] < top), key=lambda i: (-d[i], i))"),
+    Mutation("BREAK_EVEN the L1 distance counts one side only", BE_METHOD,
+             "    return Shift(2.0 * moved, w, to, taken)", "    return Shift(moved, w, to, taken)"),
+    Mutation("BREAK_EVEN the gaining leaf is not the largest contrast", BE_METHOD,
+             "    to = int(idx[np.argmax(d[idx])])", "    to = int(idx[np.argmin(d[idx])])"),
+    Mutation("BREAK_EVEN a leaf rated 0 may move", BE_SERVICE,
+             "    eligible = w0 > 0.0", "    eligible = w0 >= 0.0"),
+    Mutation("BREAK_EVEN a threshold's share ignores the parent's share", BE_SERVICE,
+             "                share=t * parent_share,", "                share=t,"),
+    Mutation("BREAK_EVEN below and above swapped", BE_SERVICE,
+             "        down = threshold(result.first_winner_change_down)\n        up = threshold(result.first_winner_change_up)",
+             "        down = threshold(result.first_winner_change_up)\n        up = threshold(result.first_winner_change_down)"),
+    Mutation("BREAK_EVEN the nearest challenger is the farthest", BE_SERVICE,
+             "    nearest = challengers[0] if challengers else None",
+             "    nearest = challengers[-1] if challengers else None"),
+    Mutation("BREAK_EVEN class moves aim at the wrong boundary", BE_SERVICE,
+             "            raise_to = change(i, prep.partial[i] - bounds[k - 1]) if k > 0 else None",
+             "            raise_to = change(i, prep.partial[i] - bounds[k]) if k < len(bounds) else None"),
+    Mutation("AIDS anchors swap worst and best", JA_SERVICE,
+             "        worst = int(column.argmin())\n        best = int(column.argmax())",
+             "        worst = int(column.argmax())\n        best = int(column.argmin())"),
+    Mutation("AIDS a disagreement counted as agreement", JA_SERVICE,
+             "                    elif local[a] < local[b]:\n                        verdict = \"disagrees\"",
+             "                    elif local[a] < local[b]:\n                        verdict = \"agrees\""),
+    Mutation("AIDS pairs across sibling groups compared", JA_SERVICE,
+             "                    elif tree.node(a).parent_id != tree.node(b).parent_id:",
+             "                    elif False:"),
+    Mutation("AIDS the partner order sorted worst first", JA_SERVICE,
+             "    order = sorted(present, key=lambda c: (-local[c], position[c]))",
+             "    order = sorted(present, key=lambda c: (local[c], position[c]))"),
+]  # fmt: skip
+OVERNIGHT["break_even"] = (
+    BREAK_EVEN_BACKEND,
+    pytest_runner(
+        "Break-even weights and judgement aids",
+        "tests/unit/test_break_even.py",
+        "tests/unit/test_reference_profile.py",
+        "tests/api/test_api_judgement_aids.py",
+    ),
+)
+
 
 def main() -> int:
     ap = argparse.ArgumentParser()
