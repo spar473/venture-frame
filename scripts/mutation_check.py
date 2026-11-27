@@ -17,7 +17,8 @@ The working tree is never modified. An unmodified baseline run must pass first.
                                       --cleanup-only | --showcase-only |
                                       --reference_cases-only | --robustness-only |
                                       --structured_judgement-only | --calibration-only |
-                                      --smaa_samples-only | --reference_rating-only]
+                                      --smaa_samples-only | --reference_rating-only |
+                                      --revealed-only]
 
 Groups are named after the milestone that introduced them (B3 weighting, B4 sensitivity, B5
 scenarios, B6 results) or after the development itself (RETRY: analysis retry; COVERAGE:
@@ -4213,8 +4214,8 @@ CALIBRATION_BACKEND = [
     Mutation("CALIBRATION a missing leaf counted as zero", CAL_LIKELIHOOD,
              "        den = den + data.rated[:, j : j + 1] * w[j]", "        den = den + w[j]"),
     Mutation("CALIBRATION beta allowed negative in the likelihood", CAL_SAMPLER,
-             "log_likelihood(problem.data, weights, alpha, np.exp(log_beta))",
-             "log_likelihood(problem.data, weights, alpha, log_beta)"),
+             "problem.log_likelihood(weights, alpha, np.exp(log_beta))",
+             "problem.log_likelihood(weights, alpha, log_beta)"),
     Mutation("CALIBRATION the centred intercept read back as alpha", CAL_SAMPLER,
              "    out: Array = theta[:, 0] - np.exp(theta[:, 1]) * centre",
              "    out: Array = theta[:, 0] + 0.0 * centre"),
@@ -4380,6 +4381,59 @@ OVERNIGHT["reference_rating"] = (
         "Reference rating",
         "tests/unit/test_reference_rating.py",
         "tests/unit/test_reference_rating_pilot.py",
+    ),
+)
+
+
+# Revealed preference on synthetic decisions (DD8, 26 November 2026): the logistic choice model on
+# the calibration score, reusing the nested Dirichlet prior, the sampler and the convergence gate.
+# Design: docs/design/revealed-preference.md. ``--revealed-only``.
+RP_CHOICES = "src/mcda_studio/calibration/choices.py"
+RP_SYNTHETIC = "src/mcda_studio/calibration/synthetic.py"
+REVEALED_BACKEND = [
+    Mutation("REVEALED sign of beta flipped in the linear predictor", RP_CHOICES,
+             "    out: Array = alpha[None, :] + beta[None, :] * (s - S_REF)",
+             "    out: Array = alpha[None, :] - beta[None, :] * (s - S_REF)"),
+    Mutation("REVEALED beta allowed negative in the choice likelihood", RP_CHOICES,
+             "        return log_likelihood(self.choices, global_weights, alpha, beta)",
+             "        return log_likelihood(self.choices, global_weights, alpha, np.log(beta))"),
+    Mutation("REVEALED the choice likelihood dropped (outcome model used instead)", RP_CHOICES,
+             "        return log_likelihood(self.choices, global_weights, alpha, beta)",
+             "        return sampler.Problem.log_likelihood(self, global_weights, alpha, beta)"),
+    Mutation("REVEALED accept and decline swapped", RP_CHOICES,
+             "    out: Array = -(y * np.logaddexp(0.0, -eta) + (1.0 - y) * np.logaddexp(0.0, eta))",
+             "    out: Array = -(y * np.logaddexp(0.0, eta) + (1.0 - y) * np.logaddexp(0.0, -eta))"),
+    Mutation("REVEALED the reference score moved to 0", RP_CHOICES, "S_REF = 0.5", "S_REF = 0.0"),
+    Mutation("REVEALED the stated base accept rate ignored", RP_CHOICES,
+             "        alpha_prior_mean(base_rate),\n        alpha_sd=ALPHA_PRIOR_SD,",
+             "        alpha_prior_mean(0.5),\n        alpha_sd=ALPHA_PRIOR_SD,"),
+    Mutation("REVEALED the beta prior's mean dropped", RP_CHOICES,
+             "        log_beta_mean=LOG_BETA_PRIOR_MEAN,", "        log_beta_mean=0.0,"),
+    Mutation("REVEALED kappa ignored (every group Dirichlet(centre))", CAL_PRIOR,
+             "                kappa=float(kappa[parent]),", "                kappa=1.0,"),
+    Mutation("REVEALED listed held children varied", CAL_PRIOR,
+             "held_kids = tuple(k for k in kids if local[k] == 0.0 or k in listed)",
+             "held_kids = tuple(k for k in kids if local[k] == 0.0)"),
+    Mutation("REVEALED the prior term dropped from the posterior", CAL_SAMPLER,
+             "        problem.prior.log_density(ys, chains)\n",
+             "        0.0 * problem.prior.log_density(ys, chains)\n"),
+    Mutation("REVEALED a missing leaf counted as zero", CAL_LIKELIHOOD,
+             "        den = den + data.rated[:, j : j + 1] * w[j]", "        den = den + w[j]"),
+    Mutation("REVEALED R-hat threshold loosened", CAL_DIAGNOSTICS, "RHAT_MAX = 1.01", "RHAT_MAX = 1.1"),
+    Mutation("REVEALED ESS threshold loosened", CAL_DIAGNOSTICS, "ESS_MIN = 400.0", "ESS_MIN = 100.0"),
+    Mutation("REVEALED several deciders fitted without a pooling choice", RP_CHOICES,
+             "    if len(deciders) > 1 and not pool_deciders:", "    if False:"),
+    Mutation("REVEALED a log with only one kind of call accepted", RP_CHOICES,
+             "    if accepts in (0, len(decisions)):", "    if False:"),
+    Mutation("REVEALED label noise never applied in the generator", RP_SYNTHETIC,
+             "    accept = accept ^ flip", "    accept = accept"),
+]  # fmt: skip
+OVERNIGHT["revealed"] = (
+    REVEALED_BACKEND,
+    pytest_runner(
+        "Revealed preference",
+        "tests/unit/test_calibration_choices.py",
+        "tests/unit/test_calibration_boundaries.py",
     ),
 )
 

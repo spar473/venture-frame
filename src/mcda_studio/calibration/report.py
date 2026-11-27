@@ -114,10 +114,16 @@ def leaf_summaries(
 
 
 def parameter_summaries(
-    chains: Chains, alpha_mean: float, alpha_sd: float, log_beta_sd: float
+    chains: Chains,
+    alpha_mean: float,
+    alpha_sd: float,
+    log_beta_sd: float,
+    log_beta_mean: float = 0.0,
 ) -> list[ParameterSummary]:
-    beta_mean = math.exp(log_beta_sd**2 / 2.0)
-    beta_sd = math.sqrt((math.exp(log_beta_sd**2) - 1.0) * math.exp(log_beta_sd**2))
+    beta_mean = math.exp(log_beta_mean + log_beta_sd**2 / 2.0)
+    beta_sd = math.sqrt(
+        (math.exp(log_beta_sd**2) - 1.0) * math.exp(2.0 * log_beta_mean + log_beta_sd**2)
+    )
     out = []
     for name, draws, pm, ps in (
         ("alpha", chains.alpha.ravel(), alpha_mean, alpha_sd),
