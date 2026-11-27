@@ -5,6 +5,7 @@ import os
 import threading
 from datetime import timedelta
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -15,6 +16,8 @@ from mcda_studio.domain.errors import (
     StaleRevisionError,
 )
 from mcda_studio.services import project_service as ps
+from mcda_studio.storage import fs_platform, project_store
+from mcda_studio.storage.json_repository import to_json_text
 from mcda_studio.storage.project_store import (
     TRASH_DIR,
     InvalidProjectIdError,
@@ -159,6 +162,28 @@ class TestListing:
         assert [s.project.id for s in found] == ["new", "mid", "old"]
         assert unreadable == []
         assert found[0].updated_at - found[2].updated_at == timedelta(seconds=200)
+
+    def test_saves_in_one_clock_tick_list_in_their_exact_order(
+        self, store: ProjectStore, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # The clock is frozen, so every save happens "at the same time"; the list must still show
+        # the exact save order, not the id order a tie falls back to.
+        frozen = 1_700_000_000_000_000_000
+        monkeypatch.setattr(project_store, "time", SimpleNamespace(time_ns=lambda: frozen))
+        step = fs_platform.MTIME_STEP_NS
+        order = ["kilo", "alpha", "golf", "delta", "lima", "bravo", "hotel", "echo", "charlie"]
+        for pid in order:
+            store.create(named(pid, pid))
+        found, unreadable = store.list()
+        assert unreadable == []
+        assert [s.project.id for s in found] == order[::-1]
+        stamps = [(store.root / f"{pid}.json").stat().st_mtime_ns for pid in order]
+        assert stamps == [frozen + i * step for i in range(len(order))]
+        # Saving an older project again moves it to the top; the file holds only the project.
+        again = store.get("golf").project.model_copy(update={"description": "touched"})
+        store.replace(again)
+        assert [s.project.id for s in store.list()[0]][:2] == ["golf", "charlie"]
+        assert (store.root / "golf.json").read_text(encoding="utf-8") == to_json_text(again)
 
     def test_unreadable_files_are_reported_not_hidden_and_do_not_block_the_rest(
         self, store: ProjectStore

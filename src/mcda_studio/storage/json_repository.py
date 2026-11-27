@@ -100,12 +100,15 @@ def to_json_text(model: BaseModel) -> str:
     return json.dumps(model.model_dump(mode="json"), indent=2, ensure_ascii=False) + "\n"
 
 
-def _atomic_write(path: Path, text: str) -> None:
+def _atomic_write(path: Path, text: str, modified_ns: int | None = None) -> None:
+    """With ``modified_ns``, the file is given that modified time before it is published."""
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
     try:
         with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as fh:
             fh.write(text)
+        if modified_ns is not None:
+            os.utime(tmp, ns=(modified_ns, modified_ns))
         os.replace(tmp, path)
     except BaseException:
         Path(tmp).unlink(missing_ok=True)
@@ -113,9 +116,9 @@ def _atomic_write(path: Path, text: str) -> None:
 
 
 class JsonProjectRepository:
-    def save(self, project: Project, path: str | Path) -> Path:
+    def save(self, project: Project, path: str | Path, modified_ns: int | None = None) -> Path:
         target = Path(path)
-        _atomic_write(target, to_json_text(project))
+        _atomic_write(target, to_json_text(project), modified_ns)
         return target
 
     def load(self, path: str | Path) -> Project:

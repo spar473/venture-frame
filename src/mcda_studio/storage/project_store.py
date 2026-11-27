@@ -10,6 +10,9 @@ projects" rather than a single path). It adds three guarantees on top of ``JsonP
   overwrite each other. Lifetime library ownership coordinates cooperating processes; see
   ``docs/api/contract.md`` for external-writer limits.
 * **Recoverable deletion**: ``delete`` moves the file into ``.trash/`` instead of unlinking it.
+* **Save order**: each save gives the file a modified time after every other project file's, by at
+  least the file system's smallest step, so ``list`` shows the exact order of saves however close
+  together they were (two saves in one Windows clock tick used to tie).
 """
 
 import json
@@ -18,6 +21,7 @@ import re
 import stat
 import tempfile
 import threading
+import time
 import uuid
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager, suppress
@@ -77,6 +81,8 @@ class StoredProject:
     project: Project
     fingerprint: str
     updated_at: datetime
+    #: The file's modified time in whole nanoseconds, which orders the list exactly.
+    modified_ns: int
 
 
 @dataclass(frozen=True)
@@ -136,9 +142,23 @@ class ProjectStore:
             raise InvalidProjectIdError(f"{project_id!r} is not a valid project id")
         return path
 
-    @staticmethod
-    def _mtime(path: Path) -> datetime:
-        return datetime.fromtimestamp(path.stat().st_mtime, tz=UTC)
+    def _project_files(self) -> list[Path]:
+        return [p for p in sorted(self.root.glob("*.json")) if not p.name.startswith(".")]
+
+    def _next_modified_ns(self) -> int:
+        """The modified time for the next save: now, or just after the newest project file.
+
+        ``max(now, newest + step)``, where the step is the file system's smallest distinct
+        modified time, so a save never ties with (or falls behind) an earlier one."""
+        newest: int | None = None
+        for path in self._project_files():
+            try:
+                modified = path.stat().st_mtime_ns
+            except OSError:
+                continue
+            newest = modified if newest is None else max(newest, modified)
+        now = time.time_ns()
+        return now if newest is None else max(now, newest + fs_platform.MTIME_STEP_NS)
 
     def _read(self, path: Path) -> StoredProject:
         project = self._repo.load(path)
@@ -147,7 +167,9 @@ class ProjectStore:
                 f"{path.name} contains project id {project.id!r}; the file name and the id "
                 "inside the file must agree"
             )
-        return StoredProject(project, project.fingerprint(), self._mtime(path))
+        info = path.stat()
+        updated = datetime.fromtimestamp(info.st_mtime, tz=UTC)
+        return StoredProject(project, project.fingerprint(), updated, info.st_mtime_ns)
 
     # ---- queries ------------------------------------------------------------------------
     def exists(self, project_id: str) -> bool:
@@ -167,14 +189,12 @@ class ProjectStore:
         with self._lock:
             if not self.root.is_dir():
                 return [], []
-            for path in sorted(self.root.glob("*.json")):
-                if path.name.startswith("."):
-                    continue
+            for path in self._project_files():
                 try:
                     found.append(self._read(path))
                 except McdaError as exc:
                     unreadable.append(UnreadableFile(path.name, str(exc).splitlines()[0]))
-        found.sort(key=lambda s: (s.updated_at, s.project.id), reverse=True)
+        found.sort(key=lambda s: (s.modified_ns, s.project.id), reverse=True)
         return found, unreadable
 
     # ---- commands -----------------------------------------------------------------------
@@ -183,7 +203,7 @@ class ProjectStore:
         with self._mutation():
             if path.exists():
                 raise ProjectExistsError(f"a project with id {project.id!r} already exists")
-            self._repo.save(project, path)
+            self._repo.save(project, path, self._next_modified_ns())
             return self._read(path)
 
     def replace(self, project: Project, expected_fingerprint: str | None = None) -> StoredProject:
@@ -200,7 +220,7 @@ class ProjectStore:
                         f"project {project.id!r} was changed by someone else since you opened "
                         "it; reload it (or save a copy) instead of overwriting"
                     )
-            self._repo.save(project, path)
+            self._repo.save(project, path, self._next_modified_ns())
             return self._read(path)
 
     def delete(self, project_id: str) -> Path:
