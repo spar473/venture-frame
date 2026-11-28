@@ -72,6 +72,7 @@ from mcda_studio.services import evidence_compilation_service as evidence_compil
 from mcda_studio.services import evidence_workspace_service as evidence_workspace
 from mcda_studio.services import factor_analysis_service as factor_analysis
 from mcda_studio.services import feasibility_service as feasibility
+from mcda_studio.services import judgement_aids_service as judgement_aids
 from mcda_studio.services import project_service as ps
 from mcda_studio.services import provenance_service as provenance
 from mcda_studio.services import questions_service as questions
@@ -733,6 +734,33 @@ def _router(examples_dir: Path | None, frontend: Path | None) -> APIRouter:
     ) -> elicitation.ElicitationPreview:
         project = store.get(project_id).project
         return elicitation.elicitation_preview(project, opts.configuration or project.analysis)
+
+    def reference_profiles() -> list[judgement_aids.ReferenceProfile]:
+        return judgement_aids.load_reference_profiles(
+            examples_dir / "reference_profiles" if examples_dir is not None else None
+        )
+
+    @r.post("/judgement-aids", response_model=judgement_aids.JudgementAids, tags=["analysis"])
+    def judgement_aids_draft(req: sc.EvaluateDraftRequest) -> judgement_aids.JudgementAids:
+        """Aids for stating weights under the configured profile: swings anchored in the project's
+        own alternatives, break-even weights for the leader, and any bundled reference profile set
+        beside the profile's order. Read-only; a reference profile is never a default."""
+        return judgement_aids.judgement_aids(
+            req.project, req.configuration or req.project.analysis, reference_profiles()
+        )
+
+    @r.post(
+        "/projects/{project_id}/judgement-aids",
+        response_model=judgement_aids.JudgementAids,
+        tags=["analysis"],
+    )
+    def judgement_aids_stored(
+        project_id: str, opts: sc.AnalysisOptions, store: Store
+    ) -> judgement_aids.JudgementAids:
+        project = store.get(project_id).project
+        return judgement_aids.judgement_aids(
+            project, opts.configuration or project.analysis, reference_profiles()
+        )
 
     @r.post("/screening-summary", response_model=screening.ScreeningSummary, tags=["analysis"])
     def screening_summary_draft(req: sc.ScreeningSummaryRequest) -> screening.ScreeningSummary:

@@ -209,6 +209,8 @@ def _basis(project: Project, result: SmaaResult, saved: bool) -> str:
         drawn = (
             "the conviction prior, a Dirichlet around this profile's weights"
             if use.basis == "prior"
+            else "weights implied by one person's trade-off answers"
+            if use.basis == "tradeoff"
             else "weights calibrated to a reference set's outcomes"
         )
         varied.append(f"every weight, from {use.used:,} of {use.stored:,} stored draws of {drawn}")

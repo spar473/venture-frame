@@ -1,0 +1,71 @@
+{
+  "kind": "reference-profile",
+  "version": 1,
+  "id": "vc_literature",
+  "title": "What the venture literature says about team against business",
+  "purpose": "Shown beside a partner's own order as a point of comparison, never as a default and never as weights. Ordinal only: the sources rank kinds of evidence; they give no percentages.",
+  "criteria_note": "Mapped onto the venture-screening tree's top level: team = Team; business = Problem and solution (product), Market. Traction is left out because neither source names it.",
+  "variants": [
+    {
+      "id": "stated_by_vcs",
+      "name": "Stated by VCs",
+      "summary": "VCs rate the team as more important than the business, and attribute more of a company's success or failure to the team.",
+      "statements": [
+        {
+          "horizon": null,
+          "above": [
+            "team"
+          ],
+          "below": [
+            "problem_solution",
+            "market"
+          ]
+        }
+      ],
+      "citations": [
+        {
+          "authors": "Gompers, P., Gornall, W., Kaplan, S. N. and Strebulaev, I. A.",
+          "year": 2020,
+          "title": "How do venture capitalists make decisions?",
+          "where": "Journal of Financial Economics (2020); NBER Working Paper 22587 (2016)",
+          "url": "https://www.nber.org/papers/w22587"
+        }
+      ]
+    },
+    {
+      "id": "outcome_predictive",
+      "name": "Outcome-predictive",
+      "summary": "Team assessments best explain early funding of at least $1M, but not larger rounds or success; market and product explain later rounds (above $10M, $25M and $50M) and longer-term outcomes. The authors suggest VCs may overweight team.",
+      "statements": [
+        {
+          "horizon": "Early funding (at least $1M)",
+          "above": [
+            "team"
+          ],
+          "below": [
+            "problem_solution",
+            "market"
+          ]
+        },
+        {
+          "horizon": "Later rounds and long-term outcomes",
+          "above": [
+            "market",
+            "problem_solution"
+          ],
+          "below": [
+            "team"
+          ]
+        }
+      ],
+      "citations": [
+        {
+          "authors": "Jang, Y. and Kaplan, S. N.",
+          "year": 2025,
+          "where": "NBER Working Paper 33483 (2025)",
+          "url": "https://www.nber.org/papers/w33483"
+        }
+      ]
+    }
+  ]
+}

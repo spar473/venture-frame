@@ -2276,6 +2276,77 @@
         "title": "AnalysisValidation",
         "type": "object"
       },
+      "Anchor": {
+        "additionalProperties": false,
+        "properties": {
+          "best": {
+            "$ref": "#/components/schemas/AnchorEnd"
+          },
+          "criterion_id": {
+            "title": "Criterion Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "swing": {
+            "title": "Swing",
+            "type": "string"
+          },
+          "tied_best": {
+            "title": "Tied Best",
+            "type": "integer"
+          },
+          "tied_worst": {
+            "title": "Tied Worst",
+            "type": "integer"
+          },
+          "worst": {
+            "$ref": "#/components/schemas/AnchorEnd"
+          }
+        },
+        "required": [
+          "criterion_id",
+          "name",
+          "worst",
+          "best",
+          "tied_worst",
+          "tied_best",
+          "swing"
+        ],
+        "title": "Anchor",
+        "type": "object"
+      },
+      "AnchorEnd": {
+        "additionalProperties": false,
+        "properties": {
+          "alternative_id": {
+            "title": "Alternative Id",
+            "type": "string"
+          },
+          "level": {
+            "title": "Level",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "alternative_id",
+          "name",
+          "level",
+          "value"
+        ],
+        "title": "AnchorEnd",
+        "type": "object"
+      },
       "AnchorMode": {
         "description": "Where the 0-and-1 anchors of a *linear* value function come from.\n\nFIXED: ``lower``/``upper`` are stated by the user and never depend on the alternatives.\nLOCAL: anchors are the min/max over the alternatives currently in the project. This is an\n       explicit, recorded choice because adding an alternative can then change every\n       existing alternative's score.",
         "enum": [
@@ -2805,6 +2876,93 @@
           "score_threshold"
         ],
         "title": "BoundaryContact",
+        "type": "object"
+      },
+      "BreakEven": {
+        "additionalProperties": false,
+        "properties": {
+          "challengers": {
+            "items": {
+              "$ref": "#/components/schemas/NearestChange"
+            },
+            "title": "Challengers",
+            "type": "array"
+          },
+          "classes": {
+            "items": {
+              "$ref": "#/components/schemas/ClassMove"
+            },
+            "title": "Classes",
+            "type": "array"
+          },
+          "criteria": {
+            "items": {
+              "$ref": "#/components/schemas/CriterionBreakEven"
+            },
+            "title": "Criteria",
+            "type": "array"
+          },
+          "leader": {
+            "title": "Leader",
+            "type": "string"
+          },
+          "leader_name": {
+            "title": "Leader Name",
+            "type": "string"
+          },
+          "nearest": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NearestChange"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "nearest_sentence": {
+            "title": "Nearest Sentence",
+            "type": "string"
+          },
+          "project_fingerprint": {
+            "title": "Project Fingerprint",
+            "type": "string"
+          },
+          "rule": {
+            "default": "Per criterion: the criterion's local weight moves and its siblings are rescaled in proportion (the engine's one-way sensitivity). Nearest change: the smallest total movement of global weights (L1), leaves rated 0 held at 0.",
+            "title": "Rule",
+            "type": "string"
+          },
+          "scenario_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario Id"
+          },
+          "weight_profile_id": {
+            "title": "Weight Profile Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_fingerprint",
+          "weight_profile_id",
+          "scenario_id",
+          "leader",
+          "leader_name",
+          "criteria",
+          "nearest",
+          "nearest_sentence",
+          "challengers",
+          "classes",
+          "rule"
+        ],
+        "title": "BreakEven",
         "type": "object"
       },
       "Calculation": {
@@ -3910,6 +4068,40 @@
         "title": "ChildCheck",
         "type": "object"
       },
+      "Citation": {
+        "additionalProperties": false,
+        "properties": {
+          "authors": {
+            "title": "Authors",
+            "type": "string"
+          },
+          "title": {
+            "default": "",
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "where": {
+            "title": "Where",
+            "type": "string"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "authors",
+          "year",
+          "where",
+          "url"
+        ],
+        "title": "Citation",
+        "type": "object"
+      },
       "Claim-Input": {
         "additionalProperties": false,
         "properties": {
@@ -4318,6 +4510,52 @@
           "class_after"
         ],
         "title": "ClassChange",
+        "type": "object"
+      },
+      "ClassMove": {
+        "additionalProperties": false,
+        "properties": {
+          "alternative_id": {
+            "title": "Alternative Id",
+            "type": "string"
+          },
+          "class_id": {
+            "title": "Class Id",
+            "type": "string"
+          },
+          "down": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NearestChange"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "up": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NearestChange"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "alternative_id",
+          "name",
+          "class_id",
+          "up",
+          "down"
+        ],
+        "title": "ClassMove",
         "type": "object"
       },
       "ClassShare": {
@@ -5259,6 +5497,62 @@
           "judgements"
         ],
         "title": "CriteriaJudgements",
+        "type": "object"
+      },
+      "CriterionBreakEven": {
+        "additionalProperties": false,
+        "properties": {
+          "criterion_id": {
+            "title": "Criterion Id",
+            "type": "string"
+          },
+          "falls_below": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Threshold"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "local_weight": {
+            "title": "Local Weight",
+            "type": "number"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "rises_above": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Threshold"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sentence": {
+            "title": "Sentence",
+            "type": "string"
+          },
+          "share": {
+            "title": "Share",
+            "type": "number"
+          }
+        },
+        "required": [
+          "criterion_id",
+          "name",
+          "local_weight",
+          "share",
+          "falls_below",
+          "rises_above",
+          "sentence"
+        ],
+        "title": "CriterionBreakEven",
         "type": "object"
       },
       "CriterionContext": {
@@ -10849,6 +11143,71 @@
         "title": "Issue",
         "type": "object"
       },
+      "JudgementAids": {
+        "additionalProperties": false,
+        "properties": {
+          "anchors": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/Anchor"
+            },
+            "title": "Anchors",
+            "type": "array"
+          },
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "break_even": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BreakEven"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "label": {
+            "default": "Derived from the project and the profile; nothing here changes the project. A reference profile is for comparison only: it is never a default and gives no weights.",
+            "title": "Label",
+            "type": "string"
+          },
+          "project_fingerprint": {
+            "title": "Project Fingerprint",
+            "type": "string"
+          },
+          "reason": {
+            "default": "",
+            "title": "Reason",
+            "type": "string"
+          },
+          "references": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ReferenceComparison"
+            },
+            "title": "References",
+            "type": "array"
+          },
+          "weight_profile_id": {
+            "title": "Weight Profile Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_fingerprint",
+          "weight_profile_id",
+          "available",
+          "reason",
+          "anchors",
+          "break_even",
+          "references",
+          "label"
+        ],
+        "title": "JudgementAids",
+        "type": "object"
+      },
       "KappaUsed": {
         "additionalProperties": false,
         "properties": {
@@ -13627,6 +13986,38 @@
         "title": "MoveCriterion",
         "type": "object"
       },
+      "NearestChange": {
+        "additionalProperties": false,
+        "properties": {
+          "alternative_id": {
+            "title": "Alternative Id",
+            "type": "string"
+          },
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/WeightChange"
+            },
+            "title": "Changes",
+            "type": "array"
+          },
+          "distance": {
+            "title": "Distance",
+            "type": "number"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "alternative_id",
+          "name",
+          "distance",
+          "changes"
+        ],
+        "title": "NearestChange",
+        "type": "object"
+      },
       "NotComparableCase": {
         "additionalProperties": false,
         "properties": {
@@ -13977,6 +14368,46 @@
           "pairs"
         ],
         "title": "OutrankingExplanation",
+        "type": "object"
+      },
+      "PairCheck": {
+        "additionalProperties": false,
+        "properties": {
+          "above": {
+            "title": "Above",
+            "type": "string"
+          },
+          "above_name": {
+            "title": "Above Name",
+            "type": "string"
+          },
+          "below": {
+            "title": "Below",
+            "type": "string"
+          },
+          "below_name": {
+            "title": "Below Name",
+            "type": "string"
+          },
+          "partner": {
+            "enum": [
+              "agrees",
+              "disagrees",
+              "tie",
+              "not comparable"
+            ],
+            "title": "Partner",
+            "type": "string"
+          }
+        },
+        "required": [
+          "above",
+          "below",
+          "above_name",
+          "below_name",
+          "partner"
+        ],
+        "title": "PairCheck",
         "type": "object"
       },
       "PairExplanation": {
@@ -19668,6 +20099,59 @@
         "title": "ReferenceClaim",
         "type": "object"
       },
+      "ReferenceComparison": {
+        "additionalProperties": false,
+        "properties": {
+          "criteria_note": {
+            "title": "Criteria Note",
+            "type": "string"
+          },
+          "partner_order": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Partner Order",
+            "type": "array"
+          },
+          "partner_order_names": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Partner Order Names",
+            "type": "array"
+          },
+          "purpose": {
+            "title": "Purpose",
+            "type": "string"
+          },
+          "reference_id": {
+            "title": "Reference Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "variants": {
+            "items": {
+              "$ref": "#/components/schemas/VariantCheck"
+            },
+            "title": "Variants",
+            "type": "array"
+          }
+        },
+        "required": [
+          "reference_id",
+          "title",
+          "purpose",
+          "criteria_note",
+          "partner_order",
+          "partner_order_names",
+          "variants"
+        ],
+        "title": "ReferenceComparison",
+        "type": "object"
+      },
       "ReferenceOutcome-Input": {
         "additionalProperties": false,
         "description": "What the reference set's author recorded as happening after the snapshot.",
@@ -25288,6 +25772,45 @@
         "title": "StarterTemplate",
         "type": "object"
       },
+      "StatementCheck": {
+        "additionalProperties": false,
+        "properties": {
+          "disagreements": {
+            "title": "Disagreements",
+            "type": "integer"
+          },
+          "horizon": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Horizon"
+          },
+          "pairs": {
+            "items": {
+              "$ref": "#/components/schemas/PairCheck"
+            },
+            "title": "Pairs",
+            "type": "array"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "horizon",
+          "text",
+          "pairs",
+          "disagreements"
+        ],
+        "title": "StatementCheck",
+        "type": "object"
+      },
       "SuggestedSourceClaim-Input": {
         "additionalProperties": false,
         "properties": {
@@ -25739,6 +26262,30 @@
           "name"
         ],
         "title": "TemplateInfo",
+        "type": "object"
+      },
+      "Threshold": {
+        "additionalProperties": false,
+        "properties": {
+          "local_weight": {
+            "title": "Local Weight",
+            "type": "number"
+          },
+          "new_leader": {
+            "title": "New Leader",
+            "type": "string"
+          },
+          "share": {
+            "title": "Share",
+            "type": "number"
+          }
+        },
+        "required": [
+          "local_weight",
+          "share",
+          "new_leader"
+        ],
+        "title": "Threshold",
         "type": "object"
       },
       "TrashEntry": {
@@ -26667,6 +27214,80 @@
         "title": "ValueSample",
         "type": "object"
       },
+      "VariantCheck": {
+        "additionalProperties": false,
+        "properties": {
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/Citation"
+            },
+            "title": "Citations",
+            "type": "array"
+          },
+          "disagreements": {
+            "title": "Disagreements",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "statements": {
+            "items": {
+              "$ref": "#/components/schemas/StatementCheck"
+            },
+            "title": "Statements",
+            "type": "array"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "summary",
+          "citations",
+          "statements",
+          "disagreements"
+        ],
+        "title": "VariantCheck",
+        "type": "object"
+      },
+      "WeightChange": {
+        "additionalProperties": false,
+        "properties": {
+          "changed": {
+            "title": "Changed",
+            "type": "number"
+          },
+          "criterion_id": {
+            "title": "Criterion Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "stated": {
+            "title": "Stated",
+            "type": "number"
+          }
+        },
+        "required": [
+          "criterion_id",
+          "name",
+          "stated",
+          "changed"
+        ],
+        "title": "WeightChange",
+        "type": "object"
+      },
       "WeightPreview": {
         "additionalProperties": false,
         "properties": {
@@ -26899,7 +27520,8 @@
             "default": "calibrated",
             "enum": [
               "prior",
-              "calibrated"
+              "calibrated",
+              "tradeoff"
             ],
             "title": "Basis",
             "type": "string"
@@ -27086,7 +27708,8 @@
           "basis": {
             "enum": [
               "prior",
-              "calibrated"
+              "calibrated",
+              "tradeoff"
             ],
             "title": "Basis",
             "type": "string"
@@ -28492,6 +29115,48 @@
         ]
       }
     },
+    "/api/judgement-aids": {
+      "post": {
+        "description": "Aids for stating weights under the configured profile: swings anchored in the project's\nown alternatives, break-even weights for the leader, and any bundled reference profile set\nbeside the profile's order. Read-only; a reference profile is never a default.",
+        "operationId": "judgement_aids_draft_api_judgement_aids_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvaluateDraftRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JudgementAids"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Judgement Aids Draft",
+        "tags": [
+          "analysis"
+        ]
+      }
+    },
     "/api/meta": {
       "get": {
         "description": "Scale types, value-function kinds and which combinations the engine accepts.",
@@ -29789,6 +30454,58 @@
         "summary": "Download Project",
         "tags": [
           "projects"
+        ]
+      }
+    },
+    "/api/projects/{project_id}/judgement-aids": {
+      "post": {
+        "operationId": "judgement_aids_stored_api_projects__project_id__judgement_aids_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalysisOptions"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JudgementAids"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Judgement Aids Stored",
+        "tags": [
+          "analysis"
         ]
       }
     },

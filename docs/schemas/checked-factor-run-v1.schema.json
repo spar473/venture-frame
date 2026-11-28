@@ -7048,7 +7048,8 @@
         "basis": {
           "enum": [
             "prior",
-            "calibrated"
+            "calibrated",
+            "tradeoff"
           ],
           "title": "Basis",
           "type": "string"
