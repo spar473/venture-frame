@@ -70,7 +70,11 @@ Two new SMAA-2 method parameters go in `analysis.parameters`, which the method o
   ignores stated weight groups today. A `preference` or `combined` run uses the file *instead of*
   every stated weight group, and the basis sentence and the record say so. Stating weight groups
   and using samples in one run is refused (`WEIGHT_SOURCE_CONFLICT`), so the two measures over
-  weights are never mixed silently.
+  weights are never mixed silently. The refusal names the fix: save a copy without the weight
+  groups (`mcda uncertainty group <project> --fixed -o <copy>`, plus `--parent <id>` for each
+  group below the top level) and draw the prior from that copy, so the sidecar's project
+  fingerprint is the copy's. `mcda calibrate prior` still writes a sidecar for a project with
+  weight groups (exit 0, the same stdout), and warns on stderr with the same command.
 
 ### 3. Matching draws to the sample count (never recycled silently)
 

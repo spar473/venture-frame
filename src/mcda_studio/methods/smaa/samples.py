@@ -88,6 +88,27 @@ def uses_samples(params: Any) -> bool:
     )
 
 
+def weight_groups_fix(project: Project) -> str:
+    """How to take weights from samples when the project states weight groups (one sentence).
+
+    Shared by the ``WEIGHT_SOURCE_CONFLICT`` refusal and the warning from ``mcda calibrate prior``.
+    ``--fixed`` without ``--parent`` clears the top-level group; a group below the top level needs
+    its own ``--parent``, so those are named."""
+    groups = project.smaa.groups if project.smaa is not None else []
+    below = sorted({g.parent_id for g in groups if g.parent_id is not None})
+    more = (
+        ", then `mcda uncertainty group <copy> --parent <id> --fixed` for each of "
+        + ", ".join(below)
+        if below
+        else ""
+    )
+    return (
+        "To use samples, save a copy without the weight groups "
+        f"(`mcda uncertainty group <project> --fixed -o <copy>`{more}) "
+        "and draw the prior from that copy."
+    )
+
+
 def check(project: Project, configuration: AnalysisConfiguration, params: Any) -> list[Issue]:
     """Every refusal for a run that uses the samples source; none otherwise."""
     if not uses_samples(params):
@@ -110,7 +131,7 @@ def check(project: Project, configuration: AnalysisConfiguration, params: Any) -
         add(
             "WEIGHT_SOURCE_CONFLICT",
             "the project states weight uncertainty in sibling groups; a run takes its weights "
-            "either from those groups or from samples, never both",
+            "either from those groups or from samples, never both. " + weight_groups_fix(project),
             "smaa.groups",
         )
     samples = supplied_samples()

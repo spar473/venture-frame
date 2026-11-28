@@ -32,6 +32,7 @@ from mcda_studio.storage import json_repository as jr
 from builders import tiny_project
 
 ROOT = Path(__file__).resolve().parents[2]
+CASE_2 = ROOT / "examples" / "nz_venture_screening" / "project.json"
 VERSION_7 = ROOT / "examples" / "nz_first_round_retrospective" / "project.json"
 
 
@@ -207,6 +208,94 @@ def test_every_refusal(tiny: Any) -> None:
                            groups=[GroupUncertainty(parent_id=None, kind="unknown")])
     )  # fmt: skip
     assert "WEIGHT_SOURCE_CONFLICT" in refused(grouped, cfg, samples)
+
+
+CONFLICT = (
+    "the project states weight uncertainty in sibling groups; a run takes its weights either from "
+    "those groups or from samples, never both. To use samples, save a copy without the weight "
+    "groups (`mcda uncertainty group <project> --fixed -o <copy>`) and draw the prior from that "
+    "copy."
+)
+CONFLICT_BELOW_TOP = (
+    "the project states weight uncertainty in sibling groups; a run takes its weights either from "
+    "those groups or from samples, never both. To use samples, save a copy without the weight "
+    "groups (`mcda uncertainty group <project> --fixed -o <copy>`, then `mcda uncertainty group "
+    "<copy> --parent <id> --fixed` for each of team) and draw the prior from that copy."
+)
+
+
+def conflict(project: Any, cfg: AnalysisConfiguration, samples: WeightSamples) -> str:
+    with pytest.raises(ValidationFailed) as caught, wsm.supplied(samples):
+        svc.evaluate_project(project, cfg)
+    found = [i for i in caught.value.report.errors if i.code == "WEIGHT_SOURCE_CONFLICT"]
+    assert [i.path for i in found] == ["smaa.groups"]
+    return found[0].message
+
+
+def test_the_weight_source_conflict_names_the_fix(tiny: Any) -> None:
+    project, samples = tiny
+    cfg = configuration(samples)
+    top = ps.set_smaa_model(
+        project, SmaaModel(cells=project.smaa.cells,
+                           groups=[GroupUncertainty(parent_id=None, kind="unknown")])
+    )  # fmt: skip
+    assert conflict(top, cfg, samples) == CONFLICT
+    case_2 = jr.JsonProjectRepository().load(CASE_2)
+    below = ps.set_smaa_model(
+        case_2, SmaaModel(cells=case_2.smaa.cells, groups=[
+            *case_2.smaa.groups, GroupUncertainty(parent_id="team", kind="unknown")])
+    )  # fmt: skip
+    assert conflict(below, cfg, samples) == CONFLICT_BELOW_TOP
+
+
+def test_the_api_returns_the_conflict_as_the_engine_words_it(tiny: Any, tmp_path: Path) -> None:
+    from fastapi.testclient import TestClient
+
+    from mcda_studio.api import create_app
+
+    project, samples = tiny
+    top = ps.set_smaa_model(
+        project, SmaaModel(cells=project.smaa.cells,
+                           groups=[GroupUncertainty(parent_id=None, kind="unknown")])
+    )  # fmt: skip
+    client = TestClient(create_app(store_dir=tmp_path / "store", frontend_dir=False))
+    body = {"project": json.loads(top.model_dump_json()),
+            "configuration": configuration(samples).model_dump(mode="json"),
+            "weight_samples": json.loads(samples.model_dump_json())}  # fmt: skip
+    resp = client.post("/api/evaluate", json=body)
+    assert resp.status_code == 422
+    assert CONFLICT in resp.text
+
+
+def test_evaluate_on_case_2_names_the_fix_and_the_fix_works(tmp_path: Path) -> None:
+    from typer.testing import CliRunner
+
+    from mcda_studio.cli import app
+
+    def prior_args(source: Path, out: Path) -> list[str]:
+        return ["calibrate", "prior", str(source), "--profile", "technical_ip", "--kappa", "47",
+                "--draws", "1000", "--out", str(out)]  # fmt: skip
+
+    runner = CliRunner()
+    prior = tmp_path / "prior.json"
+    made = runner.invoke(app, prior_args(CASE_2, prior))
+    assert made.exit_code == 0, made.output
+    refused_run = runner.invoke(app, ["evaluate", str(CASE_2), "--method", "smaa2", "--samples",
+                                      "1000", "--weight-samples", str(prior)])  # fmt: skip
+    assert refused_run.exit_code == 1
+    assert "WEIGHT_SOURCE_CONFLICT" in refused_run.output
+    assert " ".join(CONFLICT.split()) in " ".join(refused_run.output.split())
+    # The fix the message names: a copy without the weight groups, and the prior from the copy.
+    copy = tmp_path / "copy.json"
+    fixed = runner.invoke(app, ["uncertainty", "group", str(CASE_2), "--fixed", "-o", str(copy)])
+    assert fixed.exit_code == 0, fixed.output
+    prior_copy = tmp_path / "prior-copy.json"
+    made = runner.invoke(app, prior_args(copy, prior_copy))
+    assert made.exit_code == 0, made.output
+    assert "warning" not in made.stderr
+    done = runner.invoke(app, ["evaluate", str(copy), "--method", "smaa2", "--samples", "1000",
+                               "--weight-samples", str(prior_copy)])  # fmt: skip
+    assert done.exit_code == 0, done.output
 
 
 def test_the_run_profile_must_be_the_sidecars(tiny: Any) -> None:

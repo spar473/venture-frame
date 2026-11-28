@@ -984,6 +984,18 @@ def calibrate_prior(
     }
     typer.echo(json.dumps(summary, indent=2))
     err_console.print(f"wrote {out}")
+    if project.smaa is not None and project.smaa.groups:
+        from mcda_studio.methods.smaa.samples import weight_groups_fix
+
+        err_console.print(
+            "[yellow]warning:[/yellow] "
+            + escape(
+                "this project states weight uncertainty in sibling groups, so an evaluation "
+                "with --weight-samples refuses this sidecar (WEIGHT_SOURCE_CONFLICT). "
+                + weight_groups_fix(project)
+            ),
+            soft_wrap=True,
+        )
 
 
 @calibrate_app.command("synthetic-check")

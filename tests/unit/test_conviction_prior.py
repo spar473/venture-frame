@@ -160,6 +160,46 @@ def test_the_command_writes_the_sidecar_and_prints_its_digest(tmp_path: Path) ->
     assert again.exit_code == 1 and "Refusing to overwrite" in again.output
 
 
+WEIGHT_GROUPS_WARNING = (
+    "warning: this project states weight uncertainty in sibling groups, so an evaluation with "
+    "--weight-samples refuses this sidecar (WEIGHT_SOURCE_CONFLICT). To use samples, save a copy "
+    "without the weight groups (`mcda uncertainty group <project> --fixed -o <copy>`) and draw the "
+    "prior from that copy."
+)
+
+
+def test_the_command_warns_on_stated_weight_groups_and_keeps_its_output(tmp_path: Path) -> None:
+    # Case 2 as shipped states a top-level weight group: the sidecar is still written (exit 0),
+    # stdout is exactly the summary JSON, and stderr carries the warning with the fix.
+    from typer.testing import CliRunner
+
+    from mcda_studio.cli import app
+
+    out = tmp_path / "prior.json"
+    args = ["calibrate", "prior", str(CASE_2), "--profile", "technical_ip", "--conviction",
+            "low", "--draws", "300", "--seed", "4", "--out", str(out)]  # fmt: skip
+    result = CliRunner().invoke(app, args)
+    assert result.exit_code == 0, result.output
+    loaded = ws.WeightSamples.model_validate_json(out.read_text(encoding="utf-8"))
+    summary = {
+        "weight_samples_sha256": cps.sidecar_digest(loaded),
+        "basis": "prior",
+        "weight_profile_id": "technical_ip",
+        "project_fingerprint": loaded.project_fingerprint,
+        "conviction": "low",
+        "conviction_source": loaded.prior.conviction_source,
+        "groups": [
+            {"parent_id": g.parent_id, "kappa": g.kappa, "kappa_method": g.kappa_method}
+            for g in loaded.prior.groups
+        ],
+        "draws": 300,
+        "seed": 4,
+    }
+    assert result.stdout == json.dumps(summary, indent=2) + "\n"
+    assert WEIGHT_GROUPS_WARNING in result.stderr.splitlines()
+    assert "warning" not in result.stdout
+
+
 def test_a_listed_held_child_keeps_its_weight_and_the_rest_share_what_is_left(project: Any) -> None:
     from mcda_studio.domain.uncertainty import GroupUncertainty, SmaaModel
     from mcda_studio.methods.mavt.weighting import compute_weights
