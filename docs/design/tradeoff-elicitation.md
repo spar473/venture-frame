@@ -186,6 +186,28 @@ supplies every number, sentence and verdict; the tab only shows them.
   folder it serves; an installed wheel does not bundle this folder (the build configuration is
   unchanged), so there the section is simply absent.
 
+## What the synthetic study found (28 November 2026)
+
+Case 2, profile Technical/IP-led, ranking prior, 40 planted truths drawn from it, 30 questions;
+full tables in the DD11 handoff and notebook (kept in `$MCDA_DATA`). The success threshold was
+fixed before the run and not tuned afterwards.
+
+- **Threshold not met.** Adaptive exact mode reached a median L1 error of 0.199 after 15 questions
+  against 0.353 for the ranking prior alone (ratio 0.56; the bar was 0.5). It reached half between
+  20 and 25 questions (0.105 after 30). Adaptive beat random questions at every count.
+- With a truthful respondent, coverage of the 90% intervals stayed at or above nominal.
+- **Exact mode does not catch random slips.** An adaptive question is only asked when both answers
+  keep at least 2% of the particles, so a flipped answer never empties them and the conflict check
+  never fires; with 10% or 20% of answers flipped, coverage fell to 0.63 and 0.46 after 30
+  questions. Noisy mode on the same answers kept coverage at 0.92 to 0.96, though at the sampler's
+  defaults 3 to 5 of 20 fits did not pass the convergence gate. For a real person's answers, fit
+  noisy mode as well as exact mode and compare.
+- The stop rule would have stopped most runs after about 11 or 12 questions, before the later
+  questions' gains.
+- **Against a wrong conviction** (truths 0.1 to 0.3 TV from the stated weights, low-conviction
+  prior), 30 answers roughly halved the L1 error but did not restore coverage: the answers do not
+  overrule a confident prior that far within 30 questions.
+
 ## Known limits
 
 - The additive model is assumed: each answer reads the model's trade-off at two levels with

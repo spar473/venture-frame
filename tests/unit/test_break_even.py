@@ -185,3 +185,20 @@ def test_evaluate_prints_break_even(tmp_path: Path) -> None:
     assert "Nearest change" in table.stdout
     plain = runner.invoke(app, ["evaluate", str(STUDY)])
     assert "Break-even" not in plain.stdout
+
+
+def test_a_sub_criterions_threshold_is_its_local_weight_times_its_parents_share() -> None:
+    project = JsonProjectRepository().load(STUDY)
+    result = be.break_even(project)
+    team = next(c for c in result.criteria if c.criterion_id == "team")
+    expertise = next(c for c in result.criteria if c.criterion_id == "founder_problem_fit")
+    assert team.share == pytest.approx(0.3, abs=1e-12)  # 90 of 300 at the top level
+    assert expertise.share == pytest.approx(expertise.local_weight * team.share, abs=1e-12)
+    assert expertise.rises_above is not None and expertise.falls_below is None
+    t = expertise.rises_above.local_weight
+    assert 0.0 < t < 1.0
+    assert expertise.rises_above.share == pytest.approx(t * team.share, abs=1e-12)
+    assert expertise.sentence == (
+        f"Upstock stays first unless Founder-problem expertise rises above "
+        f"{100 * t * team.share:.0f}%"
+    )

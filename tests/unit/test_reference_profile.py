@@ -54,3 +54,34 @@ def test_a_project_without_the_criteria_gets_no_comparison() -> None:
     project = flat_project([[1.0, 0.0], [0.0, 1.0]], [60.0, 40.0])
     (profile,) = aids.load_reference_profiles(FILE.parent)
     assert aids.compare_reference(project, project.analysis, profile) is None
+
+
+def test_anchors_run_from_the_worst_venture_to_the_best() -> None:
+    project = JsonProjectRepository().load(EXAMPLES / "nz_venture_screening" / "project.json")
+    found = {a.criterion_id: a for a in aids.anchors(project, project.analysis)}
+    team = found["team_completeness"]
+    assert (team.worst.name, team.worst.level) == ("Wych", "One key role named")
+    assert (team.best.name, team.best.level) == ("Wellumio", "Next-stage leads named")
+    assert team.swing == (
+        "From Wych's level (One key role named) to Wellumio's (Next-stage leads named) on "
+        "Team completeness"
+    )
+    for a in found.values():
+        assert a.worst.value <= a.best.value
+    assert "hq_country" not in found  # a leaf with no weight has no swing to picture
+
+
+def test_pairs_in_different_sibling_groups_are_not_comparable() -> None:
+    project = JsonProjectRepository().load(EXAMPLES / "nz_venture_screening" / "project.json")
+    raw = json.loads(FILE.read_text(encoding="utf-8"))
+    raw["variants"] = [raw["variants"][0] | {
+        "statements": [
+            {"horizon": None, "above": ["team_completeness"], "below": ["market", "track_record"]}
+        ],
+    }]  # fmt: skip
+    profile = aids.ReferenceProfile.model_validate_json(json.dumps(raw))
+    result = aids.compare_reference(project, project.analysis, profile)
+    assert result is not None
+    verdicts = {p.below: p.partner for p in result.variants[0].statements[0].pairs}
+    # team_completeness (70) and track_record (50) are siblings; market is in another group
+    assert verdicts == {"market": "not comparable", "track_record": "agrees"}
